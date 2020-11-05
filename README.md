@@ -1,6 +1,6 @@
 # RKDG3D v.0.1
 
-MFEM-based compressible flow solver
+MFEM-based RKDG compressible flow solver for 3D flows
 
 Meshes: unstructured (supports triangular and quadrangle elements) supported by MFEM 
 
