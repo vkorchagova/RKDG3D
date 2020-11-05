@@ -2,6 +2,8 @@
 
 MFEM-based RKDG compressible flow solver for 3D flows
 
+EoS: perfect gas, Covolume
+
 Meshes: unstructured (supports triangular and quadrangle elements) supported by MFEM 
 
 Riemann solvers: Rusanov, Local Lax --- Fridriechs, HLL, HLLC
