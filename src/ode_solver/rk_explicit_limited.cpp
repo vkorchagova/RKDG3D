@@ -67,7 +67,7 @@ void ExplicitRKLimitedSolver::Step(Vector &x, double &t, double &dt)
 
       
       // limit y and compute rhs with good y
-       limiter.limit(y);
+       limiter.update(y);
       /// HERE WE NEED MPI& ???
       // std::cout << "=======\n X after 1st stage = ";
       // y.Print(std::cout);
@@ -111,7 +111,7 @@ void ExplicitRKLimitedSolver::Step(Vector &x, double &t, double &dt)
    // }  
    // limit x
    
-   limiter.limit(x);
+   limiter.update(x);
  
    // if (myRank == 0)
    // {

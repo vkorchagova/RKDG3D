@@ -10,7 +10,10 @@
 #include "rs_llf.hpp"
 #include "rk_explicit_limited.hpp"
 #include "limiter_findiff.hpp"
-#include "limiter_bj.hpp"
+#include "limiter_multiplier.hpp"
+#include "indicator_nowhere.hpp"
+#include "indicator_everywhere.hpp"
+#include "indicator_bj.hpp"
 
 
 

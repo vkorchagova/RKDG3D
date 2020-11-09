@@ -47,7 +47,7 @@
 int problem;
 
 // Equation constant parameters
-const int num_equation = 5;
+const int num_equation = 4;
 double specific_heat_ratio = 1.4;
 const double gas_constant = 1.0;
 double covolume_constant = 0.0;
@@ -81,6 +81,7 @@ int main(int argc, char *argv[])
    bool visit = false;
    bool paraview = false;
    int vis_steps = 50;
+   int indicator_type = 0;
    int limiter_type = 1;
    int riemann_solver_type = 0;
 
@@ -120,8 +121,10 @@ int main(int argc, char *argv[])
                   "Save data files for ParaView (paraview.org) visualization.");
    args.AddOption(&vis_steps, "-vs", "--visualization-steps",
                   "Visualize every n-th timestep.");
+   args.AddOption(&indicator_type, "-it", "--indicator-type",
+                  "Set indicator type: 0 - Nowhere, 1 - Everywhere, 2 - Barth-Jespersen.");
    args.AddOption(&limiter_type, "-lt", "--limiter-type",
-                  "Set limiter type: 1 - FinDiff, 2 - Barth-Jespersen.");
+                  "Set limiter type: 1 - FinDiff, 2 - Multiplier.");
    args.AddOption(&riemann_solver_type, "-rst", "--riemann-solver-type",
                   "Set Riemann solver type: 0 - Rusanov, 1 - LLF, 2 - HLL, 3 - HLLC.");
 
@@ -158,7 +161,7 @@ int main(int argc, char *argv[])
 
 
 
-   // 4.1. Refine the mesh to increase the resolution. In this example we do
+   // 2.1. Refine the mesh to increase the resolution. In this example we do
    //    'ref_levels' of uniform refinement, where 'ref_levels' is a
    //    command-line parameter.
    for (int lev = 0; lev < ser_ref_levels; lev++)
@@ -166,7 +169,7 @@ int main(int argc, char *argv[])
       mesh.UniformRefinement();
    }
 
-   // 4.2. Define a parallel mesh by a partitioning of the serial mesh. Refine
+   // 2.2. Define a parallel mesh by a partitioning of the serial mesh. Refine
    //    this mesh further in parallel to increase the resolution. Once the
    //    parallel mesh is defined, the serial mesh can be deleted.
    ParMesh pmesh(MPI_COMM_WORLD, mesh);
@@ -176,7 +179,7 @@ int main(int argc, char *argv[])
       pmesh.UniformRefinement();
    }
 
-   // 5. Define the discontinuous DG finite element space of the given
+   // 3. Define the discontinuous DG finite element space of the given
    //    polynomial order on the refined mesh.
    DG_FECollection fec(order, dim);
    // Finite element space for a scalar (thermodynamic quantity)
@@ -191,17 +194,14 @@ int main(int argc, char *argv[])
    HYPRE_Int glob_size = vfes.GlobalTrueVSize();
    if (myRank == 0) { cout << "Number of unknowns: " << glob_size << endl; }
 
-   // 6. Define the initial conditions, save the corresponding mesh and grid
-   //    functions to a file. This can be opened with GLVis with the -gc option.
+   // 4. Define the initial conditions, save the corresponding mesh and grid
+   //    functions to a file.
 
-   // The solution u has components {density, x-momentum, y-momentum, energy}.
+   // The solution u has components {density, x-momentum, y-momentum, (z-momentum), energy}.
    // These are stored contiguously in the BlockVector u_block.
    Array<int> offsets(num_equation + 1);
    for (int k = 0; k <= num_equation; k++) { offsets[k] = k * vfes.GetNDofs(); }
    BlockVector u_block(offsets);
-
-   // Momentum grid function on dfes for visualization.
-   ParGridFunction mom(&dfes, u_block.GetData() + offsets[1]);
 
 
    // Initialize the state.
@@ -211,9 +211,8 @@ int main(int argc, char *argv[])
 
    if (myRank == 0) cout << "project sol OK\n";
 
-   
 
-   // 7. Set up the nonlinear form corresponding to the DG discretization of the
+   // 5. Set up the nonlinear form corresponding to the DG discretization of the
    //    flux divergence, and assemble the corresponding mass matrix.
    MixedBilinearForm Aflux(&dfes, &fes);
    Aflux.AddDomainIntegrator(new DomainIntegrator(dim));
@@ -240,38 +239,15 @@ int main(int argc, char *argv[])
 
    // cout << "after face interg\n";
 
-   // 8. Define the time-dependent evolution operator describing the ODE
+   // 6. Define the time-dependent evolution operator describing the ODE
    //    right-hand side, and perform time-integration (looping over the time
    //    iterations, ti, with a time-step dt).
    FE_Evolution euler(vfes, A, Aflux.SpMat());
 
    // cout << "after fe evolution\n";
 
-   // // Visualize the density
-   // socketstream sout;
-   // if (visualization)
-   // {
-   //    char vishost[] = "localhost";
-   //    int  visport   = 19916;
 
-   //    sout.open(vishost, visport);
-   //    if (!sout)
-   //    {
-   //       cout << "Unable to connect to GLVis server at "
-   //            << vishost << ':' << visport << endl;
-   //       visualization = false;
-   //       cout << "GLVis visualization disabled.\n";
-   //    }
-   //    else
-   //    {
-   //       sout.precision(precision);
-   //       sout << "solution\n" << mesh << mom;
-   //       sout << "pause\n";
-   //       sout << flush;
-   //       cout << "GLVis visualization paused."
-   //            << " Press space (in the GLVis window) to resume it.\n";
-   //    }
-   // }
+
 
    // Determine the minimum element size.
    double hmin = 0.0;
@@ -286,8 +262,41 @@ int main(int argc, char *argv[])
       MPI_Allreduce(&my_hmin, &hmin, 1, MPI_DOUBLE, MPI_MIN, pmesh.GetComm());
    }
 
-   // 3. Define the ODE solver used for time integration. Several explicit
+   // 7. Define limiter and troubled cells indicator
+
+   // 7.1. Define additional block vector for indicator values to have a possibility of visualisation
+   DG_FECollection fec_const(0, dim);
+   ParFiniteElementSpace fes_const(&pmesh, &fec_const);
+   Array<int> offsets_const(num_equation + 1);
+   for (int k = 0; k <= num_equation; k++) { offsets_const[k] = k * fes_const.GetNDofs(); }
+   BlockVector indicatorData(offsets_const);
+
+   // 7.2. Define indicator object
+   Indicator *ind = NULL;
+   switch (indicator_type)
+   {
+      case 0: ind = new IndicatorNowhere(&vfes, offsets, dim, indicatorData); break;
+      case 1: ind = new IndicatorEverywhere(&vfes, offsets, dim, indicatorData); break;
+      case 2: ind = new IndicatorBJ(&vfes, offsets, dim, indicatorData); break;
+      default:
+         cout << "Unknown indicator type: " << indicator_type << '\n';
+         return 1;
+   }  
+
+   // 7.3. Define limiter object
+   Limiter *l = NULL;
+   switch (limiter_type)
+   {
+      case 1: l = new LimiterFinDiff(*ind, &vfes, offsets, dim); break;
+      case 2: l = new LimiterMultiplier(*ind, &vfes, offsets, dim); break;
+      default:
+         cout << "Unknown limiter type: " << limiter_type << '\n';
+         return 1;
+   }
+
+   // 8. Define the ODE solver used for time integration. Several explicit
    //    Runge-Kutta methods are available.
+
    // int s = 2;
    // double* a = new double [3];
    // a[0] = 0.0;
@@ -316,87 +325,32 @@ int main(int argc, char *argv[])
    c[0] = 0.0;
    c[1] = 0.5;
    c[2] = 1.0;
-
-   Limiter *l = NULL;
-   switch (limiter_type)
-   {
-      case 1: l = new LimiterFinDiff(&vfes, offsets, dim); break;
-      case 2: l = new LimiterBJ(&vfes, offsets, dim); break;
-      default:
-         cout << "Unknown limiter type: " << ode_solver_type << '\n';
-         return 1;
-   }
    ODESolver *ode_solver = new ExplicitRKLimitedSolver(s,a,b,c,*l);
    
 
-   // LIMIT INITIAL CONDITIONS
+   // 9. LIMIT INITIAL CONDITIONS
    // std::cout << "before initial limit " << sol[7052] << endl;
    pmesh.ExchangeFaceNbrData(); 
    sol.ExchangeFaceNbrData();
-   l->limit(sol);
+   l->update(sol);
 
    if (myRank == 0) cout << "limit sol OK\n";
 
-   // just an avegaring
 
-   // DG_FECollection fec_avg(0, dim);
-   // ParFiniteElementSpace fes_avg_rho(&pmesh, &fec_avg);
-   // ParFiniteElementSpace fes_avg(&pmesh, &fec_avg, num_equation);
-   // Array<int> offsets_avg(num_equation + 1);
-   // for (int k = 0; k <= num_equation; k++) { offsets_avg[k] = k * fes_avg.GetNDofs(); }
-   // BlockVector u_block_avg(offsets_avg);
-   // ParGridFunction avgs(&fes_avg, u_block_avg.GetData());
-
-   // ParGridFunction sol_i, avgs_i;
-   // for (int i = 0; i < num_equation; i++)
-   // {  
-   //    sol_i.MakeRef(&fes, sol, offsets[i]);
-   //    avgs_i.MakeRef(&fes_avg_rho, avgs, offsets_avg[i]);
-   //    sol_i.GetElementAverages(avgs_i);
-   // }
-
-   // cout << "sol size =  " << sol.Size() << "; sol =";
-   // sol.Print(cout);
-
-   // cout << "avgs size =  " << avgs.Size() << endl;
-   // cout << avgs << endl;
-
-
-   // Output the initial solution.
-   // {
-   //    ofstream mesh_ofs("vortex.mesh");
-   //    mesh_ofs.precision(precision);
-   //    mesh_ofs << mesh;
-
-   //    for (int k = 0; k < num_equation; k++)
-   //    {
-   //       GridFunction uk(&fes, u_block.GetBlock(k));
-   //       ostringstream sol_name;
-   //       sol_name << "vortex-" << k << "-init.gf";
-   //       ofstream sol_ofs(sol_name.str().c_str());
-   //       sol_ofs.precision(precision);
-   //       sol_ofs << uk;
-   //    }
-   // }
-
-   // Create data collection for solution output: either VisItDataCollection for
+   // 10. Create data collection for solution output: either VisItDataCollection for
    // ascii data files, or SidreDataCollection for binary data files.
    DataCollection *dc = NULL;
+
    ParGridFunction rhok(&fes, u_block.GetBlock(0));
-   //ParGridFunction energy(&fes, u_block.GetData() + offsets[1]);
-   // ParGridFunction rho_avg(&fes_avg_rho, u_block_avg.GetBlock(0));
-   // if (visit)
-   // {
-   //    dc = new VisItDataCollection("Example18", &mesh);
-   //    dc->SetPrecision(precision);
-      
-   //    dc->RegisterField("mom", &mom);
-   //    dc->RegisterField("rho", &rhok);
-      
-   //    dc->SetCycle(0);
-   //    dc->SetTime(0.0);
-   //    dc->Save();
-   // }
+   ParGridFunction mom(&dfes, u_block.GetData() + offsets[1]);
+   ParGridFunction energy(&fes, u_block.GetBlock(dim+1));
+
+   ParGridFunction rhoInd(&fes_const, indicatorData.GetBlock(0));
+   ParGridFunction rhoUInd(&fes_const, indicatorData.GetBlock(1));
+   ParGridFunction rhoVInd(&fes_const, indicatorData.GetBlock(2));
+   ParGridFunction rhoWInd;
+   if (dim == 3) rhoWInd = ParGridFunction(&fes_const, indicatorData.GetBlock(3));
+   ParGridFunction EInd(&fes_const, indicatorData.GetBlock(dim+1));
 
    ParaViewDataCollection *pd = NULL;
    if (paraview)
@@ -404,7 +358,13 @@ int main(int argc, char *argv[])
       pd = new ParaViewDataCollection("PV", &pmesh);
       pd->RegisterField("mom", &mom);
       pd->RegisterField("rho", &rhok);
-      // pd->RegisterField("rho_avg", &rho_avg);
+      pd->RegisterField("energy", &energy);
+      pd->RegisterField("rhoInd", &rhoInd);
+      pd->RegisterField("rhoUInd", &rhoUInd);
+      pd->RegisterField("rhoVInd", &rhoVInd);
+      if (dim == 3) pd->RegisterField("rhoWInd", &rhoWInd);
+      pd->RegisterField("EInd", &EInd);
+
       pd->SetLevelsOfDetail(1);
       pd->SetCycle(0);
       pd->SetTime(0.0);

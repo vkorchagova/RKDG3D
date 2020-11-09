@@ -13,7 +13,14 @@ extern int myRank;
 /// 
 /// An explicit Runge-Kutta method corresponding to a general Butcher tableau
 /// with the DG limitation
-///
+///    +--------+----------------------+
+    // | c[0]   | a[0]                 |
+    // | c[1]   | a[1] a[2]            |
+    // | ...    |    ...               |
+    // | c[s-2] | ...   a[s(s-1)/2-1]  |
+    // +--------+----------------------+
+    // |        | b[0] b[1] ... b[s-1] |
+    // +--------+----------------------+
 class ExplicitRKLimitedSolver : public ODESolver
 {
 private:
