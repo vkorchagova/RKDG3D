@@ -109,7 +109,7 @@ public:
    /// Destructor
    virtual ~Limiter()
    {
-      delete stencil;
+      // delete stencil;
       delete avgs; 
       delete u_block_avg; 
       delete fes_avg; 
@@ -124,21 +124,34 @@ public:
    
 };
 
-// /// Compute average of extrapolated function values from neighbours on troubled cell
-// void GetStencilAverages(
-//    const GridFunction& x,
-//    const Array<int>& stencil_num,
-//    GridFunction& avgs
-// );
+/// Compute average of extrapolated function values from neighbours on troubled cell
+void computeStencilExtrapAveragesVector(
+   ParGridFunction& x,
+   const Stencil* stencil,
+   ParFiniteElementSpace *fes,
+   ParFiniteElementSpace *fes_avg_component,
+   const DG_FECollection* fec_avg,
+   const Array<int>& offsets,
+   const Array<int>& offsets_avg,
+   ParMesh* mesh,
+   ParGridFunction* avgs_extrap
+);
 
-// /// Special function to compute shape fun values on troubled cell via neighbour cell
-// void AssembleShiftedElementMatrix(
-//    const FiniteElement &trial_fe, 
-//    const FiniteElement &troubled_fe,
-//    const FiniteElement &test_fe,
-//    ElementTransformation &Trans, 
-//    DenseMatrix &elmat
-// );
+void computeStencilExtrapAverages(
+   const ParGridFunction& x,
+   const Stencil* stencil,
+   const ParFiniteElementSpace *fes,
+   ParGridFunction& avgs
+);
+
+/// Special function to compute shape fun values on troubled cell via neighbour cell
+void assembleShiftedElementMatrix(
+   const FiniteElement &trial_fe, 
+   const FiniteElement &troubled_fe,
+   const FiniteElement &test_fe,
+   ElementTransformation &Trans, 
+   DenseMatrix &elmat
+);
 
 /// Read element average due to different mechanisms for internal and shared values
 void readElementAverageByNumber(const int iCell, const ParMesh* mesh, const ParGridFunction* avgs, Vector& el_uMean);

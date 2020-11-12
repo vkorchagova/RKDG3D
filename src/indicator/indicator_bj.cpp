@@ -117,104 +117,108 @@ void IndicatorBJ::checkDiscontinuity(
    const int iCell, 
    const Stencil* stencil, 
    const ParGridFunction* uMean, 
-   const DenseMatrix& elfun1_mat)
+   const DenseMatrix& elfun1_mat,
+   ParGridFunction &x)
 {
    Vector uMean_el(num_equation);
 
    // loop through finite elements to compute indicator values
 
-      mI = 1e9;
-      MI = -1e9;
-      yMin = 1e9;
+   mI = 1e9;
+   MI = -1e9;
+   yMin = 1e9;
 
-      // get FE
-      fe = fes->GetFE(iCell);
-      fes->GetElementVDofs(iCell, el_vdofs);
-      const int nDofs = fe->GetDof();
+   // get FE
+   fe = fes->GetFE(iCell);
+   fes->GetElementVDofs(iCell, el_vdofs);
+   const int nDofs = fe->GetDof();
 
-      // if (iCell == 1789 && myRank == 17) 
-      // {
-      //    cout << "elfun1_mat = ";
-      //    elfun1_mat.Print(cout);
-      // }
+   // if (iCell == 1789 && myRank == 17) 
+   // {
+   //    cout << "elfun1_mat = ";
+   //    elfun1_mat.Print(cout);
+   // }
 
-      // cout << "stencil: ";
-      // stencil_num.Print(cout);
+   // cout << "stencil: ";
+   // stencil_num.Print(cout);
 
-      // compute min|max values of solution for current stencil
-      
-      
-      for (int k : stencil->cell_num)
-         for (int iSol = 0; iSol < num_equation; ++iSol)
-         {
-            readElementAverageByNumber(k, mesh, uMean, el_uMean);
-            mI[iSol] = el_uMean[iSol] < mI[iSol] ? el_uMean[iSol] : mI[iSol];
-            MI[iSol] = el_uMean[iSol] > MI[iSol] ? el_uMean[iSol] : MI[iSol];
-         }
-
-      // if (iCell == 1789 && myRank == 17) 
-      // {
-      //    cout << "mI = ";
-      //    mI.Print(cout);
-      //    cout << "MI = ";
-      //    MI.Print(cout);
-      // }
-
-
-      // if (iCell == 1789 && myRank == 17) 
-      // {
-      //    cout << "stencil = ";
-      //    stencil_num.Print(cout);
-      //    cout << "internal faces = ";
-      //    internal_face_numbers.Print(cout);
-      // }
-  
-
-      // run through faces again to compute values in gauss points
-      for (int iFace : stencil->internal_face_numbers)
+   // compute min|max values of solution for current stencil
+   
+   
+   for (int k : stencil->cell_num)
+   {
+      readElementAverageByNumber(k, mesh, uMean, el_uMean);
+      for (int iSol = 0; iSol < num_equation; ++iSol)
       {
-         // Integration order calculation from DGTraceIntegrator
-         face_el_trans = mesh->GetFaceElementTransformations(iFace);
-         IntegrationPointTransformation curTrans = face_el_trans->Elem1No == iCell ? face_el_trans->Loc1 : face_el_trans->Loc2;
+         
+         mI[iSol] = el_uMean[iSol] < mI[iSol] ? el_uMean[iSol] : mI[iSol];
+         MI[iSol] = el_uMean[iSol] > MI[iSol] ? el_uMean[iSol] : MI[iSol];
+      }
+   }
 
-         int intorder = (min(face_el_trans->Elem1->OrderW(), face_el_trans->Elem2->OrderW()) +
-                        2*max(fes->GetFE(face_el_trans->Elem1No)->GetOrder(), fes->GetFE(face_el_trans->Elem2No)->GetOrder()));
+   // if (iCell == 1789 && myRank == 17) 
+   // {
+   //    cout << "mI = ";
+   //    mI.Print(cout);
+   //    cout << "MI = ";
+   //    MI.Print(cout);
+   // }
 
-         const IntegrationRule *ir = &IntRules.Get(face_el_trans->FaceGeom, intorder);
-         // if (iCell == 1789 && myRank == 17) 
-         // {
-         //    std::cout << "tr->FaceGeom = " << face_el_trans->FaceGeom << ", intorder = " << intorder << std::endl;
-         //    std::cout << "npoints = " << ir->GetNPoints() << std::endl;
-         //    cout << "numFace = " << iFace << ";\n";
-         // }
 
-         updateYMin(*ir, &curTrans, elfun1_mat, uMean, iCell);
+   // if (iCell == 1789 && myRank == 17) 
+   // {
+   //    cout << "stencil = ";
+   //    stencil_num.Print(cout);
+   //    cout << "internal faces = ";
+   //    internal_face_numbers.Print(cout);
+   // }
 
-      } // for iFace
 
-      // run through faces again to compute values in gauss points
-      for (int iFace : stencil->shared_face_numbers)
-      {
-         // Integration order calculation from DGTraceIntegrator
-         face_el_trans = mesh->GetSharedFaceTransformations(iFace);
-         IntegrationPointTransformation curTrans = face_el_trans->Loc1;
+   // run through faces again to compute values in gauss points
+   for (int iFace : stencil->internal_face_numbers)
+   {
+      // Integration order calculation from DGTraceIntegrator
+      face_el_trans = mesh->GetFaceElementTransformations(iFace);
+      IntegrationPointTransformation curTrans = face_el_trans->Elem1No == iCell ? face_el_trans->Loc1 : face_el_trans->Loc2;
 
-         int intorder;
-            intorder = face_el_trans->Elem1->OrderW() + 2*fes->GetFE(face_el_trans->Elem1No)->GetOrder();
+      int intorder = (min(face_el_trans->Elem1->OrderW(), face_el_trans->Elem2->OrderW()) +
+                     2*max(fes->GetFE(face_el_trans->Elem1No)->GetOrder(), fes->GetFE(face_el_trans->Elem2No)->GetOrder()));
 
-         const IntegrationRule *ir = &IntRules.Get(face_el_trans->FaceGeom, intorder);
+      const IntegrationRule *ir = &IntRules.Get(face_el_trans->FaceGeom, intorder);
+      // if (iCell == 1789 && myRank == 17) 
+      // {
+      //    std::cout << "tr->FaceGeom = " << face_el_trans->FaceGeom << ", intorder = " << intorder << std::endl;
+      //    std::cout << "npoints = " << ir->GetNPoints() << std::endl;
+      //    cout << "numFace = " << iFace << ";\n";
+      // }
 
-         // if (iCell == 1789 && myRank == 17) 
-         // {
-         //    std::cout << "tr->FaceGeom = " << face_el_trans->FaceGeom << ", intorder = " << intorder << std::endl;
-         //    std::cout << "npoints = " << ir->GetNPoints() << std::endl;
-         //    cout << "numFace = " << iFace << ";\n";
-         // }
-         updateYMin(*ir, &curTrans, elfun1_mat, uMean, iCell);
-      } // for iFace
+      updateYMin(*ir, &curTrans, elfun1_mat, uMean, iCell);
 
-      // set indicator values
+   } // for iFace
 
-      for (int iEq = 0; iEq < num_equation; ++iEq)
-         values.GetBlock(iEq)[iCell] = yMin[iEq];
+   // run through faces again to compute values in gauss points
+   for (int iFace : stencil->shared_face_numbers)
+   {
+      // Integration order calculation from DGTraceIntegrator
+      face_el_trans = mesh->GetSharedFaceTransformations(iFace);
+      IntegrationPointTransformation curTrans = face_el_trans->Loc1;
+
+      int intorder;
+         intorder = face_el_trans->Elem1->OrderW() + 2*fes->GetFE(face_el_trans->Elem1No)->GetOrder();
+
+      const IntegrationRule *ir = &IntRules.Get(face_el_trans->FaceGeom, intorder);
+
+      // if (iCell == 1789 && myRank == 17) 
+      // {
+      //    std::cout << "tr->FaceGeom = " << face_el_trans->FaceGeom << ", intorder = " << intorder << std::endl;
+      //    std::cout << "npoints = " << ir->GetNPoints() << std::endl;
+      //    cout << "numFace = " << iFace << ";\n";
+      // }
+      updateYMin(*ir, &curTrans, elfun1_mat, uMean, iCell);
+   } // for iFace
+
+   // set indicator values to the external field
+
+   for (int iEq = 0; iEq < num_equation; ++iEq)
+      values.GetBlock(iEq)[iCell] = yMin[iEq];
 };

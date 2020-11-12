@@ -45,7 +45,8 @@ public:
       const int iCell, 
       const Stencil* stencil, 
       const ParGridFunction* uMean, 
-      const DenseMatrix& elfun1_mat) override;
+      const DenseMatrix& elfun1_mat,
+      ParGridFunction &x) override;
 };
 
 #endif // INDICATOR_BJ_H

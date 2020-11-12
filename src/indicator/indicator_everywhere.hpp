@@ -32,7 +32,8 @@ public:
       const int iCell, 
       const Stencil* stencil, 
       const ParGridFunction* uMean, 
-      const DenseMatrix& elfun1_mat) 
+      const DenseMatrix& elfun1_mat,
+      ParGridFunction &x) 
    { for (int iEq = 0; iEq < num_equation; ++iEq) values.GetBlock(iEq)[iCell] = 0.0; };
 };
 

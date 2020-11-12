@@ -69,21 +69,21 @@ int main(int argc, char *argv[])
 
    // 1. Parse command-line options.
    problem = 1;
-   const char *mesh_file = "../data/beam-quad.mesh";
+   const char *mesh_file = "sod2d.msh";
    int ser_ref_levels = 0;
    int par_ref_levels = 0;
-   int order = 2;
+   int order = 1;
    int ode_solver_type = 2;
-   double t_final = 2.0;
-   double dt = -0.01;
-   double cfl = 0.3;
+   double t_final = 0.25;
+   double dt = 0.001;
+   double cfl = -1;
    bool visualization = false;
    bool visit = false;
-   bool paraview = false;
-   int vis_steps = 50;
-   int indicator_type = 0;
-   int limiter_type = 1;
-   int riemann_solver_type = 0;
+   bool paraview = true;
+   int vis_steps = 250;
+   int indicator_type = 3;
+   int limiter_type = 2;
+   int riemann_solver_type = 3;
 
    int precision = 8;
    cout.precision(precision);
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
    args.AddOption(&vis_steps, "-vs", "--visualization-steps",
                   "Visualize every n-th timestep.");
    args.AddOption(&indicator_type, "-it", "--indicator-type",
-                  "Set indicator type: 0 - Nowhere, 1 - Everywhere, 2 - Barth-Jespersen.");
+                  "Set indicator type: 0 - Nowhere, 1 - Everywhere, 2 - Barth-Jespersen, 3 - Shu");
    args.AddOption(&limiter_type, "-lt", "--limiter-type",
                   "Set limiter type: 1 - FinDiff, 2 - Multiplier.");
    args.AddOption(&riemann_solver_type, "-rst", "--riemann-solver-type",
@@ -278,6 +278,8 @@ int main(int argc, char *argv[])
       case 0: ind = new IndicatorNowhere(&vfes, offsets, dim, indicatorData); break;
       case 1: ind = new IndicatorEverywhere(&vfes, offsets, dim, indicatorData); break;
       case 2: ind = new IndicatorBJ(&vfes, offsets, dim, indicatorData); break;
+      case 3: ind = new IndicatorShu(&vfes, offsets, dim, indicatorData); break;
+      
       default:
          cout << "Unknown indicator type: " << indicator_type << '\n';
          return 1;

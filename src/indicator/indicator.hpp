@@ -108,7 +108,8 @@ public:
       const int iCell, 
       const Stencil* stencil, 
       const ParGridFunction* uMean, 
-      const DenseMatrix& elfun1_mat) = 0;
+      const DenseMatrix& elfun1_mat,
+      ParGridFunction &x) = 0;
 };
 
 #endif // INDICATOR_H
