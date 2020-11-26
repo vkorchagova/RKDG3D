@@ -69,6 +69,8 @@ int main(int argc, char *argv[])
 
    // 1. Parse command-line options.
    problem = 1;
+   bool restart = false;
+   int restart_cycle = 0;
    const char *mesh_file = "sod2d.msh";
    int ser_ref_levels = 0;
    int par_ref_levels = 0;
@@ -79,7 +81,7 @@ int main(int argc, char *argv[])
    double cfl = -1;
    bool visualization = false;
    bool visit = false;
-   bool paraview = true;
+   bool paraview = false;
    int vis_steps = 250;
    int indicator_type = 3;
    int limiter_type = 2;
@@ -127,7 +129,10 @@ int main(int argc, char *argv[])
                   "Set limiter type: 1 - FinDiff, 2 - Multiplier.");
    args.AddOption(&riemann_solver_type, "-rst", "--riemann-solver-type",
                   "Set Riemann solver type: 0 - Rusanov, 1 - LLF, 2 - HLL, 3 - HLLC.");
-
+   args.AddOption(&restart, "-restart", "--restart", "-no-restart", "--no-restart",
+                  "Enable or disable restart.");
+   args.AddOption(&restart_cycle, "-r_cycle", "--restart_cycle",
+                  "Value (int) of time cycle for restart.");
    args.Parse();
    if (!args.Good())
    {
@@ -138,8 +143,7 @@ int main(int argc, char *argv[])
 
    // 2. Read the mesh from the given mesh file. This example requires a 2D
    //    periodic mesh, such as ../data/periodic-square.mesh.
-   Mesh mesh(mesh_file, 1, 1);
-   const int dim = mesh.Dimension();
+
 
    // update num_eqn for 2d or 3d problem
    // if (dim == 2)
@@ -153,41 +157,73 @@ int main(int argc, char *argv[])
    //    *ptr = 5;
    // }
 
-   if (myRank == 0) { cout << "Number of cells: " << mesh.GetNE() << endl; }
+   
+   ParMesh *pmesh;
+   VisItDataCollection restart_dc(MPI_COMM_WORLD, "restart");
 
-   //num_equation = dim == 2 ? 4 : 5;
-
-   //MFEM_ASSERT(dim == 2, "Need a two-dimensional mesh for the problem definition");
-
-
-
-   // 2.1. Refine the mesh to increase the resolution. In this example we do
-   //    'ref_levels' of uniform refinement, where 'ref_levels' is a
-   //    command-line parameter.
-   for (int lev = 0; lev < ser_ref_levels; lev++)
+   if (restart) // load par mesh in case of restart
    {
-      mesh.UniformRefinement();
+      // 2.1. Read the given data collection.
+      restart_dc.Load(restart_cycle);
+      if (restart_dc.Error())
+      {
+         if (myRank == 0)
+         {
+            cout << "Error loading data collection" << endl;
+         }
+         return 1;
+      }
+      // 2.2. Get par mesh pieces from the loaded collection
+      pmesh = dynamic_cast<ParMesh*>(restart_dc.GetMesh());
+      if (!pmesh)
+      {
+         if (myRank == 0)
+         {
+            cout << "The given data collection does not have a parallel mesh."
+                 << endl;
+         }
+         return 2;
+      }
    }
-
-   // 2.2. Define a parallel mesh by a partitioning of the serial mesh. Refine
-   //    this mesh further in parallel to increase the resolution. Once the
-   //    parallel mesh is defined, the serial mesh can be deleted.
-   ParMesh pmesh(MPI_COMM_WORLD, mesh);
-   mesh.Clear();
-   for (int lev = 0; lev < par_ref_levels; lev++)
+   else //load mesh from file and make a partition
    {
-      pmesh.UniformRefinement();
-   }
+      // 2.1. Read the serial mesh on all processors, refine it in serial, then
+      //    partition it across all processors and refine it in parallel.
+      Mesh *mesh = new Mesh(mesh_file, 1, 1);
+
+      for (int l = 0; l < ser_ref_levels; l++)
+      {
+         mesh->UniformRefinement();
+      }
+
+      if (myRank == 0) { cout << "Number of cells: " << mesh->GetNE() << endl; }
+
+      // 2.2. Define a parallel mesh by a partitioning of the serial mesh. Refine
+      //    this mesh further in parallel to increase the resolution. Once the
+      //    parallel mesh is defined, the serial mesh can be deleted.
+      pmesh = new ParMesh(MPI_COMM_WORLD, *mesh);
+      delete mesh;
+
+      for (int l = 0; l < par_ref_levels; l++)
+      {
+         pmesh->UniformRefinement();
+      }
+      restart_dc.SetFormat(1);
+      restart_dc.SetMesh(pmesh);  
+   }  
+
+   const int dim = pmesh->Dimension();
+
 
    // 3. Define the discontinuous DG finite element space of the given
    //    polynomial order on the refined mesh.
    DG_FECollection fec(order, dim);
    // Finite element space for a scalar (thermodynamic quantity)
-   ParFiniteElementSpace fes(&pmesh, &fec);
+   ParFiniteElementSpace fes(pmesh, &fec);
    // Finite element space for a mesh-dim vector quantity (momentum)
-   ParFiniteElementSpace dfes(&pmesh, &fec, dim, Ordering::byNODES);
+   ParFiniteElementSpace dfes(pmesh, &fec, dim, Ordering::byNODES);
    // Finite element space for all variables together (total thermodynamic state)
-   ParFiniteElementSpace vfes(&pmesh, &fec, num_equation, Ordering::byNODES);
+   ParFiniteElementSpace vfes(pmesh, &fec, num_equation, Ordering::byNODES);
    // This example depends on this ordering of the space.
    MFEM_ASSERT(fes.GetOrdering() == Ordering::byNODES, "");
 
@@ -202,12 +238,38 @@ int main(int argc, char *argv[])
    Array<int> offsets(num_equation + 1);
    for (int k = 0; k <= num_equation; k++) { offsets[k] = k * vfes.GetNDofs(); }
    BlockVector u_block(offsets);
-
-
-   // Initialize the state.
-   VectorFunctionCoefficient u0(num_equation, InitialCondition);
    ParGridFunction sol(&vfes, u_block.GetData());
-   sol.ProjectCoefficient(u0);
+
+   ParGridFunction *saved_sol = NULL;
+
+   // In case of restart read solution from the VisIt collection
+   if (restart)
+   {
+      saved_sol = restart_dc.GetParField("restart_conservative_vars");
+      if (!saved_sol)
+      {
+         if (myRank == 0)
+         {
+            cout << "The given data collection has no 'restart_conservative_vars' field."
+                 << endl;
+            exit(2);
+         }
+      }
+      else
+      {
+         u_block.Update(*saved_sol,offsets);
+         sol.MakeRef(&vfes, u_block, 0);
+      }
+   }
+   else
+   {
+      // Initialize the state.
+      VectorFunctionCoefficient u0(num_equation, InitialCondition);
+      sol.ProjectCoefficient(u0);
+      // Save the state to the VisIt
+      restart_dc.RegisterField("restart_conservative_vars",&sol);
+      restart_dc.Save();
+   }
 
    if (myRank == 0) cout << "project sol OK\n";
 
@@ -235,7 +297,7 @@ int main(int argc, char *argv[])
    A.AddInteriorFaceIntegrator(new FaceIntegrator(*rsolver, dim));
 
    Array<Array<int>> bdr_markers;
-   SetBoundaryConditions(A, pmesh, *rsolver, dim, bdr_markers);
+   SetBoundaryConditions(A, *pmesh, *rsolver, dim, bdr_markers);
 
    // cout << "after face interg\n";
 
@@ -253,20 +315,20 @@ int main(int argc, char *argv[])
    double hmin = 0.0;
    if (cfl > 0)
    {
-      double my_hmin = pmesh.GetElementSize(0, 1);
-      for (int i = 1; i < pmesh.GetNE(); i++)
+      double my_hmin = pmesh->GetElementSize(0, 1);
+      for (int i = 1; i < pmesh->GetNE(); i++)
       {
-         my_hmin = min(pmesh.GetElementSize(i, 1), my_hmin);
+         my_hmin = min(pmesh->GetElementSize(i, 1), my_hmin);
       }
       // Reduce to find the global minimum element size
-      MPI_Allreduce(&my_hmin, &hmin, 1, MPI_DOUBLE, MPI_MIN, pmesh.GetComm());
+      MPI_Allreduce(&my_hmin, &hmin, 1, MPI_DOUBLE, MPI_MIN, pmesh->GetComm());
    }
 
    // 7. Define limiter and troubled cells indicator
 
    // 7.1. Define additional block vector for indicator values to have a possibility of visualisation
    DG_FECollection fec_const(0, dim);
-   ParFiniteElementSpace fes_const(&pmesh, &fec_const);
+   ParFiniteElementSpace fes_const(pmesh, &fec_const);
    Array<int> offsets_const(num_equation + 1);
    for (int k = 0; k <= num_equation; k++) { offsets_const[k] = k * fes_const.GetNDofs(); }
    BlockVector indicatorData(offsets_const);
@@ -332,7 +394,7 @@ int main(int argc, char *argv[])
 
    // 9. LIMIT INITIAL CONDITIONS
    // std::cout << "before initial limit " << sol[7052] << endl;
-   pmesh.ExchangeFaceNbrData(); 
+   pmesh->ExchangeFaceNbrData(); 
    sol.ExchangeFaceNbrData();
    l->update(sol);
 
@@ -357,7 +419,7 @@ int main(int argc, char *argv[])
    ParaViewDataCollection *pd = NULL;
    if (paraview)
    {
-      pd = new ParaViewDataCollection("PV", &pmesh);
+      pd = new ParaViewDataCollection("PV", pmesh);
       pd->RegisterField("mom", &mom);
       pd->RegisterField("rho", &rhok);
       pd->RegisterField("energy", &energy);
@@ -377,27 +439,34 @@ int main(int argc, char *argv[])
    tic_toc.Clear();
    tic_toc.Start();
 
-   double t = 0.0;
+   double t = restart ? restart_dc.GetTime() : 0.0;
    euler.SetTime(t);
    ode_solver->Init(euler);
    // cout << "after init euler\n";
    socketstream sout;
 
-   if (cfl > 0)
+   if (!restart)
    {
-      // Find a safe dt, using a temporary vector. Calling Mult() computes the
-      // maximum char speed at all quadrature points on all faces.
-      max_char_speed = 0.;
-      Vector z(sol.Size());
-      A.Mult(sol, z);
-      // Reduce to find the global maximum wave speed
+      if (cfl > 0)
       {
-         double all_max_char_speed;
-         MPI_Allreduce(&max_char_speed, &all_max_char_speed,
-                       1, MPI_DOUBLE, MPI_MAX, pmesh.GetComm());
-         max_char_speed = all_max_char_speed;
+         // Find a safe dt, using a temporary vector. Calling Mult() computes the
+         // maximum char speed at all quadrature points on all faces.
+         max_char_speed = 0.;
+         Vector z(sol.Size());
+         A.Mult(sol, z);
+         // Reduce to find the global maximum wave speed
+         {
+            double all_max_char_speed;
+            MPI_Allreduce(&max_char_speed, &all_max_char_speed,
+                          1, MPI_DOUBLE, MPI_MAX, pmesh->GetComm());
+            max_char_speed = all_max_char_speed;
+         }
+         dt = cfl * hmin / max_char_speed / (2*order+1);
       }
-      dt = cfl * hmin / max_char_speed / (2*order+1);
+   }
+   else
+   {
+      dt = restart_dc.GetTimeStep();
    }
 
 
@@ -406,7 +475,8 @@ int main(int argc, char *argv[])
 
    bool done = false;
    double t_real = 0.0;
-   for (int ti = 0; !done; )
+
+   for (int ti = restart ? restart_dc.GetCycle() : 0 ; !done; )
    {
       t_real = tic_toc.RealTime();
       double dt_real = min(dt, t_final - t);
@@ -419,7 +489,7 @@ int main(int argc, char *argv[])
          {
             double all_max_char_speed;
             MPI_Allreduce(&max_char_speed, &all_max_char_speed,
-                          1, MPI_DOUBLE, MPI_MAX, pmesh.GetComm());
+                          1, MPI_DOUBLE, MPI_MAX, pmesh->GetComm());
             max_char_speed = all_max_char_speed;
          }
          dt = cfl * hmin / max_char_speed / (2*order+1);
@@ -437,17 +507,25 @@ int main(int argc, char *argv[])
       t_real = tic_toc.RealTime() - t_real;
 
       done = (t >= t_final - 1e-8*dt);
+
       if (done || ti % vis_steps == 0)
       {
-         
+         MPI_Barrier(pmesh->GetComm());
+
          if (paraview)
          {
-            MPI_Barrier(pmesh.GetComm());
+            
             pd->SetCycle(ti);
             pd->SetTime(t);
             pd->Save();
             if (myRank == 0) {cout << "ParaView OK\n";}
          }
+
+         restart_dc.SetCycle(ti);
+         restart_dc.SetTime(t);
+         restart_dc.SetTimeStep(dt);
+         restart_dc.Save();
+         
       }
 
       // done = (t >= t_final - 1e-8*dt);

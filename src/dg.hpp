@@ -62,7 +62,7 @@ void InitialCondition(const Vector &x, Vector &y)
    else if (problem == 2)
    { // Forward Step problem
       
-      velX = 3.0;
+      velX = 0.5;//0.675;//1.65;
       velY = 0.0;
       velZ = 0.0;
 
@@ -319,7 +319,7 @@ void SetBoundaryConditions(ParNonlinearForm& A, ParMesh& mesh, RiemannSolver& rs
       bdr_markers[2][3] = 1; // boundary attribute 4 is Wall      (Wall)
 
       double inletRho = 1.0;
-      double inletU = 3.0; // opposite to normal of left boundary
+      double inletU = 0.5;//0.675;//1.65; // opposite to normal of left boundary
       double inletV = 0.0;
       double inletP = 1.0 / specific_heat_ratio;
 

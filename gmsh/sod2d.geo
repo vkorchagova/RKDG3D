@@ -12,7 +12,7 @@ xr = 1;
 yl = -0.1;
 yr = 0.1;
 
-nx = 800;
+nx = 10;
 ny = 1;
 
 // vertices
