@@ -114,10 +114,6 @@ public:
    virtual ~Limiter()
    {
       delete stencil;
-      delete avgs; 
-      delete u_block_avg; 
-      delete fes_avg; 
-      delete fec_avg;
    };
 
    /// Update solution (wrapper for checkDiscontinuities + limit)

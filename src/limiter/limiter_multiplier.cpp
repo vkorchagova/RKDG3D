@@ -23,7 +23,7 @@ void LimiterMultiplier::limit(const int iCell, const Vector& el_ind, DenseMatrix
       for (int iDof = 0; iDof < nDofs; ++iDof)
       {
          // if (myRank == 0 && iCell == 0 && iEq == 0) {cout << "   funval before lim = " << elfun1_mat(iDof, iEq) << endl;}
-         if (el_ind[iEq] < 1.0)
+         if (el_ind[iEq] < 1.0 && fe->GetGeomType() != Geometry::TRIANGLE)
             linearize(iCell, el_uMean, elfun1_mat);
 
          for (int iDof = 0; iDof < nDofs; ++iDof)
