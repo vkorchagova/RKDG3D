@@ -2,8 +2,8 @@
 
 // bool pleaseWriteMe = false;
 
-IndicatorBJ::IndicatorBJ(ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, BlockVector& _idata) 
-    : Indicator(_fes, _offsets, _d, _idata) 
+IndicatorBJ::IndicatorBJ(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, BlockVector& _idata)
+    : Indicator(_avgr, _fes, _offsets, _d, _idata) 
 {
    mI.SetSize(num_equation);
    MI.SetSize(num_equation);
@@ -16,7 +16,6 @@ void IndicatorBJ::updateYMin(
    const IntegrationRule& ir, 
    IntegrationPointTransformation* curTrans, 
    const DenseMatrix& elfun1_mat, 
-   const ParGridFunction* uMean, 
    const int iCell) 
 {
    IntegrationPoint eip1;
@@ -72,7 +71,7 @@ void IndicatorBJ::updateYMin(
       //    Vector(uMean.GetColumn(iCell), num_equation).Print(cout);
       // }
 
-      readElementAverageByNumber(iCell, mesh, uMean, el_uMean);
+      averager.readElementAverageByNumber(iCell, el_uMean);
       subtract(funval1, el_uMean, diff);
       // if (iCell == 5369)
       // {
@@ -116,9 +115,7 @@ void IndicatorBJ::updateYMin(
 void IndicatorBJ::checkDiscontinuity(
    const int iCell, 
    const Stencil* stencil, 
-   const ParGridFunction* uMean, 
-   const DenseMatrix& elfun1_mat,
-   ParGridFunction &x)
+   const DenseMatrix& elfun1_mat)
 {
    Vector uMean_el(num_equation);
 
@@ -147,7 +144,7 @@ void IndicatorBJ::checkDiscontinuity(
    
    for (int k : stencil->cell_num)
    {
-      readElementAverageByNumber(k, mesh, uMean, el_uMean);
+      averager.readElementAverageByNumber(k, el_uMean);
       for (int iSol = 0; iSol < num_equation; ++iSol)
       {
          
@@ -192,7 +189,7 @@ void IndicatorBJ::checkDiscontinuity(
       //    cout << "numFace = " << iFace << ";\n";
       // }
 
-      updateYMin(*ir, &curTrans, elfun1_mat, uMean, iCell);
+      updateYMin(*ir, &curTrans, elfun1_mat, iCell);
 
    } // for iFace
 
@@ -214,7 +211,7 @@ void IndicatorBJ::checkDiscontinuity(
       //    std::cout << "npoints = " << ir->GetNPoints() << std::endl;
       //    cout << "numFace = " << iFace << ";\n";
       // }
-      updateYMin(*ir, &curTrans, elfun1_mat, uMean, iCell);
+      updateYMin(*ir, &curTrans, elfun1_mat, iCell);
    } // for iFace
 
    // set indicator values to the external field

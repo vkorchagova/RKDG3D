@@ -21,8 +21,8 @@ class IndicatorEverywhere : public Indicator
 public:
 
    /// Constructor
-   IndicatorEverywhere(ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, BlockVector& _idata)
-      : Indicator(_fes,_offsets,_d, _idata) {};
+   IndicatorEverywhere(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, BlockVector& _idata)
+      : Indicator(_avgr, _fes,_offsets,_d, _idata) {};
 
    /// Destructor
    ~IndicatorEverywhere() {};
@@ -31,9 +31,8 @@ public:
    virtual void checkDiscontinuity(
       const int iCell, 
       const Stencil* stencil, 
-      const ParGridFunction* uMean, 
-      const DenseMatrix& elfun1_mat,
-      ParGridFunction &x) 
+      const DenseMatrix& elfun1_mat
+   ) 
    { for (int iEq = 0; iEq < num_equation; ++iEq) values.GetBlock(iEq)[iCell] = 0.0; };
 };
 

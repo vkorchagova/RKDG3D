@@ -12,7 +12,7 @@ void LimiterFinDiff::limit(const int iCell, const Vector& el_ind, DenseMatrix& e
 
    const int nDofs = fe->GetDof();
 
-   readElementAverageByNumber(iCell, mesh, avgs, el_uMean);
+   averager.readElementAverageByNumber(iCell, el_uMean);
 
    // replace solution to mean values
    for (int iEq = 0; iEq < num_equation; ++iEq)

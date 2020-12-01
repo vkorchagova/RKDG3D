@@ -15,6 +15,7 @@
 #include "indicator_everywhere.hpp"
 #include "indicator_bj.hpp"
 #include "indicator_shu.hpp"
+#include "averager.hpp"
 
 
 

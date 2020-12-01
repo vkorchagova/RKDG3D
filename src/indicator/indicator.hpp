@@ -2,7 +2,7 @@
 #define INDICATOR_H
 
 #include "mfem.hpp"
-#include "limiter.hpp"
+#include "averager.hpp"
 
 using namespace std;
 using namespace mfem;
@@ -12,39 +12,6 @@ extern const int num_equation;
 /// Proc rank 
 extern int myRank;
 
-class Limiter;
-
-
-class Stencil
-{
-
-public:
-
-   /// Stencil for current cell (cell numbers)
-   Array<int> cell_num;
-
-   /// Max stencil size
-   const int max_size = 10;
-
-   /// Internal face numbers in stencil
-   Array<int> internal_face_numbers;
-
-   /// Shared face numbers in stencil
-   Array<int> shared_face_numbers;
-
-public:
-
-   Stencil()
-   {
-      cell_num.Reserve(max_size);
-      internal_face_numbers.Reserve(max_size);
-      shared_face_numbers.Reserve(max_size);
-   };
-
-   ~Stencil() {};
-
-};
-
 /// 
 /// Abstract class for checking discontinuities
 /// for the DG slopes
@@ -53,6 +20,9 @@ class Indicator
 {
 
 protected:
+
+   /// Averager
+   Averager& averager;
 
    /// Mesh
    ParMesh* mesh;
@@ -98,7 +68,7 @@ public:
    BlockVector& values;
 
    /// Constructor
-   Indicator(ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, BlockVector& _idata); 
+   Indicator(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, BlockVector& _idata); 
 
    /// Destructor
    virtual ~Indicator() {};
@@ -107,9 +77,8 @@ public:
    virtual void checkDiscontinuity(
       const int iCell, 
       const Stencil* stencil, 
-      const ParGridFunction* uMean, 
-      const DenseMatrix& elfun1_mat,
-      ParGridFunction &x) = 0;
+      const DenseMatrix& elfun1_mat
+   ) = 0;
 };
 
 #endif // INDICATOR_H

@@ -14,7 +14,7 @@ class LimiterMultiplier : public Limiter
 public:
    
    /// Constructor
-   LimiterMultiplier(Indicator& _ind, ParFiniteElementSpace *_fes, const Array<int>& _offsets, int _d);
+   LimiterMultiplier(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace *_fes, const Array<int>& _offsets, int _d);
    
    /// Destructor
    ~LimiterMultiplier() {};

@@ -26,8 +26,7 @@ private:
    void updateYMin(
       const IntegrationRule& ir, 
       IntegrationPointTransformation* curTrans, 
-      const DenseMatrix& elfun1_mat, 
-      const ParGridFunction* uMean,
+      const DenseMatrix& elfun1_mat,
       const int iCell 
    );
   
@@ -35,7 +34,7 @@ private:
 public:
    
    /// Constructor
-   IndicatorBJ(ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, BlockVector& _idata);
+   IndicatorBJ(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, BlockVector& _idata);
    
    /// Destructor
    ~IndicatorBJ() {};
@@ -44,9 +43,8 @@ public:
    virtual void checkDiscontinuity(
       const int iCell, 
       const Stencil* stencil, 
-      const ParGridFunction* uMean, 
-      const DenseMatrix& elfun1_mat,
-      ParGridFunction &x) override;
+      const DenseMatrix& elfun1_mat
+   ) override;
 };
 
 #endif // INDICATOR_BJ_H

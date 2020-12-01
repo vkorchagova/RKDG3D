@@ -3,7 +3,7 @@
 
 // bool pleaseWriteMe = false;
 
-LimiterMultiplier::LimiterMultiplier(Indicator& _ind, ParFiniteElementSpace*_fes, const Array<int>& _offsets, int _d) : Limiter(_ind, _fes, _offsets, _d) 
+LimiterMultiplier::LimiterMultiplier(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace*_fes, const Array<int>& _offsets, int _d) : Limiter(_ind, _avgr, _fes, _offsets, _d) 
 {
 
 };
@@ -16,7 +16,7 @@ void LimiterMultiplier::limit(const int iCell, const Vector& el_ind, DenseMatrix
 
    const int nDofs = fe->GetDof();
 
-   readElementAverageByNumber(iCell, mesh, avgs, el_uMean);
+   averager.readElementAverageByNumber(iCell, el_uMean);
 
    // replace solution to mean values
    for (int iEq = 0; iEq < num_equation; ++iEq)

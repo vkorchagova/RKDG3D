@@ -1,25 +1,15 @@
 #include "limiter.hpp"
 
 
-Limiter::Limiter(Indicator& _ind, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d) : 
+Limiter::Limiter(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d) : 
    indicator(_ind),
+   averager(_avgr),
    fes(_fes), 
    offsets(_offsets), 
    dim(_d) 
 {
    mesh = fes->GetParMesh();
    parGridX.MakeRef(_fes, NULL);
-
-   // prepare place for the average values
-   fec_avg = new DG_FECollection(0, dim);
-   fes_avg = new ParFiniteElementSpace(mesh, fec_avg, num_equation);
-   offsets_avg.SetSize(num_equation + 1);
-
-   for (int k = 0; k <= num_equation; k++) 
-      offsets_avg[k] = k * fes_avg->GetNDofs();
-
-   u_block_avg = new BlockVector(offsets_avg);
-   avgs = new ParGridFunction(fes_avg, u_block_avg->GetData());
 
    el_uMean.SetSize(num_equation);
 
@@ -41,7 +31,8 @@ void Limiter::update(Vector &x)
    mesh->ExchangeFaceNbrData();
    parGridX.ExchangeFaceNbrData();
 
-   computeMeanValues();
+   averager.update(&x, &parGridX);
+   averager.computeMeanValues();
 
    Vector el_ind(num_equation);
 
@@ -67,7 +58,7 @@ void Limiter::update(Vector &x)
       // make matrix from values data
       DenseMatrix elfun1_mat(el_x.GetData(), nDofs, num_equation);
 
-      indicator.checkDiscontinuity(iCell, stencil, avgs, elfun1_mat, parGridX);
+      indicator.checkDiscontinuity(iCell, stencil, elfun1_mat);
 
       for (int iEq = 0; iEq < num_equation; ++iEq)
          el_ind[iEq] = indicator.values.GetBlock(iEq)[iCell];
@@ -76,7 +67,7 @@ void Limiter::update(Vector &x)
 
       xNew.SetSubVector(el_vdofs, el_x);
 
-      cleanStencil();
+      stencil->clean();
    }
 
    // replace solution values to the new one
@@ -85,165 +76,7 @@ void Limiter::update(Vector &x)
    parGridX.ExchangeFaceNbrData();
 }
 
-void Limiter::computeMeanValues()
-{
-   ParFiniteElementSpace fes_avg_component(mesh, fec_avg);
-   for (int i = 0; i < num_equation; ++i)
-   {
-      ParGridFunction sol_i, avgs_i;
-      // cout << "sol make ref..." << endl;  
-      sol_i.MakeRef(fes, parGridX, offsets[i]);
-      // cout << "sol make ref..." << endl; 
-      avgs_i.MakeRef(&fes_avg_component, *avgs, offsets_avg[i]);
-      // cout << i << " " << sol_i.Size() << " " << avgs_i.Size() << " " << offsets[i] << " "<< offsets_avg[i] <<endl;
-      sol_i.GetElementAverages(avgs_i);
-      // cout << avgs_i[6661] << endl;
-   }
 
-   avgs->ExchangeFaceNbrData();
-}
-
-void readElementAverageByNumber(const int iCell, const ParMesh* mesh, const ParGridFunction* avgs, Vector& el_uMean)
-{
-   if (iCell < mesh->GetNE())
-      for (int iEq = 0; iEq < num_equation; ++iEq)
-         el_uMean[iEq] = (*avgs)[iEq * mesh->GetNE() + iCell];
-   else
-      for (int iEq = 0; iEq < num_equation; ++iEq)
-         el_uMean[iEq] = (avgs->FaceNbrData())[iEq  + (iCell - mesh->GetNE()) * num_equation];
-}
-
-
-void computeStencilExtrapAveragesVector(
-   ParGridFunction& x,
-   const Stencil* stencil,
-   ParFiniteElementSpace *fes,
-   ParFiniteElementSpace *fes_avg_component,
-   const DG_FECollection* fec_avg,
-   const Array<int>& offsets,
-   const Array<int>& offsets_avg,
-   ParMesh* mesh,
-   ParGridFunction* avgs_extrap
-)
-{
-
-   for (int i = 0; i < num_equation; ++i)
-   {
-      // cout << "--- num eqn = " << i << endl;
-      ParGridFunction sol_i, avgs_i;
-      // cout << "sol make ref..." << endl;  
-      sol_i.MakeRef(fes, x, offsets[i]);
-      // cout << "sol avg make ref..." << endl; 
-      avgs_i.MakeRef(fes_avg_component, *avgs_extrap, offsets_avg[i]);
-      // cout << sol_i.Size() << " " << avgs_i.Size() << " " << offsets[i] << " "<< offsets_avg[i] <<endl;
-      computeStencilExtrapAverages(sol_i, stencil, fes, avgs_i);
-   }
-
-   avgs_extrap->ExchangeFaceNbrData();
-}
-
-
-void computeStencilExtrapAverages(
-   const ParGridFunction& x,
-   const Stencil* stencil,
-   const ParFiniteElementSpace *fes,
-   ParGridFunction& avgs
-)
-{
-   // cout << "in extrap avg" << endl;
-   DenseMatrix loc_mass;
-   Array<int> te_dofs, tr_dofs;
-   Vector loc_avgs, loc_this;
-   Vector int_psi(avgs.Size());
-
-   avgs = 0.0;
-   int_psi = 0.0;
-
-   int iCellTroubled = stencil->cell_num[0];
-
-   for (int i : stencil->cell_num)
-   {
-      // loc_mass = shape function in gauss points * gauss weights
-
-      assembleShiftedElementMatrix(
-         *fes->GetFE(i), 
-         *fes->GetFE(iCellTroubled),
-         *avgs.FESpace()->GetFE(i),
-         *fes->GetElementTransformation(i), 
-         loc_mass);
-      // cout << "after ass shift ang" << endl;
-      fes->GetElementDofs(i, tr_dofs);
-      avgs.FESpace()->GetElementDofs(i, te_dofs);
-      x.GetSubVector(tr_dofs, loc_this);
-      loc_avgs.SetSize(te_dofs.Size());
-      loc_mass.Mult(loc_this, loc_avgs);
-      // cout << "loc_avgs = ";
-      // loc_avgs.Print (cout);
-
-      avgs.AddElementVector(te_dofs, loc_avgs);
-      loc_this = 1.0; // assume the local basis for 'this' sums to 1
-      loc_mass.Mult(loc_this, loc_avgs);
-      int_psi.AddElementVector(te_dofs, loc_avgs);
-   }
-   for (int i : stencil->cell_num)
-   {
-      avgs(i) /= int_psi(i);
-      // cout << avgs(i) << ' ';
-   }
-   // cout << endl;
-
-   // cout << "end extrap avg" << endl;
-}
-
-
-void assembleShiftedElementMatrix(
-   const FiniteElement &trial_fe, 
-   const FiniteElement &troubled_fe,
-   const FiniteElement &test_fe,
-   ElementTransformation &Trans, 
-   DenseMatrix &elmat
-)
-{
-   // cout << "in ass shift avg" << endl;
-   int nDofsTrial = trial_fe.GetDof();
-   int nDofsTroubled = troubled_fe.GetDof();
-   int nDofsTest = test_fe.GetDof();
-   double w;
-
-   //#ifdef MFEM_THREAD_SAFE
-   Vector* trial_shape = new Vector(nDofsTrial);
-   Vector* te_shape = new Vector(nDofsTest);
-   //#endif
-   elmat.SetSize(nDofsTest, nDofsTrial);
-
-
-   const int order = trial_fe.GetOrder() + test_fe.GetOrder() + Trans.OrderW();
-   const IntegrationRule *ir = &IntRules.Get(trial_fe.GetGeomType(), order);
-
-   elmat = 0.0;
-   for (int i = 0; i < ir->GetNPoints(); i++)
-   {
-      const IntegrationPoint &ip = ir->IntPoint(i);
-      troubled_fe.CalcShape(ip, *trial_shape);  // element - troubled, gauss points - shifted
-      // cout << "trial shape = ";
-      // (*trial_shape).Print(cout);
-      test_fe.CalcShape(ip, *te_shape);   // should be only 1
-      // cout << "test shape = ";
-      // (*te_shape).Print(cout);
-
-      Trans.SetIntPoint (&ip);
-      w = Trans.Weight() * ip.weight;
-      *te_shape *= w;
-      AddMultVWt(*te_shape, *trial_shape, elmat);
-   }
-
-   // cout << "elmat = ";
-   //    (elmat).Print(cout);
-
-   delete te_shape;
-   delete trial_shape;
-   // cout << "end ass shift avg" << endl;
-}
 
 void Limiter::getStencil(const int iCell)
 {
@@ -325,10 +158,4 @@ void Limiter::getStencil(const int iCell)
    } // for iFace
 }
 
-void Limiter::cleanStencil()
-{
-   stencil->internal_face_numbers.DeleteAll();
-   stencil->shared_face_numbers.DeleteAll();
-   stencil->cell_num.DeleteAll();
-}
  
