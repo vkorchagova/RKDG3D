@@ -91,8 +91,8 @@ void IndicatorBJ::updateYMin(
               y[i] = 1.0;
          
          // // classical BJ
-         // yMin[i] = y[i] < yMin[i] ? y[i] : yMin[i];
-         // yMin[i] = yMin[i] > 1.0 ? 1.0 : yMin[i];
+         yMin[i] = y[i] < yMin[i] ? y[i] : yMin[i];
+         yMin[i] = yMin[i] > 1.0 ? 1.0 : yMin[i];
 
          // // venkatakrishnan
          // double yCur = (y[i]*y[i] + 2.0 * y[i]) / (y[i] * y[i] + y[i] + 2.0);
@@ -100,10 +100,10 @@ void IndicatorBJ::updateYMin(
 
 
          // michalak
-          double yStar = 1.5;
-          double yRel = y[i] / yStar;
-          double yCur = y[i] < 1.0 ? y[i] + (3.0 - 2.0 * yStar) * yRel * yRel + (yStar - 2.0) * yRel * yRel * yRel : 1.0;
-          yMin[i] = yCur < yMin[i] ? yCur : yMin[i];
+          // double yStar = 1.5;
+          // double yRel = y[i] / yStar;
+          // double yCur = y[i] < 1.0 ? y[i] + (3.0 - 2.0 * yStar) * yRel * yRel + (yStar - 2.0) * yRel * yRel * yRel : 1.0;
+          // yMin[i] = yCur < yMin[i] ? yCur : yMin[i];
 
           
           if (yMin[i] < 0)

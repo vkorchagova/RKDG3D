@@ -63,9 +63,10 @@ void InitialCondition(const Vector &x, Vector &y)
    else if (problem == 2)
    { // Forward Step problem
       
-      velX = 0.5;//0.675;//1.65;
+      velX = 0.0;//3.0;//0.675;//1.65;
       velY = 0.0;
       velZ = 0.0;
+
 
       den = 1.0;
       pres = 1.0 / specific_heat_ratio;
@@ -258,10 +259,32 @@ void InitialCondition(const Vector &x, Vector &y)
          cout << "wrong dim for AstroTest" << endl;
       }
    }
+   else if (problem == 9)
+   { // Forward Step problem
+      
+      velX = 577.2273;//0.675;//1.65;
+      velY = 0.0;
+      velZ = 0.0;
+
+      den = 1.176413;
+      pres = 101325;
+
+      if (dim == 2)
+      {
+         vel2 = velX * velX + velY * velY;
+         energy = shrinv1 * pres / den + 0.5 * vel2;
+      }
+      else if (dim == 3)
+      {         
+         mfem_error("Cannot initialize 3D problem for ForwardStep conditions");
+         vel2 = velX * velX + velY * velY + velZ * velZ;
+         energy = shrinv1 * pres / den + 0.5 * vel2;
+      }
+   }
    else
    {
       mfem_error("Cannot recognize problem."
-                 "Options are: 1 - Circle Sod problem, 2 - ForwardStep, 3 - Shu-Osher problem, 4 - DoubleMach problem, 5 - Covolume Sod problem, 6 - Contact State problem, 7 - StripSod");
+                 "Options are: 1 - Circle Sod problem, 2 - ForwardStep, 3 - Shu-Osher problem, 4 - DoubleMach problem, 5 - Covolume Sod problem, 6 - Contact State problem, 7 - StripSod, 8 - AstroTest, 9 - Wing");
    }   
 
    // set conservative variables
@@ -320,7 +343,7 @@ void SetBoundaryConditions(ParNonlinearForm& A, ParMesh& mesh, RiemannSolver& rs
       bdr_markers[2][3] = 1; // boundary attribute 4 is Wall      (Wall)
 
       double inletRho = 1.0;
-      double inletU = 0.5;//0.675;//1.65; // opposite to normal of left boundary
+      double inletU = -0.1;//0.675;//1.65; // opposite to normal of left boundary
       double inletV = 0.0;
       double inletP = 1.0 / specific_heat_ratio;
 
@@ -405,10 +428,43 @@ void SetBoundaryConditions(ParNonlinearForm& A, ParMesh& mesh, RiemannSolver& rs
       A.AddBdrFaceIntegrator(new BoundaryIntegratorOpen(rsolver, dim), bdr_markers[1]);
       A.AddBdrFaceIntegrator(new BoundaryIntegratorConstant(rsolver, dim, inletVars), bdr_markers[0]);
    }
+   else if (problem == 9) //Wing
+   {
+      bdr_markers.SetSize(3); // three types of bcs
+      for (int iBdr = 0; iBdr < 3; ++iBdr)
+      {
+         bdr_markers[iBdr].SetSize(mesh.bdr_attributes.Max());
+         bdr_markers[iBdr] = 0;
+      }
+
+      bdr_markers[1][0] = 1; // boundary attribute 1 is Open   (topAndBottom)
+      bdr_markers[0][1] = 1; // boundary attribute 2 is Inlet  (inlet)
+      bdr_markers[1][2] = 1; // boundary attribute 3 is Open   (outlet)
+      bdr_markers[2][3] = 1; // boundary attribute 4 is Wall   (Wing)
+
+      double inletRho = 1.176413;
+      double inletU = 577.2273;//0.675;//1.65; // opposite to normal of left boundary
+      double inletV = 0.0;
+      double inletP = 101325;
+
+      Vector inletVars(dim + 2);
+
+      if (dim == 3) mfem_error("Cannot initialize 3D problem for ForwardStep conditions");
+
+      inletVars(0) = inletRho;
+      inletVars(1) = inletRho * inletU;
+      inletVars(2) = inletRho * inletV;
+      inletVars(3) = inletP / (specific_heat_ratio - 1.) + 0.5 * inletRho * (inletU * inletU + inletV * inletV)  ;
+
+
+      A.AddBdrFaceIntegrator(new BoundaryIntegratorWall(rsolver, dim), bdr_markers[2]);
+      A.AddBdrFaceIntegrator(new BoundaryIntegratorOpen(rsolver, dim), bdr_markers[1]);
+      A.AddBdrFaceIntegrator(new BoundaryIntegratorConstant(rsolver, dim, inletVars), bdr_markers[0]);
+   }
    else
    {
       mfem_error("Cannot recognize problem to set boundary conditions."
-                 "Options are: 1 - Circle Sod problem, 2 - ForwardStep, 3 - Shu-Osher problem, 4 - DoubleMach problem, 5 - Covolume Sod problem, 6 - StateContact, 7 - StripSod");
+                 "Options are: 1 - Circle Sod problem, 2 - ForwardStep, 3 - Shu-Osher problem, 4 - DoubleMach problem, 5 - Covolume Sod problem, 6 - StateContact, 7 - StripSod, 8 - AstroTest, 9 - Wing");
    }
 
 

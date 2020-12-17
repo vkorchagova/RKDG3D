@@ -21,7 +21,7 @@ double RiemannSolverLLF::Eval(const Vector &state1, const Vector &state2,
    ComputeFluxF(state1, dim, flux1);
    ComputeFluxF(state2, dim, flux2);
 
-   ComputeEinfeldtCharSpeeds(state1, state2, lambdaF, dim);
+   ComputeToroCharSpeeds(state1, state2, lambdaF, dim);
 
    const double maxE = max(fabs(lambdaF[0]), fabs(lambdaF[dim+1]));
 

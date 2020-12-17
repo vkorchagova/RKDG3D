@@ -8,6 +8,9 @@
 ///
 class LimiterMultiplier : public Limiter
 {
+   /// Values of shape functions in defined point
+   Vector el_shape;
+
    /// Additional linearization (zerofication of XY in rectangular and hexahedral cells)
    void linearize(const int iCell, const Vector& el_uMean, DenseMatrix &elfun1_mat);
 

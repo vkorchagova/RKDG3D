@@ -37,6 +37,8 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <queue>
+#include <filesystem>
 
 // Classes FE_Evolution, RiemannSolver, DomainIntegrator and FaceIntegrator
 // shared between the serial and parallel version of the example.
@@ -68,9 +70,11 @@ int main(int argc, char *argv[])
    MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
    // 1. Parse command-line options.
+   std::string case_directory = std::filesystem::current_path().string();
    problem = 1;
    bool restart = false;
    int restart_cycle = 0;
+   int max_restart_frames = 10;
    const char *mesh_file = "sod2d.msh";
    int ser_ref_levels = 0;
    int par_ref_levels = 0;
@@ -334,13 +338,14 @@ int main(int argc, char *argv[])
    BlockVector indicatorData(offsets_const);
 
    // 7.2. Define indicator object
+   Averager avgr(&vfes, offsets, dim);
    Indicator *ind = NULL;
    switch (indicator_type)
    {
-      case 0: ind = new IndicatorNowhere(&vfes, offsets, dim, indicatorData); break;
-      case 1: ind = new IndicatorEverywhere(&vfes, offsets, dim, indicatorData); break;
-      case 2: ind = new IndicatorBJ(&vfes, offsets, dim, indicatorData); break;
-      case 3: ind = new IndicatorShu(&vfes, offsets, dim, indicatorData); break;
+      case 0: ind = new IndicatorNowhere(avgr, &vfes, offsets, dim, indicatorData); break;
+      case 1: ind = new IndicatorEverywhere(avgr, &vfes, offsets, dim, indicatorData); break;
+      case 2: ind = new IndicatorBJ(avgr, &vfes, offsets, dim, indicatorData); break;
+      case 3: ind = new IndicatorShu(avgr, &vfes, offsets, dim, indicatorData); break;
       
       default:
          cout << "Unknown indicator type: " << indicator_type << '\n';
@@ -351,8 +356,8 @@ int main(int argc, char *argv[])
    Limiter *l = NULL;
    switch (limiter_type)
    {
-      case 1: l = new LimiterFinDiff(*ind, &vfes, offsets, dim); break;
-      case 2: l = new LimiterMultiplier(*ind, &vfes, offsets, dim); break;
+      case 1: l = new LimiterFinDiff(*ind, avgr, &vfes, offsets, dim); break;
+      case 2: l = new LimiterMultiplier(*ind, avgr, &vfes, offsets, dim); break;
       default:
          cout << "Unknown limiter type: " << limiter_type << '\n';
          return 1;
@@ -435,7 +440,53 @@ int main(int argc, char *argv[])
       pd->Save();
    }
 
-   // Start the timer.
+   // 11. Initialize restart queue for control of number of saved frames
+   std::priority_queue<std::string, std::vector<std::string>, std::greater<std::string>> restart_queue;
+   std::string restart_current_cycle_name = "restart_000000";
+   std::string restart_deleted_cycle_name = "not_exists";
+   std::ostringstream restart_name_stream; // stream for formation of file names
+
+   if (restart) // change current name to current time cycle
+   {
+      restart_name_stream << std::setw(6) << std::setfill('0') << restart_dc.GetCycle();
+      restart_current_cycle_name = "restart_" + restart_name_stream.str();
+      restart_name_stream.str(std::string());
+   }
+   
+   if (myRank == 0)
+   {
+      // check old restart folders in the case directory and set them into the queue
+      for (auto& p : std::filesystem::directory_iterator(case_directory))
+         if (p.is_directory() 
+            && 
+            (p.path().filename().string().find("restart") != std::string::npos))
+         {
+            restart_deleted_cycle_name = p.path().filename().string();
+            // check if some time cycles more than restarted
+            if (restart_deleted_cycle_name.compare(restart_current_cycle_name) > 0)
+            {
+               system(("rm -rf " + restart_deleted_cycle_name).c_str());
+               system(("rm -rf " + restart_deleted_cycle_name + ".mfem_root").c_str());
+            }
+            else
+            {
+               restart_queue.push(restart_deleted_cycle_name);
+            }
+         }
+
+      // cout << "--\n";
+      // while (!restart_queue.empty())
+      // {
+      //    cout << restart_queue.top() << endl;
+      //    restart_queue.pop();
+      // }
+   }
+   // exit(0);
+
+   if (restart_queue.size() == 0)
+      restart_queue.push("restart_000000");
+
+   // 12. Start the timer.
    tic_toc.Clear();
    tic_toc.Start();
 
@@ -470,7 +521,7 @@ int main(int argc, char *argv[])
    }
 
 
-   // Integrate in time.
+   // 13. Integrate in time.
    if (myRank == 0) cout << "START TIME CYCLE" << endl;
 
    bool done = false;
@@ -525,6 +576,23 @@ int main(int argc, char *argv[])
          restart_dc.SetTime(t);
          restart_dc.SetTimeStep(dt);
          restart_dc.Save();
+
+         if (myRank == 0) 
+         {
+            // get current str name
+            restart_name_stream << std::setw(6) << std::setfill('0') << ti;
+            //cout << "restart_" + restart_name_stream.str() << endl;
+
+            restart_queue.push("restart_" + restart_name_stream.str());
+            if (restart_queue.size() > max_restart_frames)
+            {
+               restart_deleted_cycle_name = restart_queue.top();
+               system(("rm -rf " + restart_deleted_cycle_name).c_str());
+               system(("rm -rf " + restart_deleted_cycle_name + ".mfem_root").c_str());
+               restart_queue.pop();
+            }
+            restart_name_stream.str(std::string());
+         }
          
       }
 

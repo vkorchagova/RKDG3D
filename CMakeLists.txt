@@ -31,7 +31,7 @@ SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 
 set(HYPRE_DIR "/unicluster/home/viktoria.korchagova/extendedSrc/hypre/src/hypre/include")
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O2")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -g")
 set(METIS_DIR "/unicluster/home/viktoria.korchagova/extendedSrc/metis-5.1.0")
 
 
@@ -60,4 +60,4 @@ message(STATUS "MPI incs: ${MPI_INCLUDE_PATH} ")
 
 add_executable(${PROJECT_NAME} ${ALLFILES})
 
-target_link_libraries(${PROJECT_NAME} ${LIB_MFEM} -L${HYPRE_DIR}/../lib -lHYPRE -L${METIS_DIR}/lib -lmetis  -lrt ${MPI_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${LIB_MFEM} -L${HYPRE_DIR}/../lib -lHYPRE -L${METIS_DIR}/lib -lmetis  -lrt ${MPI_LIBRARIES} ${LIB_PROFILER} -lstdc++fs)
