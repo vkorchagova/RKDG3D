@@ -28,7 +28,7 @@ Physical Surface("Volume") = {1}; // make 2D patch from surfaces
 
 // mesh characteristics
 Transfinite Curve {4, 2} = 1 Using Progression 1;
-Transfinite Curve {1, 3} = 100 Using Progression 1;
+Transfinite Curve {1, 3} = 6 Using Progression 1;
 Transfinite Surface {1} = {1, 2, 3, 4};
 
 // renumeration

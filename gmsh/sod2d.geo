@@ -9,10 +9,10 @@
 
 xl = 0;
 xr = 1;
-yl = -0.1;
+yl = 0;
 yr = 0.1;
 
-nx = 10;
+nx = 100;
 ny = 1;
 
 // vertices
@@ -34,10 +34,10 @@ Curve Loop(1) = {-3, -4, 1, 2}; // make wire from lines; u can turn around line 
 Plane Surface(1) = {1}; // make surfaces from wires
 
 // boundaries
-Physical Curve("Patch1") = {4}; // make 1D patch from lines
-Physical Curve("Patch2") = {2};
-Physical Curve("Patch3") = {1};
-Physical Curve("Patch4") = {3};
+Physical Curve("Patch1",4) = {4}; // make 1D patch from lines
+Physical Curve("Patch2",3) = {2};
+Physical Curve("Patch3",2) = {1};
+Physical Curve("Patch4",1) = {3};
 Physical Surface("Volume") = {1}; // make 2D patch from surfaces
 
 // mesh characteristics
@@ -46,5 +46,5 @@ Transfinite Curve {1, 3} = nx+1 Using Progression 1;
 Transfinite Surface {1} = {1, 2, 3, 4};
 
 // renumeration
-Recombine Surface {1};
+//Recombine Surface {1};
 
