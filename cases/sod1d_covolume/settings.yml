@@ -1,0 +1,70 @@
+### YAML case settings for Sod Covolume case
+
+mesh: 
+    file: sod2d.msh
+    serialRefLevels: 0
+    parallelRefLevels: 0
+
+physics:
+    type:   covolume
+    gamma:  1.3
+    covolume: 0.001
+
+internalField:
+    type:       planeBreakup
+#    rho:        1.0
+#    U:          [0,0,0]
+#    p:          0.718
+
+
+    origin:     [0.4,0,0]
+    normal:     [1,0,0]
+    left:
+        rho:    100.0
+        U:      [0,0,0]
+        p:      1e+8
+    right:
+        rho:    1.0
+        U:      [0,0,0]
+        p:      0.1
+
+boundaryField:
+    inlet:
+        tag: 1
+        type:   slip #inlet
+        rhoI:   1e+5
+        UI:     [0,0,0]
+        pI:     0.718
+    outlet:
+        tag: 2
+        type:   slip #outlet
+    walls:
+        tag: 3
+        type:   slip
+    walls2:
+        tag: 0
+        type:   slip
+
+spatial:
+    polyOrder:      1
+    riemannSolver:  HLL
+    limiter:
+        type:       Multi
+        indicator:  BJ
+
+time:
+    restart: false
+    restartCycle:  100
+    nSavedFrames: 10
+
+    order:  2
+
+    tEnd:   0.0002
+    dt:     1e-6 # Co = 0.1
+
+    type:   dynamic
+    CoMax:  0.1
+
+postProcess:
+    format:     vtk
+    visSteps:   500

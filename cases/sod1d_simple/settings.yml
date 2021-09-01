@@ -1,0 +1,69 @@
+### YAML case settings for Sod2D
+
+mesh: 
+    file: sod1d_quad.msh
+    serialRefLevels: 0
+    parallelRefLevels: 0
+    
+    adaptive: true
+    totalErrorFraction: 0.0             ### use purely local threshold
+    maxElemError: 1e-4
+    hysteresis: 0.25                     ### derefinement safety coefficient
+    preferConformingRefinement: false
+    nonConformingLimit: 3               ### maximum level of hanging nodes
+
+physics:
+    type:   perfectGas
+    gamma:  1.4
+
+internalField:
+    type:       planeBreakup
+    origin:     [0.5,0,0]
+    normal:     [1,0,0]
+    left:
+        rho:    1.0
+        U:      [0,0,0]
+        p:      1.0
+    right:
+        rho:    0.125
+        U:      [0,0,0]
+        p:      0.1
+
+boundaryField:
+    inlet:
+        tag: 0
+        type:   slip
+    outlet:
+        tag: 1
+        type:   slip 
+    walls:
+        tag: 2
+        type:   slip
+    walls2:
+        tag: 3
+        type:   slip
+
+spatial:
+    polyOrder:      1
+    riemannSolver:  HLL
+    limiter:
+        type:       FinDiff
+        indicator:  Everywhere
+
+time:
+    restart: false
+    
+    restartCycle:  100
+    nSavedFrames: 10
+
+    order:  2
+
+    tEnd:   0.2
+    dt:     0.0001
+
+    type:   constant
+    CoMax:  0.1
+
+postProcess:
+    format:     vtk
+    visSteps:   1

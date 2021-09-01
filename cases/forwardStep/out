@@ -1,0 +1,31 @@
+===============================================
+Reading case file /home/qqsieqq/RKDG/cases/forwardStep/settings.yml...
+-----------------------------------------------
+Restart case: 0
+Gas type: perfectGas
+* Specific heat ratio: 1.4
+Order of polynoms: 1
+Type of problem: constant
+Reading mesh from fs.msh...
+* Serial refinement levels = 0
+* Parallel refinement levels = 0
+Number of cells: 64512
+2
+Number of equations = 4
+Number of unknowns: 1032192
+Riemann solver type: HLL
+Boundary conditions:
+inlet	|inlet
+Set BC markers OK
+Add BI OK
+outlet	|outlet
+Set BC markers OK
+Add BI OK
+walls	|slip
+Set BC markers OK
+Add BI OK
+walls2	|slip
+Set BC markers OK
+Add BI OK
+create Limiter OK
+Indicator type: BJ; Limiter type: Multi

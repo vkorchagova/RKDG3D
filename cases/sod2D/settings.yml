@@ -1,0 +1,70 @@
+### YAML case settings for Sod2D
+
+test: 1.5
+
+mesh: 
+    file: sod2d.msh
+    serialRefLevels: 0
+    parallelRefLevels: 0
+    adaptive: false
+
+physics:
+    type:   perfectGas
+    gamma:  1.4
+
+internalField:
+    type:       planeBreakup
+    rho:        1.0
+    U:          [0,0,0]
+    p:          0.718
+    origin:     [0.5,0,0]
+    normal:     [1,0,0]
+    left:
+        rho:    1.0
+        U:      [0,0,0]
+        p:      1.0
+    right:
+        rho:    0.125
+        U:      [0,0,0]
+        p:      0.1
+
+boundaryField:
+    inlet:
+        tag: 0
+        type:   outlet
+        rhoI:   1.0
+        UI:     [0,0,0]
+        pI:     0.718
+    outlet:
+        tag: 1
+        type:   outlet
+    walls:
+        tag: 2
+        type:   outlet
+    walls2:
+        tag: 3
+        type:   outlet
+
+spatial:
+    polyOrder:      1
+    riemannSolver:  HLL
+    limiter:
+        type:       BJ
+        indicator:  BJ
+
+time:
+    restart: false
+    restartCycle:  100
+    nSavedFrames: 10
+
+    order:  2
+
+    tEnd:   0.2
+    dt:     0.001
+
+    type:   constant # dynamic
+    CoMax:  0.1
+
+postProcess:
+    format:     vtk
+    visSteps:   5
