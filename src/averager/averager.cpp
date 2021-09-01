@@ -12,13 +12,16 @@ Averager::Averager(ParFiniteElementSpace* _fes, const Array<int>& _offsets, int 
    // prepare place for the average values
    fec_avg = new DG_FECollection(0, dim);
    fes_avg = new ParFiniteElementSpace(mesh, fec_avg, num_equation);
+   fes_avg_component = new ParFiniteElementSpace(mesh, fec_avg);
    offsets_avg.SetSize(num_equation + 1);
 
    for (int k = 0; k <= num_equation; k++) 
       offsets_avg[k] = k * fes_avg->GetNDofs();
 
-   u_block_avg = new BlockVector(offsets_avg);
-   avgs = new ParGridFunction(fes_avg, u_block_avg->GetData());
+   
+   //avgs = new ParGridFunction(fes_avg, u_block_avg->GetData());
+   avgs = new ParGridFunction(fes_avg);
+   u_block_avg = new BlockVector(*avgs, offsets_avg);
 
 
    // prepare place for the average values
@@ -31,23 +34,67 @@ Averager::Averager(ParFiniteElementSpace* _fes, const Array<int>& _offsets, int 
    for (int k = 0; k <= num_equation; k++) 
       offsets_avg_extrap[k] = k * fes_avg_extrap->GetNDofs();
 
-   u_block_avg_extrap = new BlockVector(offsets_avg_extrap);
-   avgs_extrap = new ParGridFunction(fes_avg_extrap, u_block_avg_extrap->GetData());
+   avgs_extrap = new ParGridFunction(fes_avg_extrap);
+   u_block_avg_extrap = new BlockVector(*avgs_extrap, offsets_avg_extrap);
 };
+
+void Averager::updateSpaces()
+{
+   cout << "before fes_avg->Update();" << endl;
+
+   fes_avg->Update();
+   fes_avg_component->Update();
+
+   cout << "after fes_avg->Update();" << endl;
+   fes_avg_extrap->Update();
+   fes_avg_extrap_component->Update();
+}
+
+void Averager::updateSolutions()
+{
+   // Update the space: recalculate the number of DOFs and construct a matrix
+   // that will adjust any GridFunctions to the new mesh state.
+   
+   // Interpolate the solution on the new mesh by applying the transformation
+   // matrix computed in the finite element space. Multiple GridFunctions could
+   // be updated here.
+   avgs->Update();
+   avgs_extrap->Update();
+
+   for (int k = 0; k <= num_equation; k++) 
+      offsets_avg[k] = k * fes_avg->GetNDofs();
+
+   for (int k = 0; k <= num_equation; k++) 
+      offsets_avg_extrap[k] = k * fes_avg_extrap->GetNDofs();
+
+   u_block_avg->Update(*avgs,offsets_avg);
+   u_block_avg_extrap->Update(*avgs_extrap, offsets_avg_extrap);
+}
+
+void Averager::updateFinished()
+{
+   // Free any transformation matrices to save memory.
+   fes_avg->UpdatesFinished();
+   fes_avg_component->UpdatesFinished();
+   fes_avg_extrap->UpdatesFinished();
+   fes_avg_extrap_component->UpdatesFinished();
+}
 
 void Averager::computeMeanValues()
 {
-   ParFiniteElementSpace fes_avg_component(mesh, fec_avg);
+   cout << "in computeMeanValues..." << endl;
+   
    for (int i = 0; i < num_equation; ++i)
    {
+      cout << "before ParGridFunction..." << endl;
       ParGridFunction sol_i, avgs_i;
-      // cout << "sol make ref..." << endl;  
+      cout << "sol make ref before..." << endl;  
       sol_i.MakeRef(fes, *parGridX, offsets[i]);
-      // cout << "sol make ref..." << endl; 
-      avgs_i.MakeRef(&fes_avg_component, *avgs, offsets_avg[i]);
-      // cout << i << " " << sol_i.Size() << " " << avgs_i.Size() << " " << offsets[i] << " "<< offsets_avg[i] <<endl;
+      cout << "sol make ref..." << endl; 
+      avgs_i.MakeRef(fes_avg_component, *avgs, offsets_avg[i]);
+      cout << i << " " << sol_i.Size() << " " << avgs_i.Size() << " " << offsets[i] << " "<< offsets_avg[i] <<endl;
       sol_i.GetElementAverages(avgs_i);
-      // cout << avgs_i[6661] << endl;
+      cout << "OK" << endl;
    }
 
    avgs->ExchangeFaceNbrData();

@@ -12,7 +12,7 @@ extern int problem;
 // Maximum characteristic speed (updated by integrators)
 extern double max_char_speed;
 
-extern const int num_equation;
+extern int num_equation;
 extern double specific_heat_ratio;
 extern const double gas_constant;
 extern double covolume_constant;
@@ -35,7 +35,7 @@ private:
    Operator &A;
 
    /// Matrix of the nonlinear form with domain integrators
-   SparseMatrix &Aflux;
+   SparseMatrix *Aflux;
 
    /// Inverse mass matrix
    DenseTensor Me_inv;
@@ -61,15 +61,19 @@ public:
 
    /// Constructor
    FE_Evolution(FiniteElementSpace &_vfes,
-                Operator &_A, SparseMatrix &_Aflux);
+                Operator &_A, SparseMatrix *_Aflux);
 
    /// Compute rhs
    //  @param x solution
    //  @param y result
    virtual void Mult(const Vector &x, Vector &y) const;
 
+   void UpdateInverseMassMatrix();
+
    /// Destructor
    virtual ~FE_Evolution() { }
+
+   void UpdateAfluxPointer(SparseMatrix *_Aflux) {Aflux = _Aflux; };
 };
 
 #endif // FE_EVOLUTION_H

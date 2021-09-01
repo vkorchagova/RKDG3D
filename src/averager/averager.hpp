@@ -7,7 +7,7 @@
 using namespace std;
 using namespace mfem;
 
-extern const int num_equation;
+extern int num_equation;
 
 /// Proc rank 
 extern int myRank;
@@ -25,6 +25,7 @@ protected:
 
    /// FE finite element space (connection with mesh and dofs)
    ParFiniteElementSpace *fes; 
+
 
    /// Space dimension
    int dim;
@@ -67,6 +68,7 @@ protected:
    /// Finite element space for average values
    DG_FECollection* fec_avg;
    ParFiniteElementSpace *fes_avg;
+   ParFiniteElementSpace* fes_avg_component;
    
 
    /// Mean values of solution in all cells
@@ -115,6 +117,11 @@ public:
       delete fes_avg; 
       delete fec_avg;
    };
+
+   // just for refinement
+   void updateSpaces();
+   void updateSolutions();
+   void updateFinished();
 
    /// Update actual solution values
    void update( Vector* _x, ParGridFunction* _parGridX) { x = _x; parGridX = _parGridX; };

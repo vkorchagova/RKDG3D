@@ -34,20 +34,5 @@ double RiemannSolverHLL::Eval(const Vector &state1, const Vector &state2,
 
    InverseRotate(flux, nor, dim);
 
-
    return maxE;
-
-
-   // numvector<double, dimPh> fluxL = phs.fluxF(solLeft);
-   //  numvector<double, dimPh> fluxR = phs.fluxF(solRight);
-
-   //  numvector<double, dimPh> lambdaF = lambdaF(solLeft,solRight);
-
-   //  if (lambdaF[0] >= 0)
-   //      return fluxL;
-
-   //  if (lambdaF[4] <= 0)
-   //      return fluxR;
-
-   //  return (lambdaF[4] * fluxL - lambdaF[0] * fluxR + lambdaF[0] * lambdaF[4] * (solRight - solLeft)) * (1.0 / (lambdaF[4] - lambdaF[0]));
 }

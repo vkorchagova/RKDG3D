@@ -8,7 +8,7 @@
 using namespace std;
 using namespace mfem;
 
-extern const int num_equation;
+extern int num_equation;
 
 ///
 /// Implements a simple Rusanov flux

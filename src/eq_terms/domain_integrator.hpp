@@ -3,15 +3,15 @@
 
 #include "mfem.hpp"
 
-using namespace std;
+
 using namespace mfem;
 
-extern const int num_equation;
+extern int num_equation;
 
 // Constant (in time) mixed bilinear form multiplying the flux grid function.
 // The form is (vec(v), grad(w)) where the trial space = vector L2 space (mesh
 // dim) and test space = scalar L2 space.
-class DomainIntegrator : public BilinearFormIntegrator
+class DomainIntegrator : public DiffusionIntegrator//BilinearFormIntegrator
 {
 private:
 

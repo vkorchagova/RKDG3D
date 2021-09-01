@@ -18,6 +18,9 @@ bool StateIsPhysicalSay(const Vector &state, const int dim);
 // Pressure (EOS) computation
 double ComputePressure(const Vector &state, int dim);
 
+// Energy by given pressure (EOS)
+double ComputeEnergy(double rho, double u, double v, double w, double p);
+
 // Sound speed (EOS) computation
 double ComputeSoundSpeed(const Vector &state, int dim);
 

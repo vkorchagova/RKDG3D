@@ -6,7 +6,7 @@
 using namespace std;
 using namespace mfem;
 
-extern const int num_equation;
+extern int num_equation;
 
 /// Proc rank 
 extern int myRank;

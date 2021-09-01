@@ -11,7 +11,10 @@ void BoundaryIntegratorConstant::computeRightState(const Vector& state1, Vector&
     rsolver.Rotate(state2, nor, dim); 
     
     for (int i = 0; i < dim+2; ++i)
-        state2[i] = 2.0*fixedState[i] - state1[i];
+        state2[i] = fixedState[i];
+        // state2[i] = 2.0*fixedState[i] - state2[i];
+
 
     rsolver.InverseRotate(state2, nor, dim);
+
 };

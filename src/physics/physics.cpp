@@ -111,6 +111,11 @@ double ComputePressure(const Vector &state, int dim)
    return (specific_heat_ratio - 1.0) * (den_energy - 0.5 * den_vel2) / (1.0 - den * covolume_constant);
 }
 
+double ComputeEnergy(double rho, double u, double v, double w, double p)
+{
+   return p / (specific_heat_ratio - 1.0) * (1.0 - rho * covolume_constant) + 0.5 * rho * (u*u + v*v + w*w);
+}
+
 // Sound speed (EOS) computation
 double ComputeSoundSpeed(const Vector &state, int dim)
 {

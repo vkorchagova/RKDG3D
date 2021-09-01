@@ -29,100 +29,62 @@ void ExplicitRKLimitedSolver::Init(TimeDependentOperator &_f)
 
 void ExplicitRKLimitedSolver::Step(Vector &x, double &t, double &dt)
 {
-   // std::cout << "=======\n X before limiting = ";
-   //    x.Print(std::cout);
-   // for (int iii = 0; iii < x.Size(); ++iii)
-   //    if (x[iii] != x[iii])
-   //    {
-   //       cout << "Find NaN for x[" << iii << "], processor " << myRank << endl;
-   //       //cout << "; iCell = " << iCell << "; tr elem 1 no = "<< tr->Elem1No << "; tr elem 2 no =" << tr->Elem2No << endl;
-   //    }
+   for (int i = 0; i < s; i++)
+   {
+      k[i].SetSize(x.Size(), mem_type);
+   }
+
+   y.SetSize(x.Size(), mem_type);
+   for (int i = 0; i < y.Size(); ++i) y(i) = 0.0;
 
    f->SetTime(t);
+
+   // cout << "ExplicitRKLimitedSolver::Step X = " << endl;
+   // x.Print(cout);
+
    f->Mult(x, k[0]);
-   // for (int iii = 0; iii < k[0].Size(); ++iii)
-   //    if (k[0][iii] != k[0][iii])
-   //    {
-   //       cout << "Find NaN for k[0][" << iii << "], processor " << myRank << endl;
-   //       //cout << "; iCell = " << iCell << "; tr elem 1 no = "<< tr->Elem1No << "; tr elem 2 no =" << tr->Elem2No << endl;
-   //    }
-   // std::cout << "=======\n k[0]  = ";
-   //    k[0].Print(std::cout);
+
+   // cout << "k0" << endl;
+   // k[0].Print(cout);
+   
+   
    for (int l = 0, i = 1; i < s; i++)
    {
-      //**/cout << "1/l|i|s = " << l << '|' << i << '|' << s << endl;
       add(x, a[l++]*dt, k[0], y);
-      //**/cout << "2/l|i|s = " << l << '|' << i << '|' << s << endl;
+      
       for (int j = 1; j  < i; j++)
       {
-         y.Add(a[l++]*dt, k[j])                                                                                                                                                                                                                                                ;
-         //**/cout << "3/l|i|s|j = " << l << '|' << i << '|' << s << '|' << j << endl;
+         y.Add(a[l++]*dt, k[j]);
       }
-
-      // if (myRank == 3 || myRank == 0)
-      // {
-      //    std::cout << "Y after 1st stage before limit | ";
-      //    std::cout << "rank = " << myRank << ", x = " << x[0] << std::endl;
-      // }
-
+      // cout << "y before limit" << endl;
+      // y.Print(cout);
       
       // limit y and compute rhs with good y
-       limiter.update(y);
-      /// HERE WE NEED MPI& ???
-      // std::cout << "=======\n X after 1st stage = ";
-      // y.Print(std::cout);
-      // std::cout << "next stage" << endl;
-      // compute next rhs
-      //  if (myRank == 3 || myRank == 0)
-      // {
-      //    std::cout << "Y after 1st stage after limit | ";
-      //    std::cout << "rank = " << myRank << ", x = " << x[0] << std::endl;
-      // }
+      limiter.update(y);
+
+      // cout << "y after limit" << endl;
+      // y.Print(cout);
 
       f->SetTime(t + c[i-1]*dt);
       f->Mult(y, k[i]);
 
-      // for (int iii = 0; iii < k[i].Size(); ++iii)
-      // if (k[i][iii] != k[i][iii])
-      // {
-      //    cout << "Find NaN for k[1][" << iii << "], processor " << myRank << endl;
-      //    //cout << "; iCell = " << iCell << "; tr elem 1 no = "<< tr->Elem1No << "; tr elem 2 no =" << tr->Elem2No << endl;
-      // }
-
-      // std::cout << "=======\n k[i]  = ";
-      // k[i].Print(std::cout);
+      // cout << "k[" << i << "]" << endl;
+      // k[i].Print(cout);
    }
-
-   // if (myRank == 3 || myRank == 0)
-   // {
-   //    std::cout << "X before 2nd stage before limit = ";
-   //    std::cout << "rank = " << myRank << ", x = " << x[0] << std::endl;
-   // }
 
    for (int i = 0; i < s; i++)
    {
       x.Add(b[i]*dt, k[i]);
    }
 
-   // if (myRank == 3 || myRank == 0)
-   // {
-   //    std::cout << "X after 2nd stage before limit = ";
-   //    std::cout << "rank = " << myRank << ", x = " << x[0] << std::endl;
-   // }  
-   // limit x
+   // cout << "x before limit" << endl;
+   //    x.Print(cout);
    
    limiter.update(x);
- 
-   // if (myRank == 0)
-   // {
-   //    std::cout << "X after 2nd stage = ";
-   //    std::cout << x[0] << std::endl;
-   // }
-   //    x.Print(std::cout);
+
+
 
    // update time step
    t += dt;
-
-   // cout << "end step" << endl;
 }
 

@@ -9,7 +9,7 @@ using namespace mfem;
 // Maximum characteristic speed (updated by integrators)
 extern double max_char_speed;
 
-extern const int num_equation;
+extern int num_equation;
 
 /// Proc rank 
 extern int myRank;

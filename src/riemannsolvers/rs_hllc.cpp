@@ -94,7 +94,7 @@ double RiemannSolverHLLC::Eval(const Vector &state1, const Vector &state2,
    //    flux2.Print(cout);
    // }
 
-   ComputeToroCharSpeeds(state1, state2, lambdaF, dim);
+   ComputeEinfeldtCharSpeeds(state1, state2, lambdaF, dim);
    const double maxE = max(lambdaF[0], lambdaF[dim+1]);
 
 

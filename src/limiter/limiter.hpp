@@ -8,7 +8,7 @@
 using namespace std;
 using namespace mfem;
 
-extern const int num_equation;
+extern int num_equation;
 
 /// Proc rank 
 extern int myRank;
@@ -58,8 +58,7 @@ protected:
    /// Transformation rule from face space to element space
    FaceElementTransformations* face_el_trans;
    
-   /// Values of shape functions in defined point
-   Vector el_shape;
+   
 
    
 
@@ -70,18 +69,18 @@ protected:
    const Array<int>& offsets;
 
 
-   /// Finite element space for average values
-   ParFiniteElementSpace *fes_avg;
-   DG_FECollection* fec_avg;
+   // /// Finite element space for average values
+   // ParFiniteElementSpace *fes_avg;
+   // DG_FECollection* fec_avg;
 
-   /// Mean values of solution in all cells
-   /// for high order vals
-   ParGridFunction* avgs;
-   BlockVector* u_block_avg;
+   // /// Mean values of solution in all cells
+   // /// for high order vals
+   // ParGridFunction* avgs;
+   // BlockVector* u_block_avg;
    
 
-   /// Offsets for looping through average values
-   Array<int> offsets_avg;
+   // /// Offsets for looping through average values
+   // Array<int> offsets_avg;
 
 
    /// Stencil
@@ -90,7 +89,7 @@ protected:
    /// Average values on one element
    Vector el_uMean;
 
-   /// Loac-to-global mapping for shared faces
+   /// Loc-to-global mapping for shared faces
    std::map<int,int> lf2sf;
 
    /// Read element average due to different mechanisms for internal and shared values
@@ -114,6 +113,7 @@ public:
    virtual ~Limiter()
    {
       delete stencil;
+      cout << "!!! remove Limiter" << endl;
    };
 
    /// Update solution (wrapper for checkDiscontinuities + limit)
