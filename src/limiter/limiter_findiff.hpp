@@ -13,10 +13,10 @@ public:
 
    /// Constructor 
    LimiterFinDiff(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace *_fes, const Array<int>& _offsets, int _d) 
-      : Limiter(_ind,_avgr,_fes,_offsets,_d) { cout << "create FDLimiter" << endl;};
+      : Limiter(_ind,_avgr,_fes,_offsets,_d) {};
    
    /// Destructor
-   ~LimiterFinDiff() {cout << "!!! remove FinDiffLimiter" << endl;};
+   ~LimiterFinDiff() {};
 
    /// Limit solution
    virtual void limit(const int iCell, const Vector& el_ind, DenseMatrix& elfun1_mat) override;  

@@ -113,7 +113,6 @@ public:
    virtual ~Limiter()
    {
       delete stencil;
-      cout << "!!! remove Limiter" << endl;
    };
 
    /// Update solution (wrapper for checkDiscontinuities + limit)

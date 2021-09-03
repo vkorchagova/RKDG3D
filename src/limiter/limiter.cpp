@@ -20,8 +20,6 @@ Limiter::Limiter(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace* _fes, 
       int lf = mesh->GetSharedFace(sf);
       lf2sf[lf] = sf;
    }
-
-   cout << "create Limiter OK" << endl;
 };
 
 

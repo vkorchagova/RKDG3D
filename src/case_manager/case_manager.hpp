@@ -85,6 +85,8 @@ class CaseManager
 
    bool adaptive_mesh;
 
+   Vector origin; //(num_equation-2);
+   Vector normal; //(num_equation-2);
 
 public:
    // Case directory
@@ -104,13 +106,18 @@ public:
    /// Destructor
    ~CaseManager() 
    {
-      
+      cout << "in CaseMan Destructor" << endl;
       delete[] c;
       delete[] b;
       delete[] a;
       delete ICInterface;
       delete settings;
       delete contents;
+      origin.SetSize(1);
+      origin[0] = 0;
+      normal.SetSize(1);
+      normal[0] = 0;
+      cout << "OK" << endl;
    };
 
    /// Load mesh from file or from previous saved data

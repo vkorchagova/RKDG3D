@@ -131,11 +131,19 @@ public:
     velX2(sol2_[1]),
     velY2(sol2_[2]),
     velZ2(sol2_.Size() == 5 ? sol2_[3] : 0.0),
-    pres2(sol2_[num_equation-1]),
-    origin(origin_),
-    normal(normal_)
-
-    {};
+    pres2(sol2_[num_equation-1])
+    {
+        // origin = origin_;
+        // normal = normal_;
+        origin.SetSize(2);
+        origin[0] = 0.5;
+        origin[1] = 0.0;
+        normal.SetSize(2);
+        normal[0] = 1.0;
+        normal[1] = 0.0;
+        // origin(origin_.GetData(),origin_.Size()),
+        // normal(normal_.GetData(),normal_.Size())
+    };
     
     ~ICPlaneBreakup() {};
 

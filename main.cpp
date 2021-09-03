@@ -89,8 +89,8 @@ void UpdateAndRebalance(
     // Update the space: recalculate the number of DOFs and construct a matrix
     // that will adjust any GridFunctions to the new mesh state.
     
-    fes.Update(false);
-    dfes.Update(false);
+    fes.Update(); //false in ()
+    dfes.Update();
     vfes.Update();
     
     fes_const.Update();
@@ -120,11 +120,12 @@ void UpdateAndRebalance(
     //     rhoWInd.Update();
     // EInd.Update(); 
 
-    cout << "if (pmesh.Nonconforming())" << endl;  
+      
 
 
     if (pmesh.Nonconforming())
     {
+        cout << "if (pmesh.Nonconforming())" << endl;
         // Load balance the mesh.
         pmesh.Rebalance();
 
@@ -359,7 +360,7 @@ int main(int argc, char *argv[])
     // ascii data files, or SidreDataCollection for binary data files.
 
     manager.getVisSteps(vis_steps);
-    DataCollection *dc = NULL;
+    // DataCollection *dc = NULL;
 
     // ParGridFunction rhok(&fes, u_block.GetBlock(0));
     // ParGridFunction mom(&dfes, u_block.GetData() + offsets[1]);
@@ -413,15 +414,16 @@ int main(int argc, char *argv[])
     RT_FECollection smooth_flux_fec(order-1, dim);
     auto flux_fes = &fes;//new ParFiniteElementSpace(pmesh, &flux_fec, sdim);
     auto smooth_flux_fes = new ParFiniteElementSpace(pmesh, &smooth_flux_fec);
-    ErrorEstimator* estimator = new L2ZienkiewiczZhuEstimator(*integ, rhok, flux_fes, smooth_flux_fes);
-    //ErrorEstimator* estimator = new L2ZienkiewiczZhuEstimator(*integ, rhok, flux_fes, smooth_flux_fes);
-
-    ThresholdRefiner refiner(*estimator);
-    ThresholdDerefiner derefiner(*estimator);
+    ErrorEstimator* estimator = 0;
+    ThresholdRefiner* refiner = 0;
+    ThresholdDerefiner* derefiner = 0;
 
     if (manager.is_adaptive())
     {
-        manager.loadAdaptiveMeshSettings(refiner,derefiner);
+        estimator = new L2ZienkiewiczZhuEstimator(*integ, rhok, flux_fes, smooth_flux_fes);
+        refiner = new ThresholdRefiner(*estimator);
+        derefiner = new ThresholdDerefiner(*estimator);
+        manager.loadAdaptiveMeshSettings(*refiner,*derefiner);
     }
 
     ////////
@@ -484,8 +486,8 @@ int main(int argc, char *argv[])
         // Make sure errors will be recomputed in the following.
         if (manager.is_adaptive())
         {
-            refiner.Reset();
-            derefiner.Reset();
+            refiner->Reset();
+            derefiner->Reset();
         }
 
         // cout << "=== before ref iters === \n" << endl;
@@ -509,12 +511,12 @@ int main(int argc, char *argv[])
 
             if (manager.is_adaptive())
             {
-                refiner.Apply(*pmesh);
+                refiner->Apply(*pmesh);
 
                 cout << "... after ref (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")" << endl;
                 // sol.Print(cout);
 
-                if (refiner.Stop() || ref_it == max_ref_it)
+                if (refiner->Stop() || ref_it == max_ref_it)
                 {
                     // Aflux.Update(); // Free the assembled data
                     // A.Update();
@@ -566,11 +568,12 @@ int main(int argc, char *argv[])
         cout << "... before deref" << endl;
         if (manager.is_adaptive())
         {
-            // if (derefiner.Apply(*pmesh))
+            // if (derefiner->Apply(*pmesh))
             // {
             //     if (myRank == 0)
             //     {
             //         cout << "\nDerefined elements." << endl;
+            //         cout << "... after deref (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")" << endl;
             //     }
 
             //     // 24. Update the space and the solution, rebalance the mesh.
@@ -600,7 +603,7 @@ int main(int argc, char *argv[])
             //         avgr
             //     );
 
-            //     cout << "after second basic  rebalance" << endl;
+            //     cout << "after second basic rebalance" << endl;
 
             //     euler.UpdateAfluxPointer(&(Aflux.SpMat()));
             //     euler.UpdateInverseMassMatrix();
@@ -725,14 +728,21 @@ int main(int argc, char *argv[])
     delete estimator;
 
     // Free the used memory.
+    delete derefiner;
+    delete refiner;
+    delete estimator;
+    delete smooth_flux_fes;
+
     delete pd;
     delete ode_solver;
     delete l;
     delete ind;
-
-    delete rsolver;
-
+    // delete rsolver;
+    // delete integ;
+    // delete pmesh;
+    cout << "before mpi finalize" << endl;
     MPI_Finalize();
+    cout << "after mpi finalize" << endl;
 
     return 0;
 }

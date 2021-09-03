@@ -57,6 +57,7 @@ void FE_Evolution::Mult(const Vector &x, Vector &y) const
 
   cout << "IN FE_Evolution::Mult X = " << endl;
   // x.Print(cout);
+  z.SetSize(x.Size());
 
 
 

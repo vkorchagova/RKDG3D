@@ -4,7 +4,9 @@ using namespace std;
 
 CaseManager::CaseManager(std::string& caseFileName, VisItDataCollection& rdc)
 :
-    restart_data_c (rdc)
+    restart_data_c (rdc),
+    origin(num_equation-2),
+    normal(num_equation-2)
 {
     caseDir = std::filesystem::current_path().string();
 
@@ -95,8 +97,7 @@ void CaseManager::parse(std::string& caseFileName)
     {
         Vector sol1(num_equation);
         Vector sol2(num_equation);
-        Vector origin(num_equation-2);
-        Vector normal(num_equation-2);
+        
 
         c4::from_chars((*settings)["internalField"]["origin"][0].val(), &origin[0]);
         c4::from_chars((*settings)["internalField"]["origin"][1].val(), &origin[1]);
@@ -104,8 +105,6 @@ void CaseManager::parse(std::string& caseFileName)
         c4::from_chars((*settings)["internalField"]["normal"][0].val(), &normal[0]);
         c4::from_chars((*settings)["internalField"]["normal"][1].val(), &normal[1]);
         c4::from_chars((*settings)["internalField"]["normal"][2].val(), &normal[2]);
-        origin.Print(cout);
-        normal.Print(cout);
 
         c4::from_chars((*settings)["internalField"]["left"]["rho"].val(), &sol1[0]);
         c4::from_chars((*settings)["internalField"]["left"]["U"][0].val(), &sol1[1]);
@@ -122,7 +121,7 @@ void CaseManager::parse(std::string& caseFileName)
         ICInterface = new ICPlaneBreakup(sol1, sol2, origin, normal);
     }
 
-    
+    cout << "Initial conditions OK" << endl;
 }
 
 void CaseManager::loadMesh(ParMesh*& pmesh)
