@@ -9,7 +9,7 @@ bool StateIsPhysical(const Vector &state, const int dim)
    const Vector den_vel(state.GetData() + 1, dim);
    const double den_energy = state(1 + dim);
 
-   if (den < 0)
+   if (den < 0 || !den)
    {
       // cout << "Negative density: ";
       // for (int i = 0; i < state.Size(); i++)
@@ -19,7 +19,7 @@ bool StateIsPhysical(const Vector &state, const int dim)
       // cout << endl;
       return false;
    }
-   if (den_energy <= 0)
+   if (den_energy <= 0 || !den_energy)
    {
       // cout << "Negative energy: ";
       // for (int i = 0; i < state.Size(); i++)
@@ -36,7 +36,7 @@ bool StateIsPhysical(const Vector &state, const int dim)
 
    const double pres = ComputePressure(state, dim);
 
-   if (pres <= 0)
+   if (pres <= 0 || !pres)
    {
       // cout << "Negative pressure: " << pres << ", state: ";
       // for (int i = 0; i < state.Size(); i++)
@@ -56,7 +56,7 @@ bool StateIsPhysicalSay(const Vector &state, const int dim)
    const Vector den_vel(state.GetData() + 1, dim);
    const double den_energy = state(1 + dim);
 
-   if (den < 0)
+   if (den < 0 || !den)
    {
       cout << "Negative density: ";
       for (int i = 0; i < state.Size(); i++)
@@ -66,7 +66,7 @@ bool StateIsPhysicalSay(const Vector &state, const int dim)
       cout << endl;
       return false;
    }
-   if (den_energy <= 0)
+   if (den_energy <= 0 || !den_energy)
    {
       cout << "Negative energy: ";
       for (int i = 0; i < state.Size(); i++)
@@ -83,7 +83,7 @@ bool StateIsPhysicalSay(const Vector &state, const int dim)
 
    const double pres = (specific_heat_ratio - 1.0) * (den_energy - 0.5 * den_vel2);
 
-   if (pres <= 0)
+   if (pres <= 0 || !pres)
    {
       cout << "Negative pressure: " << pres << ", state: ";
       for (int i = 0; i < state.Size(); i++)

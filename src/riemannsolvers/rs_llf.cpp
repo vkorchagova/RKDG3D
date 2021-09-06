@@ -11,8 +11,8 @@ double RiemannSolverLLF::Eval(const Vector &state1, const Vector &state2,
 
    // state1.Print(cout);
    // state2.Print(cout);
-   StateIsPhysicalSay(state1, dim);
-   StateIsPhysicalSay(state2, dim);
+   if (!StateIsPhysicalSay(state1, dim)) exit(1);
+   if (!StateIsPhysicalSay(state2, dim)) exit(1);
 
    
    Rotate(const_cast<Vector&>(state1), nor, dim);

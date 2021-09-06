@@ -55,7 +55,7 @@ void FE_Evolution::Mult(const Vector &x, Vector &y) const
    max_char_speed = 0.;
   
 
-  cout << "IN FE_Evolution::Mult X = " << endl;
+  // cout << "IN FE_Evolution::Mult X = " << endl;
   // x.Print(cout);
   z.SetSize(x.Size());
 
@@ -63,8 +63,8 @@ void FE_Evolution::Mult(const Vector &x, Vector &y) const
 
    // 1. Create the vector z with the face terms -<F.n(u), [w]>.
    A.Mult(x, z);
-
-   cout << "IN FE_Evolution::Mult z = " << endl;
+// 
+   // cout << "IN FE_Evolution::Mult z = " << endl;
    // z.Print(cout);
 
    // 2. Add the element terms.
@@ -74,17 +74,17 @@ void FE_Evolution::Mult(const Vector &x, Vector &y) const
    //     each of the num_equation, computing (F(u), grad(w)) for each equation.
 
    DenseMatrix xmat(x.GetData(), vfes.GetNDofs(), num_equation);
-   cout << "IN FE_Evolution after dense mat " << endl;
+   // cout << "IN FE_Evolution after dense mat " << endl;
 
-   cout << vfes.GetNDofs() << ' ' << dim << ' ' << num_equation << endl;
+   // cout << vfes.GetNDofs() << ' ' << dim << ' ' << num_equation << endl;
 
-   cout << flux.SizeI() << ' ' << flux.SizeJ() << ' ' << flux.SizeK() << endl;
+   // cout << flux.SizeI() << ' ' << flux.SizeJ() << ' ' << flux.SizeK() << endl;
 
    flux.SetSize(vfes.GetNDofs(), dim, num_equation);
-    cout << "IN FE_Evolution before get flux = " << endl;
+    // cout << "IN FE_Evolution before get flux = " << endl;
 
    GetFlux(xmat, flux);
-   cout << "IN FE_Evolution after get flux = " << endl;
+   // cout << "IN FE_Evolution after get flux = " << endl;
 
    for (int k = 0; k < num_equation; k++)
    {
@@ -92,7 +92,7 @@ void FE_Evolution::Mult(const Vector &x, Vector &y) const
       Vector zk(z.GetData() + k * vfes.GetNDofs(), vfes.GetNDofs());
       Aflux->AddMult(fk, zk);
    }
-   cout << "IN FE_Evolution::Aflux->AddMult(fk, zk) OK " << endl;
+   // cout << "IN FE_Evolution::Aflux->AddMult(fk, zk) OK " << endl;
 
    // 3. Multiply element-wise by the inverse mass matrices.
    Vector zval;
@@ -109,7 +109,7 @@ void FE_Evolution::Mult(const Vector &x, Vector &y) const
       mfem::Mult(Me_inv(i), zmat, ymat);
       y.SetSubVector(vdofs, ymat.GetData());
    }
-   cout << "IN FE_Evolution::end " << endl;
+   // cout << "IN FE_Evolution::end " << endl;
 
    // std::cout << "=======\n y after  = ";
    //    y.Print(std::cout);

@@ -40,12 +40,12 @@ Averager::Averager(ParFiniteElementSpace* _fes, const Array<int>& _offsets, int 
 
 void Averager::updateSpaces()
 {
-   cout << "before fes_avg->Update();" << endl;
+   // cout << "before fes_avg->Update();" << endl;
 
    fes_avg->Update();
    fes_avg_component->Update();
 
-   cout << "after fes_avg->Update();" << endl;
+   // cout << "after fes_avg->Update();" << endl;
    fes_avg_extrap->Update();
    fes_avg_extrap_component->Update();
 }
@@ -82,19 +82,19 @@ void Averager::updateFinished()
 
 void Averager::computeMeanValues()
 {
-   cout << "in computeMeanValues..." << endl;
+   // cout << "in computeMeanValues..." << endl;
    
    for (int i = 0; i < num_equation; ++i)
    {
-      cout << "before ParGridFunction..." << endl;
+      // cout << "before ParGridFunction..." << endl;
       ParGridFunction sol_i, avgs_i;
-      cout << "sol make ref before..." << endl;  
+      // cout << "sol make ref before..." << endl;  
       sol_i.MakeRef(fes, *parGridX, offsets[i]);
-      cout << "sol make ref..." << endl; 
+      // cout << "sol make ref..." << endl; 
       avgs_i.MakeRef(fes_avg_component, *avgs, offsets_avg[i]);
-      cout << i << " " << sol_i.Size() << " " << avgs_i.Size() << " " << offsets[i] << " "<< offsets_avg[i] <<endl;
+      // cout << i << " " << sol_i.Size() << " " << avgs_i.Size() << " " << offsets[i] << " "<< offsets_avg[i] <<endl;
       sol_i.GetElementAverages(avgs_i);
-      cout << "OK" << endl;
+      // cout << "OK" << endl;
    }
 
    avgs->ExchangeFaceNbrData();

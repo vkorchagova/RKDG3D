@@ -125,7 +125,7 @@ void UpdateAndRebalance(
 
     if (pmesh.Nonconforming())
     {
-        cout << "if (pmesh.Nonconforming())" << endl;
+        // cout << "if (pmesh.Nonconforming())" << endl;
         // Load balance the mesh.
         pmesh.Rebalance();
 
@@ -153,7 +153,7 @@ void UpdateAndRebalance(
         // EInd.Update();
         avgr.updateSolutions();
 
-        cout << " end Nonconforming()" << endl;
+        // cout << " end Nonconforming()" << endl;
     } 
 
     // Compute new offsets
@@ -196,7 +196,7 @@ void UpdateAndRebalance(
 
    avgr.updateFinished();
 
-   cout << "UpdateAndRebalance OK" << endl;
+   // cout << "UpdateAndRebalance OK" << endl;
 }
 
 
@@ -494,13 +494,13 @@ int main(int argc, char *argv[])
 
         for (int ref_it = 1; ref_it <= max_ref_it; ref_it++)
         {
-            cout << "--- REF ITER #" << ref_it << endl;
-            cout << "... perform tstep ..." << endl;
+            // cout << "--- REF ITER #" << ref_it << endl;
+            // cout << "... perform tstep ..." << endl;
             // sol.Print(cout);
 
             ode_solver->Step(sol, t, dt_real);
 
-            cout << "... after tstep (elements num = " << pmesh->GetNE() << ")" << endl;
+            // cout << "... after tstep (elements num = " << pmesh->GetNE() << ")" << endl;
             // sol.Print(cout);
 
             // cout << "VIS" << endl;
@@ -513,18 +513,8 @@ int main(int argc, char *argv[])
             {
                 refiner->Apply(*pmesh);
 
-                cout << "... after ref (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")" << endl;
+                // cout << "... after ref (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")" << endl;
                 // sol.Print(cout);
-
-                if (refiner->Stop() || ref_it == max_ref_it)
-                {
-                    // Aflux.Update(); // Free the assembled data
-                    // A.Update();
-                    cout << "... stop refiner" << endl;
-                    break;
-                }
-
-
 
                 // 22. Update the space, interpolate the solution, rebalance the mesh.
                 UpdateAndRebalance(
@@ -553,64 +543,73 @@ int main(int argc, char *argv[])
                     avgr
                 );
 
-                cout << "... after rebalance " << vfes.GlobalTrueVSize() << endl;
+                // cout << "... after rebalance " << vfes.GlobalTrueVSize() << endl;
                 // sol.Print(cout);
 
                 euler.UpdateAfluxPointer(&(Aflux.SpMat()));
                 euler.UpdateInverseMassMatrix();
 
+                // sol.Print(cout);
+
+                if (refiner->Stop() || ref_it == max_ref_it)
+                {
+                    // Aflux.Update(); // Free the assembled data
+                    // A.Update();
+                    // cout << "... stop refiner" << endl;
+                    break;
+                }
+
                 // load to sol old solution again just to make the same time step
                 sol = sol_old;
-                cout << "... after sol = sol_old " << endl; 
-                // sol.Print(cout);
+                // cout << "... after sol = sol_old " << endl; 
             }
         }
-        cout << "... before deref" << endl;
+        // cout << "... before deref" << endl;
         if (manager.is_adaptive())
         {
-            // if (derefiner->Apply(*pmesh))
-            // {
-            //     if (myRank == 0)
-            //     {
-            //         cout << "\nDerefined elements." << endl;
-            //         cout << "... after deref (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")" << endl;
-            //     }
+            if (derefiner->Apply(*pmesh))
+            {
+                if (myRank == 0)
+                {
+                    // cout << "\nDerefined elements." << endl;
+                    cout << "... after deref (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")" << endl;
+                }
 
-            //     // 24. Update the space and the solution, rebalance the mesh.
-            //     UpdateAndRebalance(
-            //         *pmesh, 
-            //         fes, 
-            //         dfes, 
-            //         vfes, 
-            //         fes_const, 
-            //         sol, 
-            //         sol_old, 
-            //         Aflux, 
-            //         A, 
-            //         rhok, 
-            //         mom, 
-            //         energy, 
-            //         rhoInd, 
-            //         rhoUInd, 
-            //         rhoVInd, 
-            //         rhoWInd, 
-            //         EInd,
-            //         u_block,
-            //         u_block_old,
-            //         indicatorData,
-            //         offsets,
-            //         offsets_const,
-            //         avgr
-            //     );
+                // 24. Update the space and the solution, rebalance the mesh.
+                UpdateAndRebalance(
+                    *pmesh, 
+                    fes, 
+                    dfes, 
+                    vfes, 
+                    fes_const, 
+                    sol, 
+                    sol_old, 
+                    Aflux, 
+                    A, 
+                    rhok, 
+                    mom, 
+                    energy, 
+                    rhoInd, 
+                    rhoUInd, 
+                    rhoVInd, 
+                    rhoWInd, 
+                    EInd,
+                    u_block,
+                    u_block_old,
+                    indicatorData,
+                    offsets,
+                    offsets_const,
+                    avgr
+                );
 
-            //     cout << "after second basic rebalance" << endl;
+                // cout << "after second basic rebalance" << endl;
 
-            //     euler.UpdateAfluxPointer(&(Aflux.SpMat()));
-            //     euler.UpdateInverseMassMatrix();
+                euler.UpdateAfluxPointer(&(Aflux.SpMat()));
+                euler.UpdateInverseMassMatrix();
 
-            //     cout << "after second rebalance" << endl;
-            //     // sol.Print(cout);
-            // }
+                // cout << "after second rebalance" << endl;
+                // sol.Print(cout);
+            }
 
             UpdateAndRebalance(
                     *pmesh, 
@@ -637,7 +636,7 @@ int main(int argc, char *argv[])
                     offsets_const,
                     avgr
                 );
-            cout << "after last basic rebalance" << endl;           
+            // cout << "after last basic rebalance" << endl;           
             euler.UpdateAfluxPointer(&(Aflux.SpMat()));
             euler.UpdateInverseMassMatrix(); 
             cout << "after last rebalance (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")"  << endl;
