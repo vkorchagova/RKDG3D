@@ -131,16 +131,12 @@ public:
     velX2(sol2_[1]),
     velY2(sol2_[2]),
     velZ2(sol2_.Size() == 5 ? sol2_[3] : 0.0),
-    pres2(sol2_[num_equation-1])
+    pres2(sol2_[num_equation-1]),
+    origin(origin_),
+    normal(normal_)
     {
         // origin = origin_;
         // normal = normal_;
-        origin.SetSize(2);
-        origin[0] = 0.5;
-        origin[1] = 0.0;
-        normal.SetSize(2);
-        normal[0] = 1.0;
-        normal[1] = 0.0;
         // origin(origin_.GetData(),origin_.Size()),
         // normal(normal_.GetData(),normal_.Size())
     };
@@ -221,6 +217,127 @@ public:
         return F;
     }
 };
+
+
+
+class ICSphericalBreakup : public IC
+{
+    Vector origin;
+    double rSquared;
+
+    double den1;
+    double velX1;
+    double velY1;
+    double velZ1;
+    double pres1;
+
+    double den2;
+    double velX2;
+    double velY2;
+    double velZ2;
+    double pres2;
+
+public:
+
+    ICSphericalBreakup(const Vector& sol1_, const Vector& sol2_,const Vector& origin_, const double radius_) 
+     : 
+    IC(),
+    den1(sol1_[0]),
+    velX1(sol1_[1]),
+    velY1(sol1_[2]),
+    velZ1(sol1_.Size() == 5 ? sol1_[3] : 0.0),
+    pres1(sol1_[num_equation-1]),
+    den2(sol2_[0]),
+    velX2(sol2_[1]),
+    velY2(sol2_[2]),
+    velZ2(sol2_.Size() == 5 ? sol2_[3] : 0.0),
+    pres2(sol2_[num_equation-1]),
+    origin(origin_),
+    rSquared(radius_*radius_)
+    {
+        // origin = origin_;
+        // normal = normal_;
+        // origin(origin_.GetData(),origin_.Size()),
+        // normal(normal_.GetData(),normal_.Size())
+    };
+    
+    ~ICSphericalBreakup() {};
+
+    double sphere(const Vector& x)
+    {
+        const int dim = x.Size();
+        if (dim == 2)
+            return (x[0] - origin[0])*(x[0] - origin[0]) + \
+                    (x[1] - origin[1])*(x[1] - origin[1]) - rSquared;
+        else if (dim == 3)
+            return (x[0] - origin[0])*(x[0] - origin[0]) + \
+                   (x[1] - origin[1])*(x[1] - origin[1]) + \
+                   (x[2] - origin[2])*(x[2] - origin[2]) - rSquared;
+        else
+        {
+            cout << "Wrong dimension inside planeBreakup" << endl;
+            exit(1);
+        }
+    }
+
+    virtual std::function<void(const Vector &, Vector &)> setIC() override
+    {
+        initRho = [=](const Vector& x) 
+        { 
+            return sphere(x) < 0 ? den1 : den2; 
+        };
+        initP   = [=](const Vector& x) 
+        { 
+            return sphere(x) < 0 ? pres1 : pres2;  
+        };
+        initU   = [=](const Vector& x) 
+        { 
+            return sphere(x) < 0 ? velX1 : velX2; 
+        };
+        initV   = [=](const Vector& x) 
+        { 
+            return sphere(x) < 0 ? velY1 : velY2; 
+        };
+        initW   = [=](const Vector& x) 
+        { 
+            return sphere(x) < 0 ? velZ1 : velZ2; 
+        };
+
+        std::function<void(const Vector &, Vector &)> F = \
+            [=](const Vector &x, Vector &y)
+            {
+                const int dim = x.Size();
+                if (dim == 2)
+                {
+                    y(0) = initRho(x);
+                    y(1) = initRho(x)*initU(x);
+                    y(2) = initRho(x)*initV(x);
+                    y(3) = ComputeEnergy(
+                        initRho(x), 
+                        initU(x), 
+                        initV(x), 
+                        0.0, 
+                        initP(x));
+                }
+                else if (dim == 3)
+                {
+                    y(0) = initRho(x);
+                    y(1) = initRho(x)*initU(x);
+                    y(2) = initRho(x)*initV(x);
+                    y(3) = initRho(x)*initW(x);
+                    y(4) = ComputeEnergy(
+                        initRho(x), 
+                        initU(x), 
+                        initV(x), 
+                        initW(x), 
+                        initP(x));
+                }
+            };
+    
+        return F;
+    }
+};
+
 
 // // Initial condition
 // void setInitialConditions(const Vector &x, Vector &y)

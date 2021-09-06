@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.1)
 
-#set(CMAKE_C_COMPILER "/unicluster/opt/gcc/8/bin/gcc")
-#set(CMAKE_CXX_COMPILER "/unicluster/opt/gcc/8/bin/g++")
+set(CMAKE_C_COMPILER "/unicluster/opt/gcc/8/bin/gcc")
+set(CMAKE_CXX_COMPILER "/unicluster/opt/gcc/8/bin/g++")
 
 project(compressibleEulerDGMFEM)
 
@@ -29,15 +29,15 @@ ENDMACRO()
 SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 ### CXX flags
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -g -O0")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -g")
 
 ### include hypre & metis libs for parallel computing
 set(HYPRE_DIR "$ENV{HOME}/software/hypre/src/hypre/include")
-set(METIS_DIR "$ENV{HOME}/software/metis-5.1.0")
+set(METIS_DIR "$ENV{HOME}/software/metis-4.0.3")
 
 message(STATUS "HYPRE dir: ${HYPRE_DIR}")
 message(STATUS "METIS dir: ${METIS_DIR}")
-find_library(LIB_METIS REQUIRED NAMES METIS metis metis.a HINTS "${METIS_DIR}/lib")
+find_library(LIB_METIS REQUIRED NAMES METIS metis metis.a HINTS "${METIS_DIR}")
 message(STATUS "METIS lib file: ${LIB_METIS}")
 
 
@@ -60,11 +60,10 @@ find_package(MPI REQUIRED)
 include_directories(${MPI_INCLUDE_PATH})
 message(STATUS "MPI libs: ${MPI_CXX_LIBRARIES} ")
 message(STATUS "MPI incs: ${MPI_INCLUDE_PATH} ")
-
 ### find yaml lib for case interface
-include_directories($ENV{HOME}/software/ryml-src-0.2.0/build/usr/local/include)
-#find_package(ryml REQUIRED)
+include_directories($ENV{HOME}/software/rapidyaml-0.1.0/build/include)
+find_package(ryml REQUIRED)
 
 ### complete linking
 add_executable(${PROJECT_NAME} ${ALLFILES})
-target_link_libraries(${PROJECT_NAME} $ENV{HOME}/software/ryml-src-0.2.0/build/usr/local/lib/libryml.a ${LIB_MFEM} -L${HYPRE_DIR}/../lib -lHYPRE   -lrt ${MPI_LIBRARIES} ${LIB_METIS} -lstdc++fs)
+target_link_libraries(${PROJECT_NAME} $ENV{HOME}/software/rapidyaml-0.1.0/build/lib/libryml.a ${LIB_MFEM} -L${HYPRE_DIR}/../lib -lHYPRE   -lrt ${MPI_LIBRARIES} ${LIB_METIS} -lstdc++fs)

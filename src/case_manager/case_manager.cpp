@@ -120,6 +120,37 @@ void CaseManager::parse(std::string& caseFileName)
 
         ICInterface = new ICPlaneBreakup(sol1, sol2, origin, normal);
     }
+    else if (icType == "sphericalBreakup")
+    {
+        Vector sol1(num_equation);
+        Vector sol2(num_equation);
+        double radius = 0.0;
+
+        c4::from_chars((*settings)["internalField"]["origin"][0].val(), &origin[0]);
+        c4::from_chars((*settings)["internalField"]["origin"][1].val(), &origin[1]);
+        c4::from_chars((*settings)["internalField"]["origin"][2].val(), &origin[2]);
+        c4::from_chars((*settings)["internalField"]["radius"].val(), &radius);
+
+        c4::from_chars((*settings)["internalField"]["left"]["rho"].val(), &sol1[0]);
+        c4::from_chars((*settings)["internalField"]["left"]["U"][0].val(), &sol1[1]);
+        c4::from_chars((*settings)["internalField"]["left"]["U"][1].val(), &sol1[2]);
+        c4::from_chars((*settings)["internalField"]["left"]["U"][2].val(), &sol1[3]);
+        c4::from_chars((*settings)["internalField"]["left"]["p"].val(), &sol1[num_equation-1]);
+
+        c4::from_chars((*settings)["internalField"]["right"]["rho"].val(), &sol2[0]);
+        c4::from_chars((*settings)["internalField"]["right"]["U"][0].val(), &sol2[1]);
+        c4::from_chars((*settings)["internalField"]["right"]["U"][1].val(), &sol2[2]);
+        c4::from_chars((*settings)["internalField"]["right"]["U"][2].val(), &sol2[3]);
+        c4::from_chars((*settings)["internalField"]["right"]["p"].val(), &sol2[num_equation-1]);
+
+        ICInterface = new ICSphericalBreakup(sol1, sol2, origin, radius);
+    }
+    else
+    {
+        cout << "Wrong type if initial condition" << endl
+             << "Available types: "
+             << "constant, planeBreakup, sphericalBreakup" << endl;
+    }
 
     cout << "Initial conditions OK" << endl;
 }
