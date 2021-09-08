@@ -280,9 +280,6 @@ int main(int argc, char *argv[])
     BlockVector u_block(sol, offsets);
     ParGridFunction sol_old(&vfes);
     BlockVector u_block_old(sol_old, offsets);
-    
-
-    manager.loadInitialSolution(vfes, offsets, u_block, sol);
 
 
     // 5. Set up the nonlinear form corresponding to the DG discretization of the
@@ -321,17 +318,6 @@ int main(int argc, char *argv[])
     Indicator *ind = NULL;
     Limiter *l = NULL;
     manager.loadLimiter(avgr,ind,l,offsets,dim,indicatorData,vfes);
-
-    // 7.3. LIMIT INITIAL CONDITIONS
-    pmesh->ExchangeFaceNbrData(); 
-    sol.ExchangeFaceNbrData();
-
-    l->update(sol);
-
-    //sol_old = sol;
-
-    if (myRank == 0) cout << "limit sol OK\n";
-
 
     // 8. Define the ODE solver used for time integration. Several explicit
     //     Runge-Kutta methods are available.
@@ -389,25 +375,6 @@ int main(int argc, char *argv[])
     //     rhoWInd.MakeRef(&fes_const, indicatorData, offsets_const[3]);
     // EInd.MakeRef(&fes_const, indicatorData, offsets_const[dim+1]);
 
-    ParaViewDataCollection *pd = NULL;
-    if (paraview)
-    {
-        pd = new ParaViewDataCollection("PV", pmesh);
-        pd->RegisterField("mom", &mom);
-        pd->RegisterField("rho", &rhok);
-        pd->RegisterField("energy", &energy);
-        // pd->RegisterField("rhoInd", &rhoInd);
-        // pd->RegisterField("rhoUInd", &rhoUInd);
-        // pd->RegisterField("rhoVInd", &rhoVInd);
-        // if (dim == 3) pd->RegisterField("rhoWInd", &rhoWInd);
-        // pd->RegisterField("EInd", &EInd);
-
-        pd->SetLevelsOfDetail(1);
-        pd->SetCycle(0);
-        pd->SetTime(0.0);
-        pd->Save();
-    }
-
 
     //////// TRYING TO RUN DYNAMIC MESH REFINEMENT
     DG_FECollection flux_fec(order, dim);
@@ -427,6 +394,193 @@ int main(int argc, char *argv[])
     }
 
     ////////
+
+    // 7.3. LIMIT INITIAL CONDITIONs
+
+    if (myRank == 0) cout << "limit sol OK\n";
+
+    if (manager.is_adaptive())
+    {
+        refiner->Reset();
+        derefiner->Reset();
+    }
+
+        // cout << "=== before ref iters === \n" << endl;
+
+    for (int ref_it = 1; ; ref_it++)
+    {
+            // cout << "--- REF ITER #" << ref_it << endl;
+            // cout << "... perform tstep ..." << endl;
+            // sol.Print(cout);
+
+        manager.loadInitialSolution(vfes, offsets, u_block, sol);
+        pmesh->ExchangeFaceNbrData(); 
+        sol.ExchangeFaceNbrData();
+
+        l->update(sol);
+
+            // cout << "... after tstep (elements num = " << pmesh->GetNE() << ")" << endl;
+            // sol.Print(cout);
+
+            // cout << "VIS" << endl;
+            // rhok.Print(cout);
+
+            // cout << "ublock[0]" << endl;
+            // u_block.GetBlock(0).Print(cout);
+
+        if (manager.is_adaptive())
+        {
+            refiner->Apply(*pmesh);
+
+            // cout << "... after ref (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")" << endl;
+            // sol.Print(cout);
+
+            // 22. Update the space, interpolate the solution, rebalance the mesh.
+            UpdateAndRebalance(
+                *pmesh, 
+                fes, 
+                dfes, 
+                vfes, 
+                fes_const, 
+                sol, 
+                sol_old, 
+                Aflux, 
+                A, 
+                rhok, 
+                mom, 
+                energy, 
+                rhoInd, 
+                rhoUInd, 
+                rhoVInd, 
+                rhoWInd, 
+                EInd,
+                u_block,
+                u_block_old,
+                indicatorData,
+                offsets,
+                offsets_const,
+                avgr
+            );
+
+            // cout << "... after rebalance " << vfes.GlobalTrueVSize() << endl;
+            // sol.Print(cout);
+
+            euler.UpdateAfluxPointer(&(Aflux.SpMat()));
+            euler.UpdateInverseMassMatrix();
+
+            // sol.Print(cout);
+
+            if (refiner->Stop())
+            {
+                break;
+            }
+            // cout << "... after sol = sol_old " << endl; 
+        }
+        else
+        {
+            break;
+        }
+    }
+        // cout << "... before deref" << endl;
+    if (manager.is_adaptive())
+    {
+        if (derefiner->Apply(*pmesh))
+        {
+            if (myRank == 0)
+            {
+                // cout << "\nDerefined elements." << endl;
+                cout << "... after deref (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")" << endl;
+            }
+
+            // 24. Update the space and the solution, rebalance the mesh.
+            UpdateAndRebalance(
+                *pmesh, 
+                fes, 
+                dfes, 
+                vfes, 
+                fes_const, 
+                sol, 
+                sol_old, 
+                Aflux, 
+                A, 
+                rhok, 
+                mom, 
+                energy, 
+                rhoInd, 
+                rhoUInd, 
+                rhoVInd, 
+                rhoWInd, 
+                EInd,
+                u_block,
+                u_block_old,
+                indicatorData,
+                offsets,
+                offsets_const,
+                avgr
+            );
+
+            // cout << "after second basic rebalance" << endl;
+
+            euler.UpdateAfluxPointer(&(Aflux.SpMat()));
+            euler.UpdateInverseMassMatrix();
+
+            // cout << "after second rebalance" << endl;
+            // sol.Print(cout);
+        }
+
+        // UpdateAndRebalance(
+        //         *pmesh, 
+        //         fes, 
+        //         dfes, 
+        //         vfes, 
+        //         fes_const, 
+        //         sol, 
+        //         sol_old, 
+        //         Aflux, 
+        //         A, 
+        //         rhok, 
+        //         mom, 
+        //         energy, 
+        //         rhoInd, 
+        //         rhoUInd, 
+        //         rhoVInd, 
+        //         rhoWInd, 
+        //         EInd,
+        //         u_block,
+        //         u_block_old,
+        //         indicatorData,
+        //         offsets,
+        //         offsets_const,
+        //         avgr
+        //     );
+        // // cout << "after last basic rebalance" << endl;           
+        // euler.UpdateAfluxPointer(&(Aflux.SpMat()));
+        // euler.UpdateInverseMassMatrix(); 
+        cout << "after last rebalance (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")"  << endl;
+    } // end adaptive mesh
+
+    l->update(sol);
+
+
+
+    ParaViewDataCollection *pd = NULL;
+    if (paraview)
+    {
+        pd = new ParaViewDataCollection("PV", pmesh);
+        pd->RegisterField("mom", &mom);
+        pd->RegisterField("rho", &rhok);
+        pd->RegisterField("energy", &energy);
+        // pd->RegisterField("rhoInd", &rhoInd);
+        // pd->RegisterField("rhoUInd", &rhoUInd);
+        // pd->RegisterField("rhoVInd", &rhoVInd);
+        // if (dim == 3) pd->RegisterField("rhoWInd", &rhoWInd);
+        // pd->RegisterField("EInd", &EInd);
+
+        pd->SetLevelsOfDetail(1);
+        pd->SetCycle(0);
+        pd->SetTime(0.0);
+        pd->Save();
+    }
 
 
     // 11. Initialize restart queue for control of number of saved frames
@@ -563,6 +717,10 @@ int main(int argc, char *argv[])
                 sol = sol_old;
                 // cout << "... after sol = sol_old " << endl; 
             }
+            else
+            {
+                break;
+            }
         }
         // cout << "... before deref" << endl;
         if (manager.is_adaptive())
@@ -611,34 +769,34 @@ int main(int argc, char *argv[])
                 // sol.Print(cout);
             }
 
-            UpdateAndRebalance(
-                    *pmesh, 
-                    fes, 
-                    dfes, 
-                    vfes, 
-                    fes_const, 
-                    sol, 
-                    sol_old, 
-                    Aflux, 
-                    A, 
-                    rhok, 
-                    mom, 
-                    energy, 
-                    rhoInd, 
-                    rhoUInd, 
-                    rhoVInd, 
-                    rhoWInd, 
-                    EInd,
-                    u_block,
-                    u_block_old,
-                    indicatorData,
-                    offsets,
-                    offsets_const,
-                    avgr
-                );
-            // cout << "after last basic rebalance" << endl;           
-            euler.UpdateAfluxPointer(&(Aflux.SpMat()));
-            euler.UpdateInverseMassMatrix(); 
+            // UpdateAndRebalance(
+            //         *pmesh, 
+            //         fes, 
+            //         dfes, 
+            //         vfes, 
+            //         fes_const, 
+            //         sol, 
+            //         sol_old, 
+            //         Aflux, 
+            //         A, 
+            //         rhok, 
+            //         mom, 
+            //         energy, 
+            //         rhoInd, 
+            //         rhoUInd, 
+            //         rhoVInd, 
+            //         rhoWInd, 
+            //         EInd,
+            //         u_block,
+            //         u_block_old,
+            //         indicatorData,
+            //         offsets,
+            //         offsets_const,
+            //         avgr
+            //     );
+            // // cout << "after last basic rebalance" << endl;           
+            // euler.UpdateAfluxPointer(&(Aflux.SpMat()));
+            // euler.UpdateInverseMassMatrix(); 
             cout << "after last rebalance (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")"  << endl;
             //     sol.Print(cout);
 
