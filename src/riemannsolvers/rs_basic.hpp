@@ -8,6 +8,8 @@ using namespace mfem;
 
 extern int num_equation;
 
+extern int myRank;
+
 ///
 /// Abstract class for Riemann solvers
 ///

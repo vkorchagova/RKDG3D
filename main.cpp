@@ -77,51 +77,32 @@ void UpdateAndRebalance(
     Averager& avgr
 )
 {
-    // x_old.SetFromTrueDofs(u_block_old);
-    // x.SetFromTrueDofs(u_block);
-    // rhok.SetFromTrueDofs(u_block.GetBlock(0));
-    // mom.SetFromTrueDofs(u_block.GetBlock(1));
-    // energy.SetFromTrueDofs(u_block.GetBlock(num_equation-1));
-
-    // cout << "IN Update 1 x = " << endl;
-    // x.Print(cout);
-
     // Update the space: recalculate the number of DOFs and construct a matrix
     // that will adjust any GridFunctions to the new mesh state.
     
     fes.Update(); //false in ()
     dfes.Update();
     vfes.Update();
-    
     fes_const.Update();
-
     avgr.updateSpaces();
 
     // Interpolate the solution on the new mesh by applying the transformation
     // matrix computed in the finite element space. Multiple GridFunctions could
     // be updated here.
-    // x_old.Update();
     x.Update();
+    // Compute new offsets
+    for (int k = 0; k <= num_equation; k++) 
+        offsets[k] = k * vfes.GetNDofs();
+    for (int k = 0; k <= num_equation; k++) 
+        offsets_const[k] = k * fes_const.GetNDofs();
+
+    u_block.Update(x,offsets);
+    u_ind.Update(offsets_const);
+
+    rhok.MakeRef(&fes,x,offsets[0]);
+    mom.MakeRef(&dfes,x,offsets[1]);
+    energy.MakeRef(&fes,x,offsets[num_equation-1]);
     avgr.updateSolutions();
-
-
-    // cout << "IN Update 2 x = " << endl;
-    // x.Print(cout);
-   
-    // rhok.Update();
-    // mom.Update();
-    // energy.Update();
-
-    // rhoInd.Update();
-    // rhoUInd.Update();
-    // rhoVInd.Update();
-    
-    // if (num_equation == 5) 
-    //     rhoWInd.Update();
-    // EInd.Update(); 
-
-      
-
 
     if (pmesh.Nonconforming())
     {
@@ -137,66 +118,39 @@ void UpdateAndRebalance(
         fes_const.Update();
         avgr.updateSpaces();
 
-        // x_old.Update();
         x.Update();
         
-        rhok.Update();
-        mom.Update();
-        energy.Update();
+        // Compute new offsets
+        for (int k = 0; k <= num_equation; k++) 
+            offsets[k] = k * vfes.GetNDofs();
+        for (int k = 0; k <= num_equation; k++) 
+            offsets_const[k] = k * fes_const.GetNDofs();
 
-        // rhoInd.Update();
-        // rhoUInd.Update();
-        // rhoVInd.Update();
-        
-        // if (num_equation == 5) 
-        //     rhoWInd.Update();
-        // EInd.Update();
+        u_block.Update(x,offsets);
+        u_ind.Update(offsets_const);
+
+        rhok.MakeRef(&fes,x,offsets[0]);
+        mom.MakeRef(&dfes,x,offsets[1]);
+        energy.MakeRef(&fes,x,offsets[num_equation-1]);
+
         avgr.updateSolutions();
 
         // cout << " end Nonconforming()" << endl;
     } 
 
-    // Compute new offsets
-    for (int k = 0; k <= num_equation; k++) 
-        offsets[k] = k * vfes.GetNDofs();
-    for (int k = 0; k <= num_equation; k++) 
-        offsets_const[k] = k * fes_const.GetNDofs();
-
-    u_block.Update(x,offsets);
-    u_ind.Update(offsets_const);
-    // u_block_old.Update(offsets);
-
-    // cout << "IN Update 3 u_block = " << endl;
-    // u_block.Print(cout);
-
-    rhok.MakeRef(&fes,x,offsets[0]);
-    mom.MakeRef(&dfes,x,offsets[1]);
-    energy.MakeRef(&fes,x,offsets[num_equation-1]);
-
-    // rhok.GetTrueDofs(u_block.GetBlock(0));
-    // mom.GetTrueDofs(u_block.GetBlock(1));
-    // energy.GetTrueDofs(u_block.GetBlock(num_equation-1));
-
-    // // x_old.GetTrueDofs(u_block_old);
-    // x.GetTrueDofs(u_block);
-
-    // cout << "IN Update 4 x = " << endl;
-    // x.Print(cout);
-
     // Inform the nonlinear and bilinear forms that the space has changed.
-   a.Update();
-   b.Update();
-   a.Assemble();
+    a.Update();
+    b.Update();
+    a.Assemble();
 
-   // Free any transformation matrices to save memory.
-   fes.UpdatesFinished();
-   dfes.UpdatesFinished();
-   vfes.UpdatesFinished();
-   fes_const.UpdatesFinished();
+    // Free any transformation matrices to save memory.
+    fes.UpdatesFinished();
+    dfes.UpdatesFinished();
+    vfes.UpdatesFinished();
+    fes_const.UpdatesFinished();
+    avgr.updateFinished();
 
-   avgr.updateFinished();
-
-   // cout << "UpdateAndRebalance OK" << endl;
+    // cout << "UpdateAndRebalance OK" << endl;
 }
 
 
@@ -322,7 +276,6 @@ int main(int argc, char *argv[])
     // 8. Define the ODE solver used for time integration. Several explicit
     //     Runge-Kutta methods are available.
 
-
     ODESolver *ode_solver = NULL;
     manager.loadTimeSolver(ode_solver, l);
     manager.loadTimeSettings(t_final, dt, cfl);
@@ -376,10 +329,11 @@ int main(int argc, char *argv[])
     // EInd.MakeRef(&fes_const, indicatorData, offsets_const[dim+1]);
 
 
-    //////// TRYING TO RUN DYNAMIC MESH REFINEMENT
+    // 11. Initialize spaces and objects for dynamic mesh refinement
+
     DG_FECollection flux_fec(order, dim);
     RT_FECollection smooth_flux_fec(order-1, dim);
-    auto flux_fes = &fes;//new ParFiniteElementSpace(pmesh, &flux_fec, sdim);
+    auto flux_fes = &fes;
     auto smooth_flux_fes = new ParFiniteElementSpace(pmesh, &smooth_flux_fec);
     ErrorEstimator* estimator = 0;
     ThresholdRefiner* refiner = 0;
@@ -393,9 +347,7 @@ int main(int argc, char *argv[])
         manager.loadAdaptiveMeshSettings(*refiner,*derefiner);
     }
 
-    ////////
-
-    // 7.3. LIMIT INITIAL CONDITIONs
+    // 12. Limit initial conditions and refine mesh accordingly to them
 
     if (myRank == 0) cout << "limit sol OK\n";
 
@@ -405,37 +357,19 @@ int main(int argc, char *argv[])
         derefiner->Reset();
     }
 
-        // cout << "=== before ref iters === \n" << endl;
-
     for (int ref_it = 1; ; ref_it++)
     {
-            // cout << "--- REF ITER #" << ref_it << endl;
-            // cout << "... perform tstep ..." << endl;
-            // sol.Print(cout);
-
         manager.loadInitialSolution(vfes, offsets, u_block, sol);
         pmesh->ExchangeFaceNbrData(); 
         sol.ExchangeFaceNbrData();
 
         l->update(sol);
 
-            // cout << "... after tstep (elements num = " << pmesh->GetNE() << ")" << endl;
-            // sol.Print(cout);
-
-            // cout << "VIS" << endl;
-            // rhok.Print(cout);
-
-            // cout << "ublock[0]" << endl;
-            // u_block.GetBlock(0).Print(cout);
-
         if (manager.is_adaptive())
         {
             refiner->Apply(*pmesh);
 
-            // cout << "... after ref (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")" << endl;
-            // sol.Print(cout);
-
-            // 22. Update the space, interpolate the solution, rebalance the mesh.
+            // Update the space, interpolate the solution, rebalance the mesh.
             UpdateAndRebalance(
                 *pmesh, 
                 fes, 
@@ -468,13 +402,10 @@ int main(int argc, char *argv[])
             euler.UpdateAfluxPointer(&(Aflux.SpMat()));
             euler.UpdateInverseMassMatrix();
 
-            // sol.Print(cout);
-
             if (refiner->Stop())
             {
                 break;
             }
-            // cout << "... after sol = sol_old " << endl; 
         }
         else
         {
@@ -489,7 +420,8 @@ int main(int argc, char *argv[])
             if (myRank == 0)
             {
                 // cout << "\nDerefined elements." << endl;
-                cout << "... after deref (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")" << endl;
+                cout << "... after deref (elements num = "<< pmesh->GetNE() << ";" << vfes.TrueVSize() << ";"
+                     << vfes.GlobalTrueVSize() << ")" << endl;
             }
 
             // 24. Update the space and the solution, rebalance the mesh.
@@ -528,41 +460,24 @@ int main(int argc, char *argv[])
             // sol.Print(cout);
         }
 
-        // UpdateAndRebalance(
-        //         *pmesh, 
-        //         fes, 
-        //         dfes, 
-        //         vfes, 
-        //         fes_const, 
-        //         sol, 
-        //         sol_old, 
-        //         Aflux, 
-        //         A, 
-        //         rhok, 
-        //         mom, 
-        //         energy, 
-        //         rhoInd, 
-        //         rhoUInd, 
-        //         rhoVInd, 
-        //         rhoWInd, 
-        //         EInd,
-        //         u_block,
-        //         u_block_old,
-        //         indicatorData,
-        //         offsets,
-        //         offsets_const,
-        //         avgr
-        //     );
-        // // cout << "after last basic rebalance" << endl;           
-        // euler.UpdateAfluxPointer(&(Aflux.SpMat()));
-        // euler.UpdateInverseMassMatrix(); 
-        cout << "after last rebalance (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")"  << endl;
+        pmesh->ExchangeFaceNbrData(); 
+        sol.ExchangeFaceNbrData();
+
+        l->update(sol);
+
+        pmesh->ExchangeFaceNbrData(); 
+        sol.ExchangeFaceNbrData();
+
+        cout << "after last rebalance (elements num = "
+             << pmesh->GetNE() << ";" 
+             << vfes.TrueVSize() << ";"
+             << vfes.GlobalTrueVSize() << ")"  << endl;
     } // end adaptive mesh
 
-    l->update(sol);
+    
 
 
-
+    // 13. Initialize data collection for ParaView
     ParaViewDataCollection *pd = NULL;
     if (paraview)
     {
@@ -583,11 +498,11 @@ int main(int argc, char *argv[])
     }
 
 
-    // 11. Initialize restart queue for control of number of saved frames
+    // 14. Initialize restart queue for control of number of saved frames
     manager.initializeRestartQueue();
 
     
-    // 12. Start the timer.
+    // 15. Start the timer.
     
     tic_toc.Clear();
     tic_toc.Start();
@@ -622,15 +537,18 @@ int main(int argc, char *argv[])
         dt = restart_dc.GetTimeStep();
     }
 
+    restart_dc.SetCycle(0);
+    restart_dc.SetTime(0);
+    restart_dc.SetTimeStep(dt);
+    restart_dc.Save();
 
-    // 13. Integrate in time.
+
+    // 16. Integrate in time.
 
     if (myRank == 0) cout << "START TIME CYCLE" << endl;
 
     bool done = false;
     double t_real = 0.0;
-
-    // sol_old = sol;
 
     for (int ti = manager.setStartTimeCycle(); !done; )
     {
@@ -646,16 +564,15 @@ int main(int argc, char *argv[])
 
         // cout << "=== before ref iters === \n" << endl;
 
-        for (int ref_it = 1; ref_it <= max_ref_it; ref_it++)
+        for (int ref_it = 1; ref_it <= 1; ref_it++)
         {
             // cout << "--- REF ITER #" << ref_it << endl;
-            // cout << "... perform tstep ..." << endl;
-            // sol.Print(cout);
+            // cout << "... perform tstep for rank = " << myRank << "; (elements num = " << pmesh->GetNE() << ")" << endl;
+
 
             ode_solver->Step(sol, t, dt_real);
-
-            // cout << "... after tstep (elements num = " << pmesh->GetNE() << ")" << endl;
-            // sol.Print(cout);
+            pmesh->ExchangeFaceNbrData(); 
+            sol.ExchangeFaceNbrData();
 
             // cout << "VIS" << endl;
             // rhok.Print(cout);
@@ -769,37 +686,11 @@ int main(int argc, char *argv[])
                 // sol.Print(cout);
             }
 
-            // UpdateAndRebalance(
-            //         *pmesh, 
-            //         fes, 
-            //         dfes, 
-            //         vfes, 
-            //         fes_const, 
-            //         sol, 
-            //         sol_old, 
-            //         Aflux, 
-            //         A, 
-            //         rhok, 
-            //         mom, 
-            //         energy, 
-            //         rhoInd, 
-            //         rhoUInd, 
-            //         rhoVInd, 
-            //         rhoWInd, 
-            //         EInd,
-            //         u_block,
-            //         u_block_old,
-            //         indicatorData,
-            //         offsets,
-            //         offsets_const,
-            //         avgr
-            //     );
-            // // cout << "after last basic rebalance" << endl;           
-            // euler.UpdateAfluxPointer(&(Aflux.SpMat()));
-            // euler.UpdateInverseMassMatrix(); 
-            cout << "after last rebalance (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")"  << endl;
-            //     sol.Print(cout);
-
+            
+            cout << "after last rebalance (elements num = "
+             << pmesh->GetNE() << ";" 
+             << vfes.TrueVSize() << ";"
+             << vfes.GlobalTrueVSize() << ")"  << endl;
 
             // sol_old just for making steps in refinement
             sol_old = sol;

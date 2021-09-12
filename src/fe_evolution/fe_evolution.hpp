@@ -17,6 +17,9 @@ extern double specific_heat_ratio;
 extern const double gas_constant;
 extern double covolume_constant;
 
+/// Proc rank 
+extern int myRank;
+
 ///
 /// Time-dependent operator for the right-hand side of the ODE representing the
 /// DG weak form

@@ -68,21 +68,6 @@ protected:
    /// Offsets to deal with variables component-by-component
    const Array<int>& offsets;
 
-
-   // /// Finite element space for average values
-   // ParFiniteElementSpace *fes_avg;
-   // DG_FECollection* fec_avg;
-
-   // /// Mean values of solution in all cells
-   // /// for high order vals
-   // ParGridFunction* avgs;
-   // BlockVector* u_block_avg;
-   
-
-   // /// Offsets for looping through average values
-   // Array<int> offsets_avg;
-
-
    /// Stencil
    Stencil* stencil;   
 

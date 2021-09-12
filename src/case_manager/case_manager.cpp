@@ -290,9 +290,8 @@ void CaseManager::loadInitialSolution( ParFiniteElementSpace& vfes, const Array<
     }
     else
     {
-        Vector solConst(num_equation);
         // Initialize the state.
-
+        Vector solConst(num_equation);
         VectorFunctionCoefficient u0(num_equation, ICInterface->setIC());
         sol.ProjectCoefficient(u0);
         // Save the state to the VisIt

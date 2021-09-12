@@ -62,9 +62,6 @@ void ExplicitRKLimitedSolver::Step(Vector &x, double &t, double &dt)
       // limit y and compute rhs with good y
       limiter.update(y);
 
-      // cout << "y after limit" << endl;
-      // y.Print(cout);
-
       f->SetTime(t + c[i-1]*dt);
       f->Mult(y, k[i]);
 
