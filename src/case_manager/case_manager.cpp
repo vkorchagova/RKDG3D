@@ -4,29 +4,40 @@ using namespace std;
 
 CaseManager::CaseManager(std::string& caseFileName, VisItDataCollection& rdc)
 :
+    contents(NULL),
+    restart(false),
+    restartCycle(0),
+    nSavedFrames(0),
     restart_data_c (rdc),
-    origin(num_equation-2),
-    normal(num_equation-2)
+    restart_current_cycle_name(""),
+    restart_deleted_cycle_name(""),
+    serRefLevels(0),
+    parRefLevels(0),
+    adaptive_mesh(false),
+    spatialOrder(1),
+    total_error_fraction(0.0),
+    max_elem_error(0.0),
+    hysteresis(0.0),
+    nc_limit(0),
+    prefer_conforming_refinement(false),
+    icType("constant"),
+    rsolverType("Rusanov"),
+    ICInterface(NULL),
+    origin(3),
+    normal(3),
+    a(NULL),
+    b(NULL),
+    c(NULL)
 {
     caseDir = std::filesystem::current_path().string();
 
-    // set default values for parameters
-    restart = false;
-    restartCycle = 0;
-    nSavedFrames = 0;
-    icType = "constant";
-    rsolverType = "Rusanov";
-
     caseFileName = caseDir + "/" + caseFileName;
-
-    total_error_fraction = 0.0;
-    max_elem_error = 0.0;
-    hysteresis = 0.0;
-    nc_limit  = 0;
-    prefer_conforming_refinement = false;
 
     // parse case file
     parse(caseFileName);
+
+    // restart_queue
+    // restart_name_stream
 }
 
 void CaseManager::parse(std::string& caseFileName)
@@ -159,13 +170,15 @@ void CaseManager::loadMesh(ParMesh*& pmesh)
 {
     const char* meshFile = ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()).c_str();
     
+    cout << ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()) << endl;
+    cout << ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()).c_str()<< endl;
     // read mesh settings
     // strcpy(meshFile, mf);
     c4::from_chars((*settings)["mesh"]["serialRefLevels"].val(), &serRefLevels);
     c4::from_chars((*settings)["mesh"]["parallelRefLevels"].val(), &parRefLevels);
     c4::from_chars((*settings)["mesh"]["adaptive"].val(), &adaptive_mesh);
 
-    cout << "Reading mesh from " << meshFile << "..." << endl;
+    cout << "Reading mesh from " << ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()).c_str() << "..." << endl;
     cout << "* Serial refinement levels = " << serRefLevels << endl;
     cout << "* Parallel refinement levels = " << parRefLevels << endl;
     cout << "* Adaptive: " << (adaptive_mesh ? "true" : "false") << endl;
@@ -202,7 +215,7 @@ void CaseManager::loadMesh(ParMesh*& pmesh)
         // 2.1. Read the serial mesh on all processors, refine it in serial, then
         //     partition it across all processors and refine it in parallel.
 
-        Mesh *mesh = new Mesh(meshFile, 1, 1);
+        Mesh *mesh = new Mesh(ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()).c_str(), 1, 1);
         mesh->EnsureNCMesh(true);
 
         for (int l = 0; l < serRefLevels; l++)
@@ -558,7 +571,6 @@ void CaseManager::initializeRestartQueue()
 
     if (restart_queue.size() == 0)
         restart_queue.push("restart_000000");
-
 }
 
 void CaseManager::loadTimeSettings(double& t_final, double& dt, double& cfl)

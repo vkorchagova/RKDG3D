@@ -44,20 +44,40 @@ extern double covolume_constant;
 
 class CaseManager
 {
+   /// Pointer to full content of YAML file
+   std::string* contents;
+
+   /// True if needed restart from non-zero time
    bool restart;
+
+   /// Time step for restart
    int restartCycle;
+
+   /// Window for saved frames 
    int nSavedFrames;
+
+   /// VisIt data collection for restart
    VisItDataCollection& restart_data_c;
 
+   /// Queue for restart time step names
    std::priority_queue<std::string, std::vector<std::string>, std::greater<std::string>> restart_queue;
 
+   /// Restart names for window moving
    std::string restart_current_cycle_name;
    std::string restart_deleted_cycle_name;
    // stream for formation of file names
    std::ostringstream restart_name_stream;
 
+   /// Serial refinement mesh levels
    int serRefLevels;
+
+   /// Parallel refinement mesh levels (on each processor locally)
    int parRefLevels;
+
+   /// True if adaptively refinement mesh
+   bool adaptive_mesh;
+
+   /// Spatial polynomial order
    int spatialOrder;
 
    // for adaptive mesh
@@ -67,28 +87,33 @@ class CaseManager
    int nc_limit ;
    bool prefer_conforming_refinement;
 
+   // Type of initial condition
    std::string icType;
+
+   // Type of Riemann solver
    std::string rsolverType;
 
+   // Pointer to initial conditions interface
    IC* ICInterface;
-   std::string* contents;
 
-   double gamma;
+   // Array of boundary markers for BdrIntegrators
+   std::vector<Array<int>> bdr_markers;
 
-   static void setIC(const Vector&x, Vector& y);
+   Vector origin; //(num_equation-2);
+   Vector normal; //(num_equation-2)
 
+//   double gamma;
+   
+   // Runge -- Kutta Butcher coefficients
    double* a;
    double* b;
    double* c;
 
-   std::vector<Array<int>> bdr_markers;
-
-   bool adaptive_mesh;
-
-   Vector origin; //(num_equation-2);
-   Vector normal; //(num_equation-2);
+   // Set initial conditions
+   static void setIC(const Vector&x, Vector& y);
 
 public:
+
    // Case directory
    std::string caseDir;
 
