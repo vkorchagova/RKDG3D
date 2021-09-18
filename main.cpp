@@ -90,6 +90,8 @@ void UpdateAndRebalance(
     // matrix computed in the finite element space. Multiple GridFunctions could
     // be updated here.
     x.Update();
+    x_old.Update();
+
     // Compute new offsets
     for (int k = 0; k <= num_equation; k++) 
         offsets[k] = k * vfes.GetNDofs();
@@ -109,6 +111,8 @@ void UpdateAndRebalance(
         // cout << "if (pmesh.Nonconforming())" << endl;
         // Load balance the mesh.
         pmesh.Rebalance();
+        pmesh.ExchangeFaceNbrData(); 
+        
 
         // Update the space again, this time a GridFunction redistribution matrix
         // is created. Apply it to the solution.
@@ -119,7 +123,10 @@ void UpdateAndRebalance(
         avgr.updateSpaces();
 
         x.Update();
-        
+        x_old.Update();
+        x.ExchangeFaceNbrData();
+        x_old.ExchangeFaceNbrData();
+
         // Compute new offsets
         for (int k = 0; k <= num_equation; k++) 
             offsets[k] = k * vfes.GetNDofs();
@@ -197,6 +204,9 @@ int main(int argc, char *argv[])
     int dim = pmesh->Dimension();
     int sdim = pmesh->SpaceDimension();
     manager.checkNumEqn(dim);
+
+    cout << "Dimension: " << dim << endl;
+    cout << "Number of equations: " << num_equation << endl;
 
 
     // 3. Define the discontinuous DG finite element space of the given
@@ -333,8 +343,8 @@ int main(int argc, char *argv[])
 
     DG_FECollection flux_fec(order, dim);
     RT_FECollection smooth_flux_fec(order-1, dim);
-    auto flux_fes = &fes;
-    auto smooth_flux_fes = new ParFiniteElementSpace(pmesh, &smooth_flux_fec);
+    auto flux_fes = &dfes;
+    auto smooth_flux_fes = new ParFiniteElementSpace(pmesh, &smooth_flux_fec, dim);
     ErrorEstimator* estimator = 0;
     ThresholdRefiner* refiner = 0;
     ThresholdDerefiner* derefiner = 0;
@@ -349,21 +359,19 @@ int main(int argc, char *argv[])
 
     // 12. Limit initial conditions and refine mesh accordingly to them
 
-    if (myRank == 0) cout << "limit sol OK\n";
-
     if (manager.is_adaptive())
     {
         refiner->Reset();
         derefiner->Reset();
     }
 
+
     for (int ref_it = 1; ; ref_it++)
     {
         manager.loadInitialSolution(vfes, offsets, u_block, sol);
-        pmesh->ExchangeFaceNbrData(); 
-        sol.ExchangeFaceNbrData();
-
         l->update(sol);
+
+        cout << "Refinement iteration # " << ref_it << "..." << endl;
 
         if (manager.is_adaptive())
         {
@@ -402,7 +410,7 @@ int main(int argc, char *argv[])
             euler.UpdateAfluxPointer(&(Aflux.SpMat()));
             euler.UpdateInverseMassMatrix();
 
-            if (refiner->Stop())
+            if (refiner->Stop() )
             {
                 break;
             }
@@ -460,13 +468,7 @@ int main(int argc, char *argv[])
             // sol.Print(cout);
         }
 
-        pmesh->ExchangeFaceNbrData(); 
-        sol.ExchangeFaceNbrData();
-
         l->update(sol);
-
-        pmesh->ExchangeFaceNbrData(); 
-        sol.ExchangeFaceNbrData();
 
         cout << "after last rebalance (elements num = "
              << pmesh->GetNE() << ";" 
@@ -474,7 +476,10 @@ int main(int argc, char *argv[])
              << vfes.GlobalTrueVSize() << ")"  << endl;
     } // end adaptive mesh
 
-    
+    sol_old = sol;
+
+
+    cout << "before paraview data coll" << endl;
 
 
     // 13. Initialize data collection for ParaView
@@ -495,11 +500,18 @@ int main(int argc, char *argv[])
         pd->SetCycle(0);
         pd->SetTime(0.0);
         pd->Save();
+        cout << "paraview OK" << endl;
     }
+
+    cout << "before manager.initializeRestartQueue();" << endl;
+
 
 
     // 14. Initialize restart queue for control of number of saved frames
     manager.initializeRestartQueue();
+
+    cout << "after manager.initializeRestartQueue();" << endl;
+
 
     
     // 15. Start the timer.
@@ -512,6 +524,8 @@ int main(int argc, char *argv[])
     ode_solver->Init(euler);
 
     socketstream sout;
+
+    cout << "before if (cfl > 0)" << endl;
 
     if (!manager.is_restart())
     {
@@ -564,15 +578,14 @@ int main(int argc, char *argv[])
 
         // cout << "=== before ref iters === \n" << endl;
 
-        for (int ref_it = 1; ref_it <= 1; ref_it++)
+
+        for (int ref_it = 1; ; ref_it++)
         {
+            cout << "Refinement iteration # " << ref_it << "..." << endl;
+            ode_solver->Step(sol, t, dt_real);
+
             // cout << "--- REF ITER #" << ref_it << endl;
             // cout << "... perform tstep for rank = " << myRank << "; (elements num = " << pmesh->GetNE() << ")" << endl;
-
-
-            ode_solver->Step(sol, t, dt_real);
-            pmesh->ExchangeFaceNbrData(); 
-            sol.ExchangeFaceNbrData();
 
             // cout << "VIS" << endl;
             // rhok.Print(cout);
@@ -622,7 +635,7 @@ int main(int argc, char *argv[])
 
                 // sol.Print(cout);
 
-                if (refiner->Stop() || ref_it == max_ref_it)
+                if (refiner->Stop() || ref_it >= 1)
                 {
                     // Aflux.Update(); // Free the assembled data
                     // A.Update();
@@ -695,6 +708,9 @@ int main(int argc, char *argv[])
             // sol_old just for making steps in refinement
             sol_old = sol;
         } // end adaptive mesh
+
+        // update time step
+        t += dt;
 
         if (cfl > 0)
         {

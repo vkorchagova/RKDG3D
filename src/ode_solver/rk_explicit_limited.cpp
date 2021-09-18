@@ -78,10 +78,5 @@ void ExplicitRKLimitedSolver::Step(Vector &x, double &t, double &dt)
    //    x.Print(cout);
    
    limiter.update(x);
-
-
-
-   // update time step
-   t += dt;
 }
 
