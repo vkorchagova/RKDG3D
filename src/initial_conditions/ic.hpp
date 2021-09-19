@@ -224,6 +224,7 @@ class ICSphericalBreakup : public IC
 {
     Vector origin;
     double rSquared;
+    double rSquaredDelta;
 
     double den1;
     double velX1;
@@ -253,7 +254,8 @@ public:
     velZ2(sol2_.Size() == 5 ? sol2_[3] : 0.0),
     pres2(sol2_[num_equation-1]),
     origin(origin_),
-    rSquared(radius_*radius_)
+    rSquared(radius_*radius_),
+    rSquaredDelta(0.25*0.25*rSquared)
     {
         // origin = origin_;
         // normal = normal_;
@@ -280,27 +282,32 @@ public:
         }
     }
 
+    double linear(const Vector& x, double r1, double r2, double val1, double val2)
+    {
+        return fabs(val2 - val1) > 1e-6 ? (r2 - r1)*(x.DistanceTo(origin) - r1) / (val2 - val1) + val1 : val1;
+    }
+
     virtual std::function<void(const Vector &, Vector &)> setIC() override
     {
         initRho = [=](const Vector& x) 
         { 
-            return sphere(x) < 0 ? den1 : den2; 
+            return sphere(x) < 0 ? den1 : (sphere(x) < rSquaredDelta ? linear(x, 0, rSquaredDelta, den1, den2) : den2); 
         };
         initP   = [=](const Vector& x) 
         { 
-            return sphere(x) < 0 ? pres1 : pres2;  
+            return sphere(x) < 0 ? pres1 : (sphere(x) < rSquaredDelta ? linear(x, 0, rSquaredDelta, pres1, pres2) : pres2);  
         };
         initU   = [=](const Vector& x) 
         { 
-            return sphere(x) < 0 ? velX1 : velX2; 
+            return sphere(x) < 0 ? velX1 : (sphere(x) < rSquaredDelta ? linear(x, 0, rSquaredDelta, velX1, velX2) : velX2); 
         };
         initV   = [=](const Vector& x) 
         { 
-            return sphere(x) < 0 ? velY1 : velY2; 
+            return sphere(x) < 0 ? velY1 : (sphere(x) < rSquaredDelta ? linear(x, 0, rSquaredDelta, velY1, velY2) : velY2); 
         };
         initW   = [=](const Vector& x) 
         { 
-            return sphere(x) < 0 ? velZ1 : velZ2; 
+            return sphere(x) < 0 ? velZ1 : (sphere(x) < rSquaredDelta ? linear(x, 0, rSquaredDelta, velZ1, velZ2) : velZ2); 
         };
 
         std::function<void(const Vector &, Vector &)> F = \

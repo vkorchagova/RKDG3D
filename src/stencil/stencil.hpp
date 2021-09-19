@@ -47,7 +47,6 @@ public:
       shared_face_numbers.DeleteAll();
       cell_num.DeleteAll();
    };
-
 };
 
 #endif // STENCIL_H

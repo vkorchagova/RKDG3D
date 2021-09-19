@@ -69,6 +69,7 @@ void CaseManager::parse(std::string& caseFileName)
     // read restart settings
     c4::from_chars((*settings)["time"]["restart"].val(), &restart);
     c4::from_chars((*settings)["time"]["restartCycle"].val(), &restartCycle);
+    c4::from_chars((*settings)["time"]["nSavedFrames"].val(), &nSavedFrames);
     cout << "Restart case: " << restart << endl;
 
     // read physics

@@ -474,9 +474,11 @@ int main(int argc, char *argv[])
              << pmesh->GetNE() << ";" 
              << vfes.TrueVSize() << ";"
              << vfes.GlobalTrueVSize() << ")"  << endl;
+
+        sol_old = sol;
     } // end adaptive mesh
 
-    sol_old = sol;
+    
 
 
     cout << "before paraview data coll" << endl;
@@ -584,6 +586,18 @@ int main(int argc, char *argv[])
             cout << "Refinement iteration # " << ref_it << "..." << endl;
             ode_solver->Step(sol, t, dt_real);
 
+            if (cfl > 0)
+            {
+                // Reduce to find the global maximum wave speed
+                {
+                    double all_max_char_speed;
+                    MPI_Allreduce(&max_char_speed, &all_max_char_speed,
+                                      1, MPI_DOUBLE, MPI_MAX, pmesh->GetComm());
+                    max_char_speed = all_max_char_speed;
+                }
+                dt = cfl * hmin / max_char_speed / (2*order+1);
+            }
+
             // cout << "--- REF ITER #" << ref_it << endl;
             // cout << "... perform tstep for rank = " << myRank << "; (elements num = " << pmesh->GetNE() << ")" << endl;
 
@@ -635,7 +649,7 @@ int main(int argc, char *argv[])
 
                 // sol.Print(cout);
 
-                if (refiner->Stop() || ref_it >= 1)
+                if (refiner->Stop())
                 {
                     // Aflux.Update(); // Free the assembled data
                     // A.Update();
@@ -705,25 +719,14 @@ int main(int argc, char *argv[])
              << vfes.TrueVSize() << ";"
              << vfes.GlobalTrueVSize() << ")"  << endl;
 
+            l->update(sol);
+
             // sol_old just for making steps in refinement
             sol_old = sol;
         } // end adaptive mesh
 
         // update time step
         t += dt;
-
-        if (cfl > 0)
-        {
-            // Reduce to find the global maximum wave speed
-            {
-                double all_max_char_speed;
-                MPI_Allreduce(&max_char_speed, &all_max_char_speed,
-                                  1, MPI_DOUBLE, MPI_MAX, pmesh->GetComm());
-                max_char_speed = all_max_char_speed;
-            }
-            dt = cfl * hmin / max_char_speed / (2*order+1);
-        }
-        
 
         ti++;
 

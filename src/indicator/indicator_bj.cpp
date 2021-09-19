@@ -178,8 +178,8 @@ void IndicatorBJ::checkDiscontinuity(
       face_el_trans = mesh->GetFaceElementTransformations(iFace);
       IntegrationPointTransformation curTrans = face_el_trans->Elem1No == iCell ? face_el_trans->Loc1 : face_el_trans->Loc2;
 
-      int intorder = (min(face_el_trans->Elem1->OrderW(), face_el_trans->Elem2->OrderW()) +
-                     2*max(fes->GetFE(face_el_trans->Elem1No)->GetOrder(), fes->GetFE(face_el_trans->Elem2No)->GetOrder()));
+      int intorder = 2;//(min(face_el_trans->Elem1->OrderW(), face_el_trans->Elem2->OrderW()) +
+                     //2*max(fes->GetFE(face_el_trans->Elem1No)->GetOrder(), fes->GetFE(face_el_trans->Elem2No)->GetOrder()));
 
       const IntegrationRule *ir = &IntRules.Get(face_el_trans->FaceGeom, intorder);
       // if (iCell == 1789 && myRank == 17) 
