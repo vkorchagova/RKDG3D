@@ -14,17 +14,17 @@ Limiter::Limiter(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace* _fes, 
    el_uMean.SetSize(num_equation);
 
    stencil = new Stencil();
-
-   for (int sf = 0; sf < mesh->GetNSharedFaces(); sf++)
-   {
-      int lf = mesh->GetSharedFace(sf);
-      lf2sf[lf] = sf;
-   }
 };
 
 
 void Limiter::update(Vector &x)
 {
+   for (int sf = 0; sf < mesh->GetNSharedFaces(); sf++)
+   {
+      int lf = mesh->GetSharedFace(sf);
+      lf2sf[lf] = sf;
+   }
+
    xNew = x;
 
    parGridX.MakeRef(x,0);

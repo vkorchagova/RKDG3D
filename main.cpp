@@ -343,15 +343,15 @@ int main(int argc, char *argv[])
 
     DG_FECollection flux_fec(order, dim);
     RT_FECollection smooth_flux_fec(order-1, dim);
-    auto flux_fes = &dfes;
-    auto smooth_flux_fes = new ParFiniteElementSpace(pmesh, &smooth_flux_fec, dim);
+    ParFiniteElementSpace* flux_fes = &dfes;
+    ParFiniteElementSpace* smooth_flux_fes = new ParFiniteElementSpace(pmesh, &smooth_flux_fec, dim);
     ErrorEstimator* estimator = 0;
     ThresholdRefiner* refiner = 0;
     ThresholdDerefiner* derefiner = 0;
 
     if (manager.is_adaptive())
     {
-        estimator = new L2ZienkiewiczZhuEstimator(*integ, rhok, flux_fes, smooth_flux_fes);
+        estimator = new L2ZienkiewiczZhuEstimator(*integ, rhok, *flux_fes, *smooth_flux_fes);
         refiner = new ThresholdRefiner(*estimator);
         derefiner = new ThresholdDerefiner(*estimator);
         manager.loadAdaptiveMeshSettings(*refiner,*derefiner);
@@ -371,9 +371,9 @@ int main(int argc, char *argv[])
         manager.loadInitialSolution(vfes, offsets, u_block, sol);
         l->update(sol);
 
-        cout << "Refinement iteration # " << ref_it << "..." << endl;
+        if (myRank == 0) cout << "Refinement iteration # " << ref_it << "..." << endl;
 
-        if (manager.is_adaptive())
+        if (manager.is_adaptive() && !manager.is_restart())
         {
             refiner->Apply(*pmesh);
 
@@ -425,7 +425,7 @@ int main(int argc, char *argv[])
     {
         if (derefiner->Apply(*pmesh))
         {
-            if (myRank == 0)
+           if (myRank == 0)
             {
                 // cout << "\nDerefined elements." << endl;
                 cout << "... after deref (elements num = "<< pmesh->GetNE() << ";" << vfes.TrueVSize() << ";"
@@ -507,15 +507,12 @@ int main(int argc, char *argv[])
 
     cout << "before manager.initializeRestartQueue();" << endl;
 
-
-
     // 14. Initialize restart queue for control of number of saved frames
     manager.initializeRestartQueue();
 
     cout << "after manager.initializeRestartQueue();" << endl;
 
 
-    
     // 15. Start the timer.
     
     tic_toc.Clear();
@@ -553,11 +550,11 @@ int main(int argc, char *argv[])
         dt = restart_dc.GetTimeStep();
     }
 
+
     restart_dc.SetCycle(0);
     restart_dc.SetTime(0);
     restart_dc.SetTimeStep(dt);
     restart_dc.Save();
-
 
     // 16. Integrate in time.
 
@@ -583,7 +580,6 @@ int main(int argc, char *argv[])
 
         for (int ref_it = 1; ; ref_it++)
         {
-            cout << "Refinement iteration # " << ref_it << "..." << endl;
             ode_solver->Step(sol, t, dt_real);
 
             if (cfl > 0)
@@ -609,6 +605,8 @@ int main(int argc, char *argv[])
 
             if (manager.is_adaptive())
             {
+                if (myRank == 0) cout << "Refinement iteration # " << ref_it << "..." << endl;
+            
                 refiner->Apply(*pmesh);
 
                 // cout << "... after ref (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")" << endl;
@@ -792,15 +790,14 @@ int main(int argc, char *argv[])
         cout << " done, " << tic_toc.RealTime() << "s." << endl; 
     }
 
-    delete estimator;
-
     // Free the used memory.
+    delete pd;
     delete derefiner;
     delete refiner;
     delete estimator;
-    delete smooth_flux_fes;
+    //delete smooth_flux_fes;
 
-    delete pd;
+    
     delete ode_solver;
     delete l;
     delete ind;

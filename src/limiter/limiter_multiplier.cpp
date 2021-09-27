@@ -42,6 +42,9 @@ void LimiterMultiplier::limit(const int iCell, const Vector& el_ind, DenseMatrix
    {
       const IntegrationPoint &ip = irVertices->IntPoint(iPoint);
 
+      el_shape.SetSize(nDofs);
+
+
       // Calculate basis functions on elements at the face
       fe->CalcShape(ip, el_shape);
 
