@@ -7,13 +7,13 @@
 //  |          |
 // p1----------p2
 
-xl = 0;
+xl = -1;
 xr = 1;
-yl = 0;
-yr = 0.1;
+yl = -1;
+yr = 1;
 
-nx = 100;
-ny = 1;
+nx = 160;
+ny = 160;
 
 // vertices
 Point(1) = {xl, yl, 0};
@@ -46,5 +46,5 @@ Transfinite Curve {1, 3} = nx+1 Using Progression 1;
 Transfinite Surface {1} = {1, 2, 3, 4};
 
 // renumeration
-//Recombine Surface {1};
+Recombine Surface {1};
 

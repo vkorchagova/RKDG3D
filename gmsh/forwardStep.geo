@@ -1,6 +1,6 @@
 // Gmsh project created on Tue Jan 29 12:30:02 2019
 
-cellsStep = 32;
+cellsStep = 1;
 
 nodes1 = cellsStep + 1;
 nodes2 = cellsStep*4 + 1;

@@ -13,8 +13,13 @@ x3 = 3.2;	y3 = 1.732051;
 x4 = 3.2;	y4 = 2.2;
 x5 = 0; 	y5 = 2.2;
 
-nx = 800;
-ny = 1;
+cellStep = 1;
+
+n1 = cellStep + 1;
+n2 = 2*cellStep + 1;
+n3 = 10*cellStep + 1;
+n4 = 80*cellStep + 1;
+
 
 // vertices
 Point(1) = {x1, y1, 0};
@@ -47,11 +52,12 @@ Physical Curve("bottom") = {1,2};
 Physical Surface("Volume") = {1}; // make 2D patch from surfaces
 
 // mesh characteristics
-Transfinite Curve {1} = 21 Using Progression 1;
-Transfinite Curve {2} = 1601 Using Progression 1;
-Transfinite Curve {3} = 41 Using Progression 1;
-Transfinite Curve {4} = 201 Using Progression 1;
-Transfinite Curve {5} = 201 Using Progression 1;
+Transfinite Curve {1} = n1 Using Progression 1;
+Transfinite Curve {2} = n4 Using Progression 1;
+Transfinite Curve {3} = n2 Using Progression 1;
+Transfinite Curve {4} = n3 Using Progression 1;
+Transfinite Curve {5} = n3 Using Progression 1;
+
 //Transfinite Curve {1, 3} = nx+1 Using Progression 1;
 //Transfinite Surface {1} = {1, 2, 3, 4};
 

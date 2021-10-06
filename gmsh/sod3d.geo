@@ -60,7 +60,7 @@ Physical Volume("internal") = {26};
 
 
 // mesh characteristics
-Transfinite Line "*" = 101 Using Progression 1.0;
+Transfinite Line "*" = 11 Using Progression 1.0;
 Transfinite Surface "*";
 Recombine Surface "*";
 Transfinite Volume "*";
