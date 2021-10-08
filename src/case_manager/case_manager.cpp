@@ -27,7 +27,9 @@ CaseManager::CaseManager(std::string& caseFileName, VisItDataCollection& rdc)
     normal(3),
     a(NULL),
     b(NULL),
-    c(NULL)
+    c(NULL),
+    checkTotalEnergy(false)
+
 {
     caseDir = std::filesystem::current_path().string();
 
@@ -88,6 +90,9 @@ void CaseManager::parse(std::string& caseFileName)
     // read dg settings
     c4::from_chars((*settings)["spatial"]["polyOrder"].val(), &spatialOrder);
     cout << "Order of polynoms: " << spatialOrder << endl;
+
+    //postprocess features
+    c4::from_chars((*settings)["postProcess"]["checkTotalEnergy"].val(), &checkTotalEnergy);
 
 
     //read initial conditions
@@ -156,6 +161,23 @@ void CaseManager::parse(std::string& caseFileName)
         c4::from_chars((*settings)["internalField"]["right"]["p"].val(), &sol2[num_equation-1]);
 
         ICInterface = new ICSphericalBreakup(sol1, sol2, origin, radius);
+    }
+    else if (icType == "densityPulse")
+    {
+        Vector sol(num_equation);
+        double epsilon = 0.0;
+
+        c4::from_chars((*settings)["internalField"]["origin"][0].val(), &origin[0]);
+        c4::from_chars((*settings)["internalField"]["origin"][1].val(), &origin[1]);
+        c4::from_chars((*settings)["internalField"]["origin"][2].val(), &origin[2]);
+        c4::from_chars((*settings)["internalField"]["epsilon"].val(), &epsilon);
+
+        c4::from_chars((*settings)["internalField"]["U"][0].val(), &sol[1]);
+        c4::from_chars((*settings)["internalField"]["U"][1].val(), &sol[2]);
+        c4::from_chars((*settings)["internalField"]["U"][2].val(), &sol[3]);
+        c4::from_chars((*settings)["internalField"]["p"].val(), &sol[num_equation-1]);
+
+        ICInterface = new ICDensityPulse(sol, origin, epsilon);
     }
     else
     {
@@ -396,6 +418,10 @@ void CaseManager::addBoundaryIntegrators(ParNonlinearForm& A, ParMesh& mesh, Rie
 {
     int tag = 0;
     std::string type;
+     
+    // for fully periodic meshes
+    if (mesh.bdr_attributes.Size() == 0) 
+        return;
 
     bdr_markers.resize(mesh.bdr_attributes.Max());
     for (int i = 0; i < mesh.bdr_attributes.Max(); ++i)
@@ -423,7 +449,7 @@ void CaseManager::addBoundaryIntegrators(ParNonlinearForm& A, ParMesh& mesh, Rie
 
 
         // read additional type values
-        if (type == "inlet")
+        if (type == "subsonicInlet")
         {
             double inletRho;
             double inletU;
@@ -445,7 +471,31 @@ void CaseManager::addBoundaryIntegrators(ParNonlinearForm& A, ParMesh& mesh, Rie
             inletVars(3) = inletRho * inletW;
             inletVars(num_equation - 1) = inletP / (specific_heat_ratio - 1.) + 0.5 * inletRho * (inletU * inletU + inletV * inletV)  ;
 
-            A.AddBdrFaceIntegrator(new BoundaryIntegratorConstant(rsolver, dim, inletVars), bdr_markers[patchNumber] );
+            A.AddBdrFaceIntegrator(new BoundaryIntegratorSubsonicInlet(rsolver, dim, inletVars), bdr_markers[patchNumber] );
+        }
+        else if (type == "supersonicInlet")
+        {
+            double inletRho;
+            double inletU;
+            double inletV;
+            double inletW;
+            double inletP;
+
+            c4::from_chars((*settings)["boundaryField"][node.key()]["rhoI"].val(), &inletRho);
+            c4::from_chars((*settings)["boundaryField"][node.key()]["UI"][0].val(), &inletU);
+            c4::from_chars((*settings)["boundaryField"][node.key()]["UI"][1].val(), &inletV);
+            c4::from_chars((*settings)["boundaryField"][node.key()]["UI"][2].val(), &inletW);
+            c4::from_chars((*settings)["boundaryField"][node.key()]["pI"].val(), &inletP);
+
+            Vector inletVars(num_equation);
+
+            inletVars(0) = inletRho;
+            inletVars(1) = inletRho * inletU;
+            inletVars(2) = inletRho * inletV;
+            inletVars(3) = inletRho * inletW;
+            inletVars(num_equation - 1) = inletP / (specific_heat_ratio - 1.) + 0.5 * inletRho * (inletU * inletU + inletV * inletV)  ;
+
+            A.AddBdrFaceIntegrator(new BoundaryIntegratorSupersonicInlet(rsolver, dim, inletVars), bdr_markers[patchNumber] );
         }
         else if (type == "slip")
         {
@@ -458,6 +508,12 @@ void CaseManager::addBoundaryIntegrators(ParNonlinearForm& A, ParMesh& mesh, Rie
         else
         {
             std::cout << "Wrong boundary type " << type << endl;
+            std::cout << "Available types: "
+                      << "slip" << ", "
+                      << "outlet" << ", "
+                      << "subsonicInlet" << ", "
+                      << "supersonicInlet" << ", "
+                      << endl;
             exit(1);
         }
         cout << "Add BI OK" << endl;

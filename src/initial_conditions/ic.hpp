@@ -346,6 +346,107 @@ public:
 };
 
 
+class ICDensityPulse : public IC
+{
+    Vector origin;
+    double epsilon;
+
+    double velX;
+    double velY;
+    double velZ;
+    double pres;
+
+    double sphere(const Vector& x)
+    {
+        const int dim = x.Size();
+        if (dim == 2)
+            return (x[0] - origin[0])*(x[0] - origin[0]) + \
+                    (x[1] - origin[1])*(x[1] - origin[1]) - 1.0;
+        else if (dim == 3)
+            return (x[0] - origin[0])*(x[0] - origin[0]) + \
+                   (x[1] - origin[1])*(x[1] - origin[1]) + \
+                   (x[2] - origin[2])*(x[2] - origin[2]) - 1.0;
+        else
+        {
+            cout << "Wrong dimension inside planeBreakup" << endl;
+            exit(1);
+        }
+    }
+
+public:
+
+    ICDensityPulse(const Vector& sol_, const Vector& origin_, const double epsilon_) 
+     : 
+    IC(),
+    velX(sol_[1]),
+    velY(sol_[2]),
+    velZ(sol_.Size() == 5 ? sol_[3] : 0.0),
+    pres(sol_[num_equation-1]),
+    origin(origin_),
+    epsilon(epsilon_)
+    {};
+    
+    ~ICDensityPulse() {};
+
+    virtual std::function<void(const Vector &, Vector &)> setIC() override
+    {
+        initRho = [=](const Vector& x) 
+        { 
+            return pow((1.0 - (specific_heat_ratio - 1.0)*epsilon*epsilon*exp(-sphere(x))/(8.0*specific_heat_ratio*3.14169265*3.14169265)), 1.0 / (specific_heat_ratio - 1.0)); 
+        };
+        initP   = [=](const Vector& x) 
+        { 
+            return pres;  
+        };
+        initU   = [=](const Vector& x) 
+        { 
+            return velX; 
+        };
+        initV   = [=](const Vector& x) 
+        { 
+            return velY; 
+        };
+        initW   = [=](const Vector& x) 
+        { 
+            return velZ; 
+        };
+
+        std::function<void(const Vector &, Vector &)> F = \
+            [=](const Vector &x, Vector &y)
+            {
+                const int dim = x.Size();
+                if (dim == 2)
+                {
+                    y(0) = initRho(x);
+                    y(1) = initRho(x)*initU(x);
+                    y(2) = initRho(x)*initV(x);
+                    y(3) = ComputeEnergy(
+                        initRho(x), 
+                        initU(x), 
+                        initV(x), 
+                        0.0, 
+                        initP(x));
+                }
+                else if (dim == 3)
+                {
+                    y(0) = initRho(x);
+                    y(1) = initRho(x)*initU(x);
+                    y(2) = initRho(x)*initV(x);
+                    y(3) = initRho(x)*initW(x);
+                    y(4) = ComputeEnergy(
+                        initRho(x), 
+                        initU(x), 
+                        initV(x), 
+                        initW(x), 
+                        initP(x));
+                }
+            };
+    
+        return F;
+    }
+};
+
+
 // // Initial condition
 // void setInitialConditions(const Vector &x, Vector &y)
 // {

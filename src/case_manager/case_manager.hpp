@@ -12,7 +12,8 @@
 
 #include "boundary_integrator_wall.hpp"
 #include "boundary_integrator_open.hpp"
-#include "boundary_integrator_constant.hpp"
+#include "boundary_integrator_subsonic_inlet.hpp"
+#include "boundary_integrator_supersonic_inlet.hpp"
 
 #include "limiter_findiff.hpp"
 #include "limiter_multiplier.hpp"
@@ -109,6 +110,9 @@ class CaseManager
    double* b;
    double* c;
 
+   /// Postprocessing features
+   bool checkTotalEnergy;
+
    // Set initial conditions
    static void setIC(const Vector&x, Vector& y);
 
@@ -187,6 +191,8 @@ public:
    bool is_restart() {return restart;};
 
    bool is_adaptive() {return adaptive_mesh;};
+
+   bool check_total_energy() {return checkTotalEnergy;};
 
    void getVisSteps(int& vis_steps);
 };
