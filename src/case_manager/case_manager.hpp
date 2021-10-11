@@ -112,6 +112,7 @@ class CaseManager
 
    /// Postprocessing features
    bool checkTotalEnergy;
+   bool writeIndicators;
 
    // Set initial conditions
    static void setIC(const Vector&x, Vector& y);
@@ -193,6 +194,8 @@ public:
    bool is_adaptive() {return adaptive_mesh;};
 
    bool check_total_energy() {return checkTotalEnergy;};
+
+   bool write_indicators() {return writeIndicators; }
 
    void getVisSteps(int& vis_steps);
 };

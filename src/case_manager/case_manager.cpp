@@ -28,7 +28,8 @@ CaseManager::CaseManager(std::string& caseFileName, VisItDataCollection& rdc)
     a(NULL),
     b(NULL),
     c(NULL),
-    checkTotalEnergy(false)
+    checkTotalEnergy(false),
+    writeIndicators(false)
 
 {
     caseDir = std::filesystem::current_path().string();
@@ -93,6 +94,7 @@ void CaseManager::parse(std::string& caseFileName)
 
     //postprocess features
     c4::from_chars((*settings)["postProcess"]["checkTotalEnergy"].val(), &checkTotalEnergy);
+    c4::from_chars((*settings)["postProcess"]["writeIndicators"].val(), &writeIndicators);
 
 
     //read initial conditions

@@ -378,14 +378,17 @@ int main(int argc, char *argv[])
     // ParGridFunction mom(&dfes, u_block.GetData() + offsets[1]);
     // ParGridFunction energy(&fes, u_block.GetBlock(dim+1));
 
-    // ParGridFunction rhoInd(&fes_const, indicatorData.GetBlock(0));
-    // ParGridFunction rhoUInd(&fes_const, indicatorData.GetBlock(1));
-    // ParGridFunction rhoVInd(&fes_const, indicatorData.GetBlock(2));
-    // ParGridFunction rhoWInd;
-    // if (dim == 3) 
-    //     rhoWInd = ParGridFunction(&fes_const, indicatorData.GetBlock(3));
-    // ParGridFunction EInd(&fes_const, indicatorData.GetBlock(dim+1));
-
+    if (manager.write_indicators())
+    {
+        ParGridFunction rhoInd(&fes_const, indicatorData.GetBlock(0));
+        ParGridFunction rhoUInd(&fes_const, indicatorData.GetBlock(1));
+        ParGridFunction rhoVInd(&fes_const, indicatorData.GetBlock(2));
+        ParGridFunction rhoWInd;
+        if (dim == 3) 
+            rhoWInd = ParGridFunction(&fes_const, indicatorData.GetBlock(3));
+        ParGridFunction EInd(&fes_const, indicatorData.GetBlock(dim+1));
+    }
+    
 
     ParGridFunction rhok, mom, energy;
     ParGridFunction rhoInd, rhoUInd, rhoVInd, rhoWInd, EInd;
@@ -394,12 +397,15 @@ int main(int argc, char *argv[])
     mom.MakeRef(&dfes, sol, offsets[1]);
     energy.MakeRef(&fes, sol, offsets[dim+1]);
 
-    // rhoInd.MakeRef(&fes_const, indicatorData, offsets_const[0]);
-    // rhoUInd.MakeRef(&fes_const, indicatorData, offsets_const[1]);
-    // rhoVInd.MakeRef(&fes_const, indicatorData, offsets_const[2]);
-    // if (dim == 3)
-    //     rhoWInd.MakeRef(&fes_const, indicatorData, offsets_const[3]);
-    // EInd.MakeRef(&fes_const, indicatorData, offsets_const[dim+1]);
+    if (manager.write_indicators())
+    {
+        rhoInd.MakeRef(&fes_const, indicatorData, offsets_const[0]);
+        rhoUInd.MakeRef(&fes_const, indicatorData, offsets_const[1]);
+        rhoVInd.MakeRef(&fes_const, indicatorData, offsets_const[2]);
+        if (dim == 3)
+            rhoWInd.MakeRef(&fes_const, indicatorData, offsets_const[3]);
+        EInd.MakeRef(&fes_const, indicatorData, offsets_const[dim+1]);
+    }
 
 
     // 11. Initialize spaces and objects for dynamic mesh refinement
@@ -555,11 +561,14 @@ int main(int argc, char *argv[])
         pd->RegisterField("mom", &mom);
         pd->RegisterField("rho", &rhok);
         pd->RegisterField("energy", &energy);
-        // pd->RegisterField("rhoInd", &rhoInd);
-        // pd->RegisterField("rhoUInd", &rhoUInd);
-        // pd->RegisterField("rhoVInd", &rhoVInd);
-        // if (dim == 3) pd->RegisterField("rhoWInd", &rhoWInd);
-        // pd->RegisterField("EInd", &EInd);
+        if (manager.write_indicators())
+        {
+            pd->RegisterField("rhoInd", &rhoInd);
+            pd->RegisterField("rhoUInd", &rhoUInd);
+            pd->RegisterField("rhoVInd", &rhoVInd);
+            if (dim == 3) pd->RegisterField("rhoWInd", &rhoWInd);
+            pd->RegisterField("EInd", &EInd);
+        }
 
         pd->SetLevelsOfDetail(1);
         pd->SetCycle(0);
