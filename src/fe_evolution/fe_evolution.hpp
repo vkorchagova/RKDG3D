@@ -14,7 +14,7 @@ extern double max_char_speed;
 
 extern int num_equation;
 extern double specific_heat_ratio;
-extern const double gas_constant;
+extern double gas_constant;
 extern double covolume_constant;
 
 /// Proc rank 
@@ -40,8 +40,8 @@ private:
    /// Matrix of the nonlinear form with domain integrators
    SparseMatrix *Aflux;
 
-   /// Inverse mass matrix
-   DenseTensor Me_inv;
+   /// Inverse mass matrices
+   std::vector<DenseMatrix> Me_inv;
 
    /// Vector to store solution at point
    mutable Vector state;

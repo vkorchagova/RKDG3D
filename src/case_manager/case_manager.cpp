@@ -29,7 +29,9 @@ CaseManager::CaseManager(std::string& caseFileName, VisItDataCollection& rdc)
     b(NULL),
     c(NULL),
     checkTotalEnergy(false),
-    writeIndicators(false)
+    writeIndicators(false),
+    linearize(false),
+    haveLastHope(true)
 
 {
     caseDir = std::filesystem::current_path().string();
@@ -51,14 +53,17 @@ void CaseManager::parse(std::string& caseFileName)
      
     if (!reader.is_open())
     {
-        cout << "Case file " << caseFileName << " is not found\n";
+        if (myRank == 0) cout << "Case file " << caseFileName << " is not found\n";
         exit(0);
     }
     else
     {
-        cout << "===============================================" << endl;
-        cout << "Reading case file " << caseFileName << "..." << endl;
-        cout << "-----------------------------------------------" << endl;
+        if (myRank == 0)
+        {
+            cout << "===============================================" << endl;
+            cout << "Reading case file " << caseFileName << "..." << endl;
+            cout << "-----------------------------------------------" << endl;
+        }
     };
 
     //parse result by ryml
@@ -73,33 +78,48 @@ void CaseManager::parse(std::string& caseFileName)
     c4::from_chars((*settings)["time"]["restart"].val(), &restart);
     c4::from_chars((*settings)["time"]["restartCycle"].val(), &restartCycle);
     c4::from_chars((*settings)["time"]["nSavedFrames"].val(), &nSavedFrames);
-    cout << "Restart case: " << restart << endl;
+    if (myRank == 0) cout << "Restart of the case: " << restart << endl;
 
     // read physics
     std::string phType = ryml::preprocess_json<std::string>((*settings)["physics"]["type"].val());
-    cout << "Gas type: " << phType << endl;
+    if (myRank == 0) cout << "Gas type: " << phType << endl;
     c4::from_chars((*settings)["physics"]["gamma"].val(), &specific_heat_ratio);
-    cout << "* Specific heat ratio: " << specific_heat_ratio << endl;
+    if (myRank == 0) cout << "* Specific heat ratio: " << specific_heat_ratio << endl;
     if (phType == "covolume")
     {
         c4::from_chars((*settings)["physics"]["covolume"].val(), &covolume_constant);
-        cout << "* Covolume constant: " << covolume_constant << endl;
+        if (myRank == 0) cout << "* Covolume constant: " << covolume_constant << endl;
     }
     else
         covolume_constant = 0.0;
+
+    
+    if ((*settings)["physics"]["R"].val().size() != 0)
+        c4::from_chars((*settings)["physics"]["R"].val(), &gas_constant);
+    else
+        gas_constant = 1.0;
+    if (myRank == 0) cout << "* Gas constant: " << gas_constant << endl;
     
     // read dg settings
     c4::from_chars((*settings)["spatial"]["polyOrder"].val(), &spatialOrder);
-    cout << "Order of polynoms: " << spatialOrder << endl;
+    if (myRank == 0) cout << "Order of polynoms: " << spatialOrder << endl;
 
     //postprocess features
-    c4::from_chars((*settings)["postProcess"]["checkTotalEnergy"].val(), &checkTotalEnergy);
-    c4::from_chars((*settings)["postProcess"]["writeIndicators"].val(), &writeIndicators);
+    
+    if ((*settings)["postProcess"]["checkTotalEnergy"].val().size() != 0)
+        c4::from_chars((*settings)["postProcess"]["checkTotalEnergy"].val(), &checkTotalEnergy);
+    else
+        checkTotalEnergy = 0;
+
+    if ((*settings)["postProcess"]["writeIndicators"].val().size() != 0)
+        c4::from_chars((*settings)["postProcess"]["writeIndicators"].val(), &writeIndicators);
+    else
+        writeIndicators = 0;
 
 
     //read initial conditions
     icType = ryml::preprocess_json<std::string>((*settings)["internalField"]["type"].val());
-    cout << "Type of problem: " << icType << endl;
+    if (myRank == 0) cout << "Type of problem: " << icType << endl;
 
     if (icType == "constant")
     {
@@ -183,31 +203,34 @@ void CaseManager::parse(std::string& caseFileName)
     }
     else
     {
-        cout << "Wrong type if initial condition" << endl
+        if (myRank == 0)
+        {
+            cout << "Wrong type if initial condition" << endl
              << "Available types: "
              << "constant, planeBreakup, sphericalBreakup" << endl;
+        }
     }
 
-    cout << "Initial conditions OK" << endl;
+    if (myRank == 0) cout << "Initial conditions OK" << endl;
 }
 
 void CaseManager::loadMesh(ParMesh*& pmesh)
 {
     const char* meshFile = ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()).c_str();
     
-    cout << ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()) << endl;
-    cout << ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()).c_str()<< endl;
     // read mesh settings
     // strcpy(meshFile, mf);
     c4::from_chars((*settings)["mesh"]["serialRefLevels"].val(), &serRefLevels);
     c4::from_chars((*settings)["mesh"]["parallelRefLevels"].val(), &parRefLevels);
     c4::from_chars((*settings)["mesh"]["adaptive"].val(), &adaptive_mesh);
 
-    cout << "Reading mesh from " << ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()).c_str() << "..." << endl;
-    cout << "* Serial refinement levels = " << serRefLevels << endl;
-    cout << "* Parallel refinement levels = " << parRefLevels << endl;
-    cout << "* Adaptive: " << (adaptive_mesh ? "true" : "false") << endl;
-
+    if (myRank == 0)
+    {
+        cout << "Reading mesh from " << ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()).c_str() << "..." << endl;
+        cout << "* Serial refinement levels = " << serRefLevels << endl;
+        cout << "* Parallel refinement levels = " << parRefLevels << endl;
+        cout << "* Adaptive: " << (adaptive_mesh ? "true" : "false") << endl;
+    }
     // read adaptive mesh settings
 
 
@@ -240,7 +263,9 @@ void CaseManager::loadMesh(ParMesh*& pmesh)
         // 2.1. Read the serial mesh on all processors, refine it in serial, then
         //     partition it across all processors and refine it in parallel.
 
-        Mesh *mesh = new Mesh(ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()).c_str(), 1, 1);
+        std::ifstream meshStream(ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()).c_str());
+
+        Mesh *mesh = new Mesh(meshStream, 1, 1);
         mesh->EnsureNCMesh(true);
 
         for (int l = 0; l < serRefLevels; l++)
@@ -262,10 +287,164 @@ void CaseManager::loadMesh(ParMesh*& pmesh)
         }
         restart_data_c.SetFormat(1);
         restart_data_c.SetMesh(pmesh); 
-        cout << "Number of cells: " << pmesh->GetNE() << endl; 
+        if (myRank == 0) cout << "Number of cells: " << pmesh->GetNE() << endl; 
     } 
 
-    cout << pmesh->Dimension() << endl;
+    if (myRank == 0) cout << pmesh->Dimension() << endl;
+
+    readPhysicalNames(pmesh);
+    minimizeAttributes(pmesh);
+}
+
+void CaseManager::readPhysicalNames(ParMesh*& mesh)
+{
+    string buff;
+    int number_of_physical_groups;
+    int dim_r;
+    std::string phys_group_name_r;
+    int tag_r;
+
+    std::map<std::string,int>& map_phys_names_tag = (mesh->SpaceDimension() == 2) ? map_phys_names_tag_2D : map_phys_names_tag_3D;
+    std::map<std::string,int>& map_bdr_names_tag  = (mesh->SpaceDimension() == 2) ? map_phys_names_tag_1D : map_phys_names_tag_2D;
+
+    std::ifstream input (ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()).c_str());
+
+    while (input >> buff)
+    {
+        if (buff == "$PhysicalNames") // reading mesh vertices
+        {
+            input >> number_of_physical_groups;
+            getline(input, buff);
+
+            for (int iGroup = 0; iGroup < number_of_physical_groups; ++iGroup)
+            {
+                input >> dim_r >> tag_r >> phys_group_name_r;
+
+                if ( phys_group_name_r.front() == '"' ) {
+                    phys_group_name_r.erase( 0, 1 ); // erase the first character
+                    phys_group_name_r.erase( phys_group_name_r.size() - 1 ); // erase the last character
+                }
+
+                if ( (dim_r == 1 && mesh->SpaceDimension() == 2) || (dim_r == 2 && mesh->SpaceDimension() == 3) )
+                {
+                    map_bdr_names_tag[phys_group_name_r] = tag_r;
+                }
+                else if ( (dim_r == 2 && mesh->SpaceDimension() == 2) || (dim_r == 3 && mesh->SpaceDimension() == 3) )
+                {
+                    map_phys_names_tag[phys_group_name_r] = tag_r;
+                }
+                else
+                {
+                    cout << "Wrong matching of dimension for physical group"
+                         << "(" << phys_group_name_r << ":" << dim_r << ") "
+                         << "and space dimension " 
+                         << mesh->SpaceDimension()
+                         << endl;
+                    exit(1);
+                }
+            }
+
+            break;
+        }
+        else
+        if (buff == "$EndElements")
+        {
+            cout << "No physical boundaries in this mesh";
+            break;
+        }
+    }
+
+    input.close();
+}
+
+void CaseManager::minimizeAttributes(ParMesh*& mesh)
+{
+    // start from internal cells; default attribute should be 1
+    mesh->bdr_attributes.Print(cout << "mesh.bdr_attributes = ");
+    mesh->attributes.Print(cout << "mesh.attributes = ");
+
+    // edit attributes for every cell
+    for (int iCell = 0; iCell < mesh->GetNE(); ++iCell)
+    {
+        int curAttr = mesh->GetAttribute(iCell);
+        for (int iAttr = 0; iAttr < mesh->attributes.Size(); ++iAttr)
+        {
+            if (curAttr == mesh->attributes[iAttr])
+            {
+                mesh->SetAttribute(iCell, iAttr + 1);
+                break;
+            }
+        }
+    }
+
+    // edit attributes inside map for names
+    std::map<std::string,int>& map_phys_names_tag = (mesh->SpaceDimension() == 2) ? map_phys_names_tag_2D : map_phys_names_tag_3D;
+
+    for(std::map<std::string,int>::iterator it = map_phys_names_tag.begin(); it != map_phys_names_tag.end(); it++)
+    {
+        for (int iAttr = 0; iAttr < mesh->attributes.Size(); ++iAttr)
+        {
+            if (it->second == mesh->attributes[iAttr])
+            {
+                it->second = iAttr + 1;
+                break;
+            }
+        }
+    }
+
+    // edit mesh attributes
+    for (int i = 0; i < mesh->attributes.Size(); ++i)
+        mesh->attributes[i] = i+1;
+
+    // continue with boundary attributes, start attr numeration after cells attributer=s
+    bool hasUnitBdrAttribute = 0;
+
+    //edit attribute for every boundary element
+    for (int iCell = 0; iCell < mesh->GetNBE(); ++iCell)
+    {
+        int curAttr = mesh->GetBdrAttribute(iCell);
+        for (int iAttr = 0; iAttr < mesh->bdr_attributes.Size(); ++iAttr)
+        {
+            // if (curAttr == 1)
+            // {
+            //     hasUnitBdrAttribute = 1;
+            //     break;
+            // }
+            if (curAttr == mesh->bdr_attributes[iAttr])
+            {
+                mesh->SetBdrAttribute(iCell, iAttr + 1 + mesh->attributes.Size());
+                break;
+            }
+        }
+    }
+
+    // cout << "hasUnitBdrAttribute = " << hasUnitBdrAttribute << endl;
+
+    // edit boundary attributes inside map for names
+    std::map<std::string,int>& map_bdr_names_tag = (mesh->SpaceDimension() == 2) ? map_phys_names_tag_1D : map_phys_names_tag_2D;
+
+    for(std::map<std::string,int>::iterator it = map_bdr_names_tag.begin(); it != map_bdr_names_tag.end(); it++)
+    {
+        for (int iAttr = 0; iAttr < mesh->bdr_attributes.Size(); ++iAttr)
+        {
+            if (it->second == mesh->bdr_attributes[iAttr])
+            {
+                it->second = iAttr + 1 + mesh->attributes.Size();
+                break;
+            }
+        }
+    }
+
+    // edit mesh attributes
+    // for (int i = 0; i < mesh->bdr_attributes.Size() - hasUnitBdrAttribute; ++i)
+    //     mesh->bdr_attributes[i + hasUnitBdrAttribute] = i + 1 + mesh->attributes.Size();
+    
+    for (int i = 0; i < mesh->bdr_attributes.Size(); ++i)
+        mesh->bdr_attributes[i] = i + 1 + mesh->attributes.Size();
+
+    // if (hasUnitBdrAttribute)
+    //     mesh->bdr_attributes[0] = 1;
+
 }
 
 void CaseManager::loadAdaptiveMeshSettings(ThresholdRefiner& refiner,ThresholdDerefiner& derefiner)
@@ -295,12 +474,15 @@ void CaseManager::checkNumEqn(int dim)
         num_equation = 5;
     else
     {
-        cout << "Wrong dimension " << dim << endl;
-        cout << "Please check your mesh file" << endl;
+        if (myRank == 0)
+        {
+            cout << "Wrong dimension " << dim << endl;
+            cout << "Please check your mesh file" << endl;
+        }
         exit(1);
     }
 
-    cout << "Number of equations = " << num_equation << endl;
+    if (myRank == 0) cout << "Number of equations = " << num_equation << endl;
 }
 
 void CaseManager::loadInitialSolution( ParFiniteElementSpace& vfes, const Array<int>& offsets, BlockVector& u_block, ParGridFunction& sol)
@@ -343,7 +525,7 @@ void CaseManager::loadRiemannSolver(RiemannSolver*& rsolver)
     //read riemann solver
     rsolverType = ryml::preprocess_json<std::string>((*settings)["spatial"]["riemannSolver"].val());
 
-    cout << "Riemann solver type: " << rsolverType << endl;
+    if (myRank == 0) cout << "Riemann solver type: " << rsolverType << endl;
 
     if (rsolverType == "Rusanov")
         rsolver = new RiemannSolverRusanov();
@@ -355,7 +537,7 @@ void CaseManager::loadRiemannSolver(RiemannSolver*& rsolver)
         rsolver = new RiemannSolverHLLC();
     else 
     {
-        cout << "Unknown Riemann solver type: " << rsolverType << '\n';
+        if (myRank == 0) cout << "Unknown Riemann solver type: " << rsolverType << '\n';
         exit(1);
     }
 }
@@ -365,15 +547,28 @@ void CaseManager::loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, cons
     std::string limiterType = ryml::preprocess_json<std::string>((*settings)["spatial"]["limiter"]["type"].val());
 
     std::string indicatorType = "notype";
-    if (limiterType == "BJ") 
-    {
-        indicatorType = "BJ";
-        limiterType = "Multi";
-    }
+
+    if ((*settings)["spatial"]["limiter"]["linearize"].val().size() != 0)
+        c4::from_chars((*settings)["spatial"]["limiter"]["linearize"].val(), &linearize);
     else
-    {
+        linearize = 0;
+
+    if ((*settings)["spatial"]["limiter"]["haveLastHope"].val().size() != 0)
+        c4::from_chars((*settings)["spatial"]["limiter"]["haveLastHope"].val(), &haveLastHope);
+    else
+        haveLastHope = 1;
+
+    cout << "Additional linearization: " << linearize << endl;
+    cout << "Cut slopes in case of nonphysical values in vertices: " << haveLastHope << endl;
+    // if (limiterType == "BJ") 
+    // {
+    //     indicatorType = "BJ";
+    //     limiterType = "Multi";
+    // }
+    // else
+    // {
         indicatorType = ryml::preprocess_json<std::string>((*settings)["spatial"]["limiter"]["indicator"].val());
-    }
+    // }
 
     if (indicatorType == "Nowhere")
     {
@@ -393,7 +588,7 @@ void CaseManager::loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, cons
     }
     else
     {
-        cout << "Unknown indicator type: " << indicatorType << '\n';
+        if (myRank == 0) cout << "Unknown indicator type: " << indicatorType << '\n';
         exit(1);
     }  
 
@@ -401,79 +596,135 @@ void CaseManager::loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, cons
     
     if (limiterType == "FinDiff")
     {
-        l = new LimiterFinDiff(*ind, avgr, &vfes, offsets, dim);
+        l = new LimiterFinDiff(*ind, avgr, &vfes, offsets, linearize, haveLastHope, dim);
     }
     else if (limiterType == "Multi")
     {
-        l = new LimiterMultiplier(*ind, avgr, &vfes, offsets, dim);
+        l = new LimiterMultiplier(*ind, avgr, &vfes, offsets, linearize, haveLastHope, dim);
     }
     else
     {
-        cout << "Unknown limiter type: " << limiterType << '\n';
+        if (myRank == 0) cout << "Unknown limiter type: " << limiterType << '\n';
         exit(1);
     }
 
-    cout << "Indicator type: " << indicatorType << "; Limiter type: " << limiterType << endl;
+    if (myRank == 0) cout << "Indicator type: " << indicatorType << "; Limiter type: " << limiterType << endl;
 }
 
 void CaseManager::addBoundaryIntegrators(ParNonlinearForm& A, ParMesh& mesh, RiemannSolver& rsolver, int dim)
 {
     int tag = 0;
+    std::string name;
     std::string type;
      
     // for fully periodic meshes
     if (mesh.bdr_attributes.Size() == 0) 
         return;
 
+    std::map<std::string,int>& map_phys_names_tag = (mesh.SpaceDimension() == 2) ? map_phys_names_tag_2D : map_phys_names_tag_3D;
+    std::map<std::string,int>& map_bdr_names_tag  = (mesh.SpaceDimension() == 2) ? map_phys_names_tag_1D : map_phys_names_tag_2D;
+
+    if (myRank == 0) 
+    {
+        mesh.bdr_attributes.Print(cout << "mesh.bdr_attributes = ");
+        mesh.attributes.Print(cout << "mesh.attributes = ");
+
+        cout << "Boundary mapping:\n";
+        for ( std::map<std::string,int>::iterator it = map_bdr_names_tag.begin(); it != map_bdr_names_tag.end(); it++)
+        {
+            cout << it->first << ' ' << it->second << endl;
+        }
+        cout << "Physical group mapping:\n";
+        for ( std::map<std::string,int>::iterator it = map_phys_names_tag.begin(); it != map_phys_names_tag.end(); it++)
+        {
+            cout << it->first << ' ' << it->second << endl;
+        } 
+    }
+
+
     bdr_markers.resize(mesh.bdr_attributes.Max());
     for (int i = 0; i < mesh.bdr_attributes.Max(); ++i)
         bdr_markers[i].SetSize(mesh.bdr_attributes.Max());
 
-    cout << "Boundary conditions:" << endl;
+    // if (myRank == 0) mesh.bdr_attributes.Print(cout << "Boundary attributes in mesh:\n");   
+
+    
+
+    // if ( ((*settings)["boundaryField"].num_children() != mesh.bdr_attributes.Size()) )
+    // {
+    //     if (myRank == 0)
+    //     {
+    //         cout << "=====\nPossible mismatch of boundary conditions and geometric boundary groups." << endl;
+    //         cout << "(*settings)[boundaryField].num_children() = " << (*settings)["boundaryField"].num_children() << endl;
+    //         cout << "mesh.bdr_attributes.Size() = " << mesh.bdr_attributes.Size() << endl;
+    //         cout << "Boundary names:" << endl;
+    //         for (ryml::NodeRef node : (*settings)["boundaryField"].children())
+    //         {
+    //             cout << " * " << node.key() << endl;
+    //         }
+    //         cout << "Geometric boundaries:\n";
+    //         for ( std::map<std::string,int>::iterator it = map_bdr_names_tag.begin(); it != map_bdr_names_tag.end(); it++)
+    //         {
+    //             cout << " * " << it->first << endl;
+    //         }
+    //     }
+        
+    //     exit(1);
+    // }
+
+    if (myRank == 0) cout << "Boundary conditions:" << endl;
 
     // read patch names and tags from mesh file $PhysicalNames
     int patchNumber = 0;
     for (ryml::NodeRef node : (*settings)["boundaryField"].children())
     {
+        // find tag for the name
+        tag = -1;
+        name = ryml::preprocess_json<std::string>(node.key());
+        for ( std::map<std::string,int>::iterator it = map_bdr_names_tag.begin(); it != map_bdr_names_tag.end(); it++)
+        {
+            if (name == it->first)
+            {
+                tag = it->second;
+                break;
+            }
+        }
+
+        if (tag == -1)
+        {
+            if (myRank == 0) cout << "No geometric group for boundary " << name << endl;
+            continue;
+        }
         // read names, tags and sth like this
-        c4::from_chars((*settings)["boundaryField"][node.key()]["tag"].val(), &tag);
         c4::from_chars((*settings)["boundaryField"][node.key()]["type"].val(), &type);
 
-        cout << node.key() << "\t|" << type << endl;
+        if (myRank == 0) cout << node.key() << "\t| " << tag << "\t| " << type << "; ";
+
         // set bdr markers
-        
-
         bdr_markers[patchNumber] = 0;
-        
-
-        bdr_markers[patchNumber][tag] = 1;
-        cout << "Set BC markers OK" << endl;
-
+        bdr_markers[patchNumber][tag-1] = 1;
+        if (myRank == 0) cout << "set BC markers OK; ";
 
         // read additional type values
-        if (type == "subsonicInlet")
+        if (type == "subsonicInletTotalPressure")
         {
-            double inletRho;
-            double inletU;
-            double inletV;
-            double inletW;
+            double inletT;
             double inletP;
 
-            c4::from_chars((*settings)["boundaryField"][node.key()]["rhoI"].val(), &inletRho);
-            c4::from_chars((*settings)["boundaryField"][node.key()]["UI"][0].val(), &inletU);
-            c4::from_chars((*settings)["boundaryField"][node.key()]["UI"][1].val(), &inletV);
-            c4::from_chars((*settings)["boundaryField"][node.key()]["UI"][2].val(), &inletW);
-            c4::from_chars((*settings)["boundaryField"][node.key()]["pI"].val(), &inletP);
+            c4::from_chars((*settings)["boundaryField"][node.key()]["pTot"].val(), &inletP);
+            c4::from_chars((*settings)["boundaryField"][node.key()]["TTot"].val(), &inletT);
 
-            Vector inletVars(num_equation);
+            A.AddBdrFaceIntegrator(new BoundaryIntegratorSubsonicInletTotalPressure(rsolver, dim, inletP, inletT), bdr_markers[patchNumber] );
+        }
+        else if (type == "subsonicInletFixedPressure")
+        {
+            double inletT;
+            double inletP;
 
-            inletVars(0) = inletRho;
-            inletVars(1) = inletRho * inletU;
-            inletVars(2) = inletRho * inletV;
-            inletVars(3) = inletRho * inletW;
-            inletVars(num_equation - 1) = inletP / (specific_heat_ratio - 1.) + 0.5 * inletRho * (inletU * inletU + inletV * inletV)  ;
+            c4::from_chars((*settings)["boundaryField"][node.key()]["pFix"].val(), &inletP);
+            c4::from_chars((*settings)["boundaryField"][node.key()]["TTot"].val(), &inletT);
 
-            A.AddBdrFaceIntegrator(new BoundaryIntegratorSubsonicInlet(rsolver, dim, inletVars), bdr_markers[patchNumber] );
+            A.AddBdrFaceIntegrator(new BoundaryIntegratorSubsonicInletFixedPressure(rsolver, dim, inletP, inletT), bdr_markers[patchNumber] );
         }
         else if (type == "supersonicInlet")
         {
@@ -507,18 +758,63 @@ void CaseManager::addBoundaryIntegrators(ParNonlinearForm& A, ParMesh& mesh, Rie
         {
             A.AddBdrFaceIntegrator(new BoundaryIntegratorOpen(rsolver, dim), bdr_markers[patchNumber] );
         }
+        else if (type == "totalPressureFixedTemperatureOutlet")
+        {
+            double inletT;
+            double inletP;
+
+            c4::from_chars((*settings)["boundaryField"][node.key()]["pTot"].val(), &inletP);
+            c4::from_chars((*settings)["boundaryField"][node.key()]["TFix"].val(), &inletT);
+
+            A.AddBdrFaceIntegrator(new BoundaryIntegratorOpenTotalPressure(rsolver, dim, inletP, inletT), bdr_markers[patchNumber] );
+        }
+        else if (type == "fixedPressureOutlet")
+        {
+            double inletP;
+
+            c4::from_chars((*settings)["boundaryField"][node.key()]["pFix"].val(), &inletP);
+
+            A.AddBdrFaceIntegrator(new BoundaryIntegratorOpenFixedPressure(rsolver, dim, inletP), bdr_markers[patchNumber] );
+        }
+        else if (type == "charOutlet")
+        {
+            double inletRho;
+            double inletU;
+            double inletV;
+            double inletW;
+            double inletP;
+
+            c4::from_chars((*settings)["boundaryField"][node.key()]["rhoI"].val(), &inletRho);
+            c4::from_chars((*settings)["boundaryField"][node.key()]["UI"][0].val(), &inletU);
+            c4::from_chars((*settings)["boundaryField"][node.key()]["UI"][1].val(), &inletV);
+            c4::from_chars((*settings)["boundaryField"][node.key()]["UI"][2].val(), &inletW);
+            c4::from_chars((*settings)["boundaryField"][node.key()]["pI"].val(), &inletP);
+
+            Vector inletVars(num_equation);
+
+            inletVars(0) = inletRho;
+            inletVars(1) = inletRho * inletU;
+            inletVars(2) = inletRho * inletV;
+            inletVars(3) = inletRho * inletW;
+            inletVars(num_equation - 1) = inletP / (specific_heat_ratio - 1.) + 0.5 * inletRho * (inletU * inletU + inletV * inletV)  ;
+
+            A.AddBdrFaceIntegrator(new BoundaryIntegratorCharOutlet(rsolver, dim, inletVars), bdr_markers[patchNumber] );
+        }
         else
         {
-            std::cout << "Wrong boundary type " << type << endl;
-            std::cout << "Available types: "
+            if (myRank == 0)
+            {
+                std::cout << "Wrong boundary type " << type << endl;
+                std::cout << "Available types: "
                       << "slip" << ", "
                       << "outlet" << ", "
                       << "subsonicInlet" << ", "
                       << "supersonicInlet" << ", "
                       << endl;
+            } 
             exit(1);
         }
-        cout << "Add BI OK" << endl;
+        if (myRank == 0) cout << "add boundary integrator OK" << endl;
         patchNumber++;
     }
 }
@@ -528,7 +824,7 @@ void CaseManager::loadTimeSolver(ODESolver*& ode_solver, Limiter* l)
     int order = 0;
     c4::from_chars((*settings)["time"]["order"].val(), &order);
 
-    cout << "Runge --- Kutta order: " << order << endl;
+    if (myRank == 0) cout << "Runge --- Kutta order: " << order << endl;
 
     if (order == 2)
     {
@@ -542,6 +838,18 @@ void CaseManager::loadTimeSolver(ODESolver*& ode_solver, Limiter* l)
         c = new double [2];
         c[0] = 0.0;
         c[1] = 1.0;
+
+
+        // alpha[2] = 1.0;
+
+        // beta[0][0] = 0.3333333333333333;
+            
+        // beta[1][0] = 0.3333333333333333;
+        // beta[1][1] = 0.3333333333333333;
+
+        // beta[2][0] = 0.25;
+        // beta[2][1] = 0.0;
+        // beta[2][2] = 0.75;
     }
     else if (order == 3)
     {
@@ -577,13 +885,13 @@ void CaseManager::loadTimeSolver(ODESolver*& ode_solver, Limiter* l)
     }
     else
     {
-        cout << "Wrong RK scheme order " << order << endl;
+        if (myRank == 0) cout << "Wrong RK scheme order " << order << endl;
         exit(1);
     }
 
     ode_solver = new ExplicitRKLimitedSolver(order,a,b,c,*l);
 
-    cout << "RK time scheme order: " << order << endl;
+    if (myRank == 0) cout << "RK time scheme order: " << order << endl;
 }
 
 void CaseManager::initializeRestartQueue()
@@ -680,5 +988,5 @@ void CaseManager::getVisSteps(int& vis_steps)
 {
     c4::from_chars((*settings)["postProcess"]["visSteps"].val(), &vis_steps);
 
-    cout << "vis_steps = " << vis_steps << endl;
+    if (myRank == 0) cout << "vis_steps = " << vis_steps << endl;
 }

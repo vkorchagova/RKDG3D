@@ -58,6 +58,7 @@ void Averager::updateSolutions()
    // Interpolate the solution on the new mesh by applying the transformation
    // matrix computed in the finite element space. Multiple GridFunctions could
    // be updated here.
+   //parGridX->Update();
    avgs->Update();
    avgs_extrap->Update();
 
@@ -87,6 +88,13 @@ void Averager::computeMeanValues()
    for (int i = 0; i < num_equation; ++i)
    {
       // cout << "before ParGridFunction..." << endl;
+      // cout << "v.Size() = " 
+      //      << parGridX->Size() 
+      //      << ", v_offset = " 
+      //      << offsets[i]
+      //      << ", f->GetVSize() = "
+      //      << fes->GetVSize()
+      //      << endl;
       ParGridFunction sol_i, avgs_i;
       // cout << "sol make ref before..." << endl;  
       sol_i.MakeRef(fes, *parGridX, offsets[i]);

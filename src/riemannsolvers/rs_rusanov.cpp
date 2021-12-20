@@ -9,9 +9,9 @@ double RiemannSolverRusanov::Eval(const Vector &state1, const Vector &state2,
    // NOTE: nor in general is not a unit normal
    const int dim = nor.Size();
 
-   if (!StateIsPhysicalSay(state1, dim)) exit(1);
-   if (!StateIsPhysicalSay(state2, dim)) exit(1);
-
+   if (!StateIsPhysicalSay(state1, dim)) return -1;
+   if (!StateIsPhysicalSay(state2, dim)) return -1;
+   
    const double maxE1 = ComputeMaxCharSpeed(state1, dim);
    const double maxE2 = ComputeMaxCharSpeed(state2, dim);
 

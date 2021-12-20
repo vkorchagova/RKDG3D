@@ -10,7 +10,7 @@ FE_Evolution::FE_Evolution(FiniteElementSpace &_vfes,
       vfes(_vfes),
       A(_A),
       Aflux(_Aflux),
-      Me_inv(vfes.GetNE() > 0 ? vfes.GetFE(0)->GetDof() : 0, vfes.GetNE() > 0 ? vfes.GetFE(0)->GetDof() : 0, vfes.GetNE()),
+      Me_inv(vfes.GetNE()),
       state(num_equation),
       f(num_equation, dim),
       flux(vfes.GetNDofs(), dim, num_equation),
@@ -18,27 +18,73 @@ FE_Evolution::FE_Evolution(FiniteElementSpace &_vfes,
 {
     // Standard local assembly and inversion for energy mass matrices.
     int dof = 0;
-    if (vfes.GetNE() > 0)
-        dof = vfes.GetFE(0)->GetDof();
+
     DenseMatrix Me(dof);
     DenseMatrixInverse inv(&Me);
     MassIntegrator mi;
+
+    // double* vertex = new double[2];
+    // for (int i = 0; i < vfes.GetNE(); i++)
+    // {
+    //     if (i == 50 || i == 1562)
+    //     {   
+    //     Array<int> indices;
+    //     vfes.GetMesh()->GetElementVertices(i, indices);
+    //     for (int iii = 0; iii < indices.Size(); iii++)
+    //     {
+    //         vertex = vfes.GetMesh()->GetVertex(indices[iii]);
+    //         cout << std::setprecision(30) << "vertex[" << i << "][" << indices[iii] << "] : " << vertex[0] << ' ' << vertex[1] << endl;
+    //     }
+    // }
+    // }
+    cout << "-------" << endl;
+    
     for (int i = 0; i < vfes.GetNE(); i++)
     {
+        // if (i == 50 || i == 1562)
+        // { 
+        //     Array<int> indices;
+        //     vfes.GetMesh()->GetElementVertices(i, indices);
+        //     for (int iii = 0; iii < indices.Size(); iii++)
+        //     {
+        //         vertex = vfes.GetMesh()->GetVertex(indices[iii]);
+        //         cout << "vertex[" << i << "][" << indices[iii] << "] : " << vertex[0] << ' ' << vertex[1] << endl;
+        //     }
+        // }
+
+        dof = vfes.GetFE(i)->GetDof();
+
+        Me.SetSize(dof);
         mi.AssembleElementMatrix(*vfes.GetFE(i), *vfes.GetElementTransformation(i), Me);
-        inv.Factor();
-        inv.GetInverseMatrix(Me_inv(i));
-        //std::cout << "ME_INV_" << i << std::endl;
-        //Me_inv(i).Print(std::cout);
+        
+        
+        inv.Factor(Me);
+        // inv.TestInversion();
+        Me_inv[i].SetSize(dof,dof);
+        inv.GetInverseMatrix(Me_inv[i]);
+        // if (i == 50 || i == 1562)
+        // {
+        //     Me_inv[i].Print(std::cout  << std::setprecision(30) << "Constr ME_INV_" << i << std::endl);
+        // }
     }
+
+    // for (int i = 50; i <= 1562; i+= 1512)
+    // {   
+    //     Array<int> indices;
+    //     vfes.GetMesh()->GetElementVertices(i, indices);
+    //     for (int iii = 0; iii < indices.Size(); iii++)
+    //     {
+    //         vertex = vfes.GetMesh()->GetVertex(indices[iii]);
+    //         cout << "vertex[" << i << "][" << indices[iii] << "] : " << vertex[0] << ' ' << vertex[1] << endl;
+    //     }
+    // }
 }
 
 void FE_Evolution::UpdateInverseMassMatrix()
 {
     if (vfes.GetNE() > 0)
     {
-        Me_inv.SetSize(vfes.GetFE(0)->GetDof(), vfes.GetFE(0)->GetDof(), vfes.GetNE());
-
+        Me_inv.resize(vfes.GetNE());
         const int dof = vfes.GetFE(0)->GetDof();
         DenseMatrix Me(dof);
         DenseMatrixInverse inv(&Me);
@@ -47,9 +93,8 @@ void FE_Evolution::UpdateInverseMassMatrix()
         {
             mi.AssembleElementMatrix(*vfes.GetFE(i), *vfes.GetElementTransformation(i), Me);
             inv.Factor();
-            inv.GetInverseMatrix(Me_inv(i));
-            //std::cout << "ME_INV_" << i << std::endl;
-            //Me_inv(i).Print(std::cout);
+            Me_inv[i].SetSize(dof,dof);
+            inv.GetInverseMatrix(Me_inv[i]);
         }
     }
 }
@@ -73,6 +118,17 @@ void FE_Evolution::Mult(const Vector &x, Vector &y) const
     // cout << "IN FE_Evolution::Mult z = " << endl;
     // z.Print(cout);
     // }
+    Vector zval;
+    Array<int> vdofs;
+    for (int i = 0; i < vfes.GetNE(); i++)
+    {
+        vfes.GetElementVDofs(i, vdofs);
+        z.GetSubVector(vdofs, zval);
+        // if (i == 50 || i == 1562)
+        // {
+        //     zval.Print(std::cout << "zval[" << i << "] after fluxes = " << endl);
+        // }
+    }
 
     // 2. Add the element terms.
     // i.  computing the flux approximately as a grid function by interpolating
@@ -104,19 +160,18 @@ void FE_Evolution::Mult(const Vector &x, Vector &y) const
         Vector zk(z.GetData() + k * vfes.GetNDofs(), vfes.GetNDofs());
         // if (myRank == 6)
         // {
-        //     cout << " flux(k) before AddMult = " << endl;
-        //     flux(k).Print(cout);
-        //     cout << " fk before AddMult = " << endl;
-        //     fk.Print(cout);
-        //     cout << " zk before AddMult = " << endl;
-        //     zk.Print(cout);
+            // cout << " flux(k) before AddMult = " << endl;
+            // flux(k).Print(cout);
+            // cout << " fk before AddMult = " << endl;
+            // fk.Print(cout);
+            // cout << " zk before AddMult = " << endl;
+            // zk.Print(cout);
         // }
         Aflux->AddMult(fk, zk);
     }
 
     // 3. Multiply element-wise by the inverse mass matrices.
-    Vector zval;
-    Array<int> vdofs;
+    
     int dof = 0;//vfes.GetNE() > 0 ? vfes.GetFE(0)->GetDof() : 0;
     DenseMatrix zmat, ymat(dof, num_equation);
 
@@ -131,19 +186,24 @@ void FE_Evolution::Mult(const Vector &x, Vector &y) const
         ymat.SetSize(dof, num_equation);
 
         zmat.UseExternalData(zval.GetData(), dof, num_equation);
-        // if (myRank == 6)
+        // if (i == 50 || i == 1562)
         // {
-        //     std::cout << "zval" << endl;
-        //     zval.Print(std::cout);
+        //     zval.Print(std::cout << std::setprecision(30) << "zval[" << i << ']' << endl);
         // }
-        mfem::Mult(Me_inv(i), zmat, ymat);
+        mfem::Mult(Me_inv[i], zmat, ymat);
+
+        
+        // if (i == 50 || i == 1562)
+        // {
+        //     Me_inv[i].Print(std::cout  << std::setprecision(30) << "ME_INV_" << i << std::endl);
+        // }
         
         y.SetSubVector(vdofs, ymat.GetData());
 
-        // if (myRank == 6)
+        // if (i == 50 || i == 1562)
         // {
-        //     std::cout << "zmat[" << i << "]  = ";
-        //     zmat.Print(std::cout);
+        //     zmat.Print(std::cout << std::setprecision(30) << "zmat[" << i << "]  = ");
+        //     ymat.Print(std::cout << std::setprecision(30) << "ymat[" << i << "]  = ");
         // }
     }
     // cout << "IN FE_Evolution::end " << endl;

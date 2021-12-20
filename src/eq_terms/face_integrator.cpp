@@ -195,17 +195,27 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
       // }
       bool debug = false;
       // if (
-      //    (Tr.Elem1No == 2550 && Tr.Elem2No == 2450) || (Tr.Elem1No == 7450 && Tr.Elem2No == 7550) ||
-      //    (Tr.Elem2No == 2550 && Tr.Elem1No == 2450) || (Tr.Elem2No == 7450 && Tr.Elem1No == 7550)
+      //    (Tr.Elem1No == 50 ) || (Tr.Elem2No == 50) ||
+      //    (Tr.Elem1No == 1562) || (Tr.Elem2No == 1562)
       // )
       // {
       //    debug = true;
       //    cout << "===============" << endl;
       //    cout << "cell nums = " << Tr.Elem1No << ' ' << Tr.Elem2No << endl;
+      //    shape1.Print(std::cout << std::setprecision(30) << "shape1 = ");
+      //    shape2.Print(std::cout << std::setprecision(30) << "shape2 = ");
+      //    // elfun1_mat.Print(std::cout << std::setprecision(30) << "elfun1_mat = ");
+      //    // elfun2_mat.Print(std::cout << std::setprecision(30) << "elfun2_mat = ");
       //    cout << "---------------" << endl;
       // }
 
       const double mcs = rsolver.Eval(funval1, funval2, nor, fluxN, debug);
+
+      if (mcs < 0)
+      {
+         cout << "Number of neighbours: " << Tr.Elem1No << ' ' << Tr.Elem2No << endl;
+         exit(1);
+      }
 
 
       // for (int iii = 0; iii < fluxN.Size(); ++iii)
@@ -223,15 +233,19 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
       //    (Tr.Elem1No == 2550 && Tr.Elem2No == 2450) || (Tr.Elem1No == 7450 && Tr.Elem2No == 7550) ||
       //    (Tr.Elem2No == 2550 && Tr.Elem1No == 2450) || (Tr.Elem2No == 7450 && Tr.Elem1No == 7550)
       // )
+
+      // if (
+      //    (Tr.Elem1No == 50 ) || (Tr.Elem2No == 50) ||
+      //    (Tr.Elem1No == 1562) || (Tr.Elem2No == 1562)
+      // )
       // {
       //    cout << "---------------" << endl;
-      //    cout << "\tfunval1: ";
-      //    funval1.Print(cout);
-      //    cout << "\tfunval2: ";
-      //    funval2.Print(cout);
+      //    cout << "Tr.Elem1No = " << Tr.Elem1No << "; Tr.Elem2No = " << Tr.Elem2No << endl;
+      //    std::cout << "ipoint = " << ip.index << " " << ip.x << " " << ip.y << " " << ip.z << std::endl;
+      //    funval1.Print(cout << "\tfunval1: ");
+      //    funval2.Print(cout << "\tfunval2: ");
       //    cout << "\tmcs = " << mcs << endl;
-      //    std::cout << "\tfluxN = ";
-      //    fluxN.Print(std::cout);
+      //    fluxN.Print(std::cout << "\tfluxN = ");
       // }
 
       

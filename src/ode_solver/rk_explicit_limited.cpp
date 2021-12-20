@@ -44,7 +44,7 @@ void ExplicitRKLimitedSolver::Step(Vector &x, double &t, double &dt)
 
    f->Mult(x, k[0]);
 
-   // cout << "k0" << endl;
+   // cout << " ----- k0 ----- " << endl;
    // k[0].Print(cout);
    
    
@@ -66,7 +66,7 @@ void ExplicitRKLimitedSolver::Step(Vector &x, double &t, double &dt)
       f->SetTime(t + c[i-1]*dt);
       f->Mult(y, k[i]);
 
-      // cout << "k[" << i << "]" << endl;
+      // cout << " ----- k[" << i << "] ----- " << endl;
       // k[i].Print(cout);
    }
 

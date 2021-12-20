@@ -1,5 +1,5 @@
-#ifndef BND_INTEGRATOR_OPEN_H
-#define BND_INTEGRATOR_OPEN_H
+#ifndef BND_INTEGRATOR_OPEN_FIXED_PRESSURE_H
+#define BND_INTEGRATOR_OPEN_FIXED_PRESSURE_H
 
 #include "boundary_integrator.hpp"
 
@@ -11,17 +11,24 @@ extern double max_char_speed;
 
 extern int num_equation;
 
+extern double specific_heat_ratio;
+extern double covolume_constant;
+extern double gas_constant;
+
 /// Proc rank 
 extern int myRank;
 
 // Interior face term: <F.n(u),[w]>
-class BoundaryIntegratorOpen : public BoundaryIntegrator
+class BoundaryIntegratorOpenFixedPressure : public BoundaryIntegrator
 {
+private:
+
+    double pFix;
 
 public:
 
     /// Constructor
-    BoundaryIntegratorOpen(RiemannSolver &rsolver_, const int dim);
+    BoundaryIntegratorOpenFixedPressure(RiemannSolver &rsolver_, const int dim, double _pres = 101325);
 
     // /// Compute part of -<F.n(u), [w]> for the given face 
     // virtual void AssembleFaceVector(const FiniteElement &el1,
@@ -32,4 +39,4 @@ public:
     virtual void computeRightState(const Vector& state1, Vector& state2, const Vector& nor) override;
 };
 
-#endif // BND_INTEGRATOR_OPEN_H
+#endif // BND_INTEGRATOR_OPEN_FIXED_PRESSURE_H

@@ -67,6 +67,9 @@ public:
    /// Values of indicator field associated with ParaView external writer
    BlockVector& values;
 
+   /// Keep minimal indicator value 
+   Vector minValues;
+
    /// Constructor
    Indicator(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, BlockVector& _idata); 
 

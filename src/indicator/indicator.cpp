@@ -9,5 +9,6 @@ Indicator::Indicator (Averager& _avgr, ParFiniteElementSpace* _fes, const Array<
    values(_idata)
 {
    mesh = fes->GetParMesh();
+   minValues.SetSize(mesh->GetNE());
 };
 

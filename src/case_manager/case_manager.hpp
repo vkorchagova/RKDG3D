@@ -11,8 +11,12 @@
 #include "rs_llf.hpp"
 
 #include "boundary_integrator_wall.hpp"
+#include "boundary_integrator_char_outlet.hpp"
 #include "boundary_integrator_open.hpp"
-#include "boundary_integrator_subsonic_inlet.hpp"
+#include "boundary_integrator_open_fixed_pressure.hpp"
+#include "boundary_integrator_open_total_pressure.hpp"
+#include "boundary_integrator_subsonic_inlet_total_pressure.hpp"
+#include "boundary_integrator_subsonic_inlet_fixed_pressure.hpp"
 #include "boundary_integrator_supersonic_inlet.hpp"
 
 #include "limiter_findiff.hpp"
@@ -23,9 +27,9 @@
 #include "indicator_shu.hpp"
 #include "averager.hpp"
 
-
 #include <filesystem>
 #include <queue>
+#include <map>
 #include <ryml_std.hpp>
 #include <ryml.hpp>
 
@@ -37,6 +41,7 @@ extern int myRank;
 
 extern double specific_heat_ratio;
 extern double covolume_constant;
+extern double gas_constant;
 
 /// 
 /// Case manager class 
@@ -97,6 +102,11 @@ class CaseManager
    // Pointer to initial conditions interface
    IC* ICInterface;
 
+   // Mapping of names for boundary groups and physical groups of elements
+   std::map<std::string,int> map_phys_names_tag_1D;
+   std::map<std::string,int> map_phys_names_tag_2D;
+   std::map<std::string,int> map_phys_names_tag_3D;
+
    // Array of boundary markers for BdrIntegrators
    std::vector<Array<int>> bdr_markers;
 
@@ -114,12 +124,24 @@ class CaseManager
    bool checkTotalEnergy;
    bool writeIndicators;
 
+   /// Limiter features
+   bool linearize;
+   bool haveLastHope;
+
    // Set initial conditions
    static void setIC(const Vector&x, Vector& y);
 
+   // GMSH sometimes makes strange big numbers for attributes (for ex. 167615451)
+   // MFEM creates arrays for boundary markers, their size is equal to maximal attribute value.
+   // To avoid memory overload, attributes should be changed for small numbers.
+   void minimizeAttributes(ParMesh*& pmesh);
+
+   // Additional reading for physical groups for possibility to write boundaru names in setttings instead of boundary tags directly
+   void readPhysicalNames(ParMesh*& mesh);
+
 public:
 
-   // Case directory
+   // Case directory 
    std::string caseDir;
 
    // YAML tree of settings
@@ -136,7 +158,6 @@ public:
    /// Destructor
    ~CaseManager() 
    {
-      cout << "in CaseMan Destructor" << endl;
       delete[] c;
       delete[] b;
       delete[] a;
@@ -147,7 +168,6 @@ public:
       origin[0] = 0;
       normal.SetSize(1);
       normal[0] = 0;
-      cout << "OK" << endl;
    };
 
    /// Load mesh from file or from previous saved data

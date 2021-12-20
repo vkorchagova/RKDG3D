@@ -5,7 +5,7 @@ void LimiterFinDiff::limit(const int iCell, const Vector& el_ind, DenseMatrix& e
    bool totalInd = false;
 
    for (int iEq = 0; iEq < num_equation; ++iEq)
-      totalInd = el_ind[iEq] < 1.0 ? true : false;
+      totalInd = el_ind[iEq] < 0.999 ? true : false;
 
    // get FE
    fe = fes->GetFE(iCell);
@@ -13,6 +13,11 @@ void LimiterFinDiff::limit(const int iCell, const Vector& el_ind, DenseMatrix& e
    const int nDofs = fe->GetDof();
 
    averager.readElementAverageByNumber(iCell, el_uMean);
+
+   // if (iCell == 2703 || iCell == 1191) 
+   // {
+   //    el_uMean.Print(cout << iCell << ": el_uMean = ");
+   // }
 
    // replace solution to mean values
    for (int iEq = 0; iEq < num_equation; ++iEq)

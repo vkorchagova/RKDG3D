@@ -3,7 +3,7 @@
 
 // bool pleaseWriteMe = false;
 
-LimiterMultiplier::LimiterMultiplier(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace*_fes, const Array<int>& _offsets, int _d) : Limiter(_ind, _avgr, _fes, _offsets, _d) 
+LimiterMultiplier::LimiterMultiplier(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace*_fes, const Array<int>& _offsets, bool _linearize, bool _haveLastHope, int _d) : Limiter(_ind, _avgr, _fes, _offsets,_linearize,_haveLastHope, _d) 
 {
    el_shape.SetSize(num_equation);
 };
@@ -18,74 +18,79 @@ void LimiterMultiplier::limit(const int iCell, const Vector& el_ind, DenseMatrix
 
    averager.readElementAverageByNumber(iCell, el_uMean);
 
+   // cout << needLinearize << endl;
+
    // replace solution to mean values
    for (int iEq = 0; iEq < num_equation; ++iEq)
       for (int iDof = 0; iDof < nDofs; ++iDof)
       {
          // if (myRank == 0 && iCell == 0 && iEq == 0) {cout << "   funval before lim = " << elfun1_mat(iDof, iEq) << endl;}
-         if (el_ind[iEq] < 1.0 && fe->GetGeomType() != Geometry::TRIANGLE)
+         // if (needLinearize && el_ind[iEq] < 1.0 && fe->GetGeomType() != Geometry::TRIANGLE)
+         if (needLinearize && fe->GetGeomType() != Geometry::TRIANGLE)
             linearize(iCell, el_uMean, elfun1_mat);
 
          for (int iDof = 0; iDof < nDofs; ++iDof)
          {
-            elfun1_mat(iDof, iEq) = el_uMean[iEq] + el_ind[iEq] * (elfun1_mat(iDof, iEq) - el_uMean[iEq]);
+            // elfun1_mat(iDof, iEq) = el_uMean[iEq] + el_ind[iEq] * (elfun1_mat(iDof, iEq) - el_uMean[iEq]);
+            elfun1_mat(iDof, iEq) = el_uMean[iEq] + indicator.minValues[iCell] * (elfun1_mat(iDof, iEq) - el_uMean[iEq]);
          }
          // if (myRank == 0 && iCell == 0 && iEq == 0) {cout << "   funval after lim = " << elfun1_mat(iDof, iEq) << endl;}
       }
 
-   // x.SetSubVector(el_vdofs, el_x);
-
    // // Last hope limiter
-   const IntegrationRule *irVertices = Geometries.GetVertices(fe->GetGeomType());
-
-   for (int iPoint = 0; iPoint < irVertices->GetNPoints(); ++iPoint)
+   if (haveLastHope)
    {
-      const IntegrationPoint &ip = irVertices->IntPoint(iPoint);
+      const IntegrationRule *irVertices = Geometries.GetVertices(fe->GetGeomType());
 
-      el_shape.SetSize(nDofs);
-
-
-      // Calculate basis functions on elements at the face
-      fe->CalcShape(ip, el_shape);
-
-      Vector funval1Vert(num_equation);
-
-      // Interpolate elfun at the point
-      elfun1_mat.MultTranspose(el_shape, funval1Vert);
-
-      // double alpha = 1.0;
-      // const double minEps = 1e-10;
-
-      // if (!StateIsPhysical(funval1Vert,dim))
-      // {
-      //    // let's try to correct slope aсcording to positive internal energy
-         
-      //    alpha = min( alpha, 2.0 * funval1Vert[0] * (funval1Vert[dim+1] - minEps) / (funval1Vert[1]*funval1Vert[1] + funval1Vert[2]*funval1Vert[2]) );
-      //    // for (int iEq = 0; iEq < num_equation; ++iEq)
-      //    //    for (int iDof = 0; iDof < nDofs; ++iDof)  
-      //    //       elfun1_mat(iDof, iEq) = uMean(iEq,iCell);
-      // }
-
-      // if (alpha < 1)
-      // {
-      //    // cout << "find alpha = " << alpha << " in cell #" << iCell << endl;
-      //    for (int iEq = 1; iEq < num_equation - 1; ++iEq)
-      //       for (int iDof = 0; iDof < nDofs; ++iDof) 
-      //       {
-      //          // const double beta = (sqrt(alpha) - 1.0) * uMean(iEq,iCell) / (elfun1_mat(iDof, iEq) - uMean(iEq,iCell)) + sqrt(alpha);
-      //          // cout << " \tfind beta = " << beta << " for eqn #" << iEq << endl;
-
-      //          // elfun1_mat(iDof, iEq) = uMean(iEq,iCell) + beta * (elfun1_mat(iDof, iEq) - uMean(iEq,iCell));
-      //          elfun1_mat(iDof, iEq) = alpha * elfun1_mat(iDof, iEq);
-      //       }
-      // }
-      if (!StateIsPhysical(funval1Vert,dim))
+      for (int iPoint = 0; iPoint < irVertices->GetNPoints(); ++iPoint)
       {
-         averager.readElementAverageByNumber(iCell, el_uMean);
+         const IntegrationPoint &ip = irVertices->IntPoint(iPoint);
 
-         for (int iEq = 0; iEq < num_equation; ++iEq)
-            for (int iDof = 0; iDof < nDofs; ++iDof)  
-               elfun1_mat(iDof, iEq) = el_uMean(iEq);
+         el_shape.SetSize(nDofs);
+
+
+         // Calculate basis functions on elements at the face
+         fe->CalcShape(ip, el_shape);
+
+         Vector funval1Vert(num_equation);
+
+         // Interpolate elfun at the point
+         elfun1_mat.MultTranspose(el_shape, funval1Vert);
+
+         // double alpha = 1.0;
+         // const double minEps = 1e-10;
+
+         // if (!StateIsPhysical(funval1Vert,dim))
+         // {
+         //    // let's try to correct slope aсcording to positive internal energy
+            
+         //    alpha = min( alpha, 2.0 * funval1Vert[0] * (funval1Vert[dim+1] - minEps) / (funval1Vert[1]*funval1Vert[1] + funval1Vert[2]*funval1Vert[2]) );
+         //    // for (int iEq = 0; iEq < num_equation; ++iEq)
+         //    //    for (int iDof = 0; iDof < nDofs; ++iDof)  
+         //    //       elfun1_mat(iDof, iEq) = uMean(iEq,iCell);
+         // }
+
+         // if (alpha < 1)
+         // {
+         //    // cout << "find alpha = " << alpha << " in cell #" << iCell << endl;
+         //    for (int iEq = 1; iEq < num_equation - 1; ++iEq)
+         //       for (int iDof = 0; iDof < nDofs; ++iDof) 
+         //       {
+         //          // const double beta = (sqrt(alpha) - 1.0) * uMean(iEq,iCell) / (elfun1_mat(iDof, iEq) - uMean(iEq,iCell)) + sqrt(alpha);
+         //          // cout << " \tfind beta = " << beta << " for eqn #" << iEq << endl;
+
+         //          // elfun1_mat(iDof, iEq) = uMean(iEq,iCell) + beta * (elfun1_mat(iDof, iEq) - uMean(iEq,iCell));
+         //          elfun1_mat(iDof, iEq) = alpha * elfun1_mat(iDof, iEq);
+         //       }
+         // }
+         if (!StateIsPhysical(funval1Vert,dim))
+         {
+            averager.readElementAverageByNumber(iCell, el_uMean);
+
+            for (int iEq = 0; iEq < num_equation; ++iEq)
+               for (int iDof = 0; iDof < nDofs; ++iDof)  
+                  elfun1_mat(iDof, iEq) = el_uMean(iEq);
+         }
       }
    }
 

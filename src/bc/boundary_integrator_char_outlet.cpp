@@ -1,15 +1,56 @@
-#include "boundary_integrator.hpp"
+#include "boundary_integrator_char_outlet.hpp"
+#include "physics.hpp"
 
-// Implementation of class BoundaryIntegrator
-BoundaryIntegrator::BoundaryIntegrator(RiemannSolver &rsolver_, const int dim) :
-   rsolver(rsolver_),
-   funval1(num_equation),
-   funval2(num_equation),
-   nor(dim),
-   fluxN(num_equation),
-   dim(dim) { }
 
-void BoundaryIntegrator::AssembleFaceVector(const FiniteElement &el1,
+// Implementation of class BoundaryIntegratorCharOutlet
+BoundaryIntegratorCharOutlet::BoundaryIntegratorCharOutlet(RiemannSolver &rsolver_, const int dim, const Vector& _fst) :
+   BoundaryIntegrator(rsolver_,dim), fixedState(_fst), cOut(0.0), MOut(0.0), UOut(0.0)
+{ 
+    cOut = ComputeSoundSpeed(fixedState, dim);
+    MOut = ComputeM(fixedState, dim);
+    UOut = fixedState[1]/fixedState[0];
+}
+
+void BoundaryIntegratorCharOutlet::computeRightState(const Vector& state1, Vector& state2, const Vector& nor) 
+{
+    double M = ComputeM(state1, dim);
+   
+    double rhoB = 0.0;
+    double UB = 0.0;
+    double cB = 0.0;
+    double sB = 0.0;
+    double pB = 0.0;
+
+    double cIn = ComputeSoundSpeed(state1, dim);
+
+
+    rsolver.Rotate(state2, nor, dim);
+    double UIn = state2[1]/state2[0];
+
+    UB = 0.5*(UIn + UOut) - (cOut - cIn) / (specific_heat_ratio - 1.0);
+    cB = - 0.25*(specific_heat_ratio - 1.0)*(UOut - UIn) + 0.5*(cOut + cIn);
+
+    if (state2[1] < 0) // inflow
+    {
+        sB = cOut*cOut / pow(fixedState[0], specific_heat_ratio - 1.0) / specific_heat_ratio;
+    }
+    else // outflow
+    {
+        sB = cIn*cIn / pow(state2[0], specific_heat_ratio - 1.0) / specific_heat_ratio;
+    }
+
+    rhoB = pow(cB*cB/sB/specific_heat_ratio, 1.0 / (specific_heat_ratio - 1.0) );
+    pB = rhoB*cB*cB/specific_heat_ratio;
+
+    state2[0] = rhoB;
+    state2[1] = UB;
+    state2[num_equation-1] = ComputeEnergy(rhoB, UB, state2[2]/state2[0], dim == 3 ? state2[3]/state2[0] : 0.0, pB);
+
+    rsolver.InverseRotate(state2, nor, dim);
+};
+
+
+void BoundaryIntegratorCharOutlet::AssembleFaceVector(const FiniteElement &el1,
                                         const FiniteElement &el2,
                                         FaceElementTransformations &Tr,
                                         const Vector &elfun, Vector &elvect)
@@ -153,10 +194,10 @@ void BoundaryIntegrator::AssembleFaceVector(const FiniteElement &el1,
       // }
 
       Tr.Face->SetIntPoint(&ip);
-
       
+      const double mcs = ComputeMaxCharSpeed(funval2, dim);
 
-      const double mcs = rsolver.Eval(funval1, funval2, nor, fluxN);
+      ComputeFluxDotN(funval2, nor, fluxN);
 
       if (mcs < 0)
       {

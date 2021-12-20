@@ -33,7 +33,7 @@ public:
       const Stencil* stencil, 
       const DenseMatrix& elfun1_mat
    ) 
-   { for (int iEq = 0; iEq < num_equation; ++iEq) values.GetBlock(iEq)[iCell] = 0.0; };
+   { for (int iEq = 0; iEq < num_equation; ++iEq) {values.GetBlock(iEq)[iCell] = 0.0; minValues[iCell] = 0.0;} };
 };
 
 #endif // INDICATOR_EVERYWHERE_H

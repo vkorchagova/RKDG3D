@@ -1,11 +1,13 @@
 #include "limiter.hpp"
 
 
-Limiter::Limiter(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d) : 
+Limiter::Limiter(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, bool _linearize, bool _haveLastHope, int _d) : 
    indicator(_ind),
    averager(_avgr),
    fes(_fes), 
    offsets(_offsets), 
+   needLinearize(_linearize),
+   haveLastHope(_haveLastHope),
    dim(_d) 
 {
    mesh = fes->GetParMesh();
@@ -27,10 +29,9 @@ void Limiter::update(Vector &x)
 
    xNew = x;
 
-   parGridX.MakeRef(x,0);
+   parGridX.MakeRef(fes, x, 0);
    mesh->ExchangeFaceNbrData();
    parGridX.ExchangeFaceNbrData();
-
    averager.update(&x, &parGridX);
    averager.computeMeanValues();
 
@@ -238,7 +239,7 @@ void Limiter::getStencil(const int iCell)
             stencil->shared_face_numbers.Append(sharedFaceNo);
          }
       }
-   } // for iFace
+   } // for iFace   
 }
 
  

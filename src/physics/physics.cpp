@@ -111,6 +111,20 @@ double ComputePressure(const Vector &state, int dim)
    return (specific_heat_ratio - 1.0) * (den_energy - 0.5 * den_vel2) / (1.0 - den * covolume_constant);
 }
 
+// Pressure (EOS) computation
+double ComputeTemperature(const Vector &state, int dim)
+{
+   const double den = state(0);
+   const Vector den_vel(state.GetData() + 1, dim);
+   const double den_energy = state(1 + dim);
+
+   double den_vel2 = 0;
+   for (int d = 0; d < dim; d++) { den_vel2 += den_vel(d) * den_vel(d); }
+   den_vel2 /= den;
+
+   return (specific_heat_ratio - 1.0) * (den_energy - 0.5 * den_vel2) / den / gas_constant;
+}
+
 double ComputeEnergy(double rho, double u, double v, double w, double p)
 {
    return p / (specific_heat_ratio - 1.0) * (1.0 - rho * covolume_constant) + 0.5 * rho * (u*u + v*v + w*w);
@@ -216,6 +230,24 @@ void ComputeFluxF(const Vector &state, const int dim,
    
 }
 
+
+// Compute the Mach number.
+double ComputeM(const Vector &state, const int dim)
+{
+   const double den = state(0);
+   const Vector den_vel(state.GetData() + 1, dim);
+
+   double den_vel2 = 0;
+   for (int d = 0; d < dim; d++) { den_vel2 += den_vel(d) * den_vel(d); }
+   den_vel2 /= den;
+
+   // const double pres = ComputePressure(state, dim);
+   const double sound = ComputeSoundSpeed(state, dim);
+   const double vel = sqrt(den_vel2 / den);
+
+   return vel/sound;
+}
+
 // Compute the maximum characteristic speed.
 double ComputeMaxCharSpeed(const Vector &state, const int dim)
 {
@@ -226,7 +258,7 @@ double ComputeMaxCharSpeed(const Vector &state, const int dim)
    for (int d = 0; d < dim; d++) { den_vel2 += den_vel(d) * den_vel(d); }
    den_vel2 /= den;
 
-   const double pres = ComputePressure(state, dim);
+   // const double pres = ComputePressure(state, dim);
    const double sound = ComputeSoundSpeed(state, dim);
    const double vel = sqrt(den_vel2 / den);
 
@@ -316,3 +348,19 @@ void ComputeToroCharSpeeds(const Vector &state1, const Vector &state2, Vector& l
       lambdaF[i] = uLeft;
 
 }
+
+
+// void ComputeU(const GridFunction& sol, const FiniteElementSpace& vfes, GridFunction& U)
+// {
+//     for (int i = 0; i < vfes.GetNE(); i++)
+//     {
+//         Vector zval;
+//         Array<int> vdofs;
+//         vfes.GetElementVDofs(i, vdofs);
+//         z.GetSubVector(vdofs, zval);
+//         // if (i == 50 || i == 1562)
+//         // {
+//         //     zval.Print(std::cout << "zval[" << i << "] after fluxes = " << endl);
+//         // }
+//     }
+// }
