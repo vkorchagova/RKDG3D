@@ -1,15 +1,13 @@
-### YAML case settings for Sod2D
-
-test: 1.5
+### YAML case settings for Munday nozzle
 
 mesh: 
-    file: fs.msh
+    file: nozzle.msh
     serialRefLevels: 0
     parallelRefLevels: 0
     
     adaptive: 0
     totalErrorFraction: 0.0             ### use purely local threshold
-    maxElemError: 1e-4
+    maxElemError: 2e-4
     hysteresis: 0.1                     ### derefinement safety coefficient
     preferConformingRefinement: false
     nonConformingLimit: 1
@@ -20,54 +18,51 @@ physics:
 
 internalField:
     type:       constant
-    rho:        1.0
-    U:          [3.0,0,0]
-    p:          0.714285714286
+    rho:        1.204
+    U:          [0,0,0]
+    p:          101325
 
 boundaryField:
     inlet:
         tag: 1
-        type:   supersonicInlet
-        rhoI:   1.0
-        UI:     [-3,0,0]
-        pI:     0.714285714286
+        type:   subsonicInlet
+        rhoI:   4.41
+        UI:     [0,0,0]
+        pI:     500000
     outlet:
         tag: 2
-        type:   outlet
-        rhoI:   1.0
-        U:      [3.0,0,0]
-        pI:     0.714285714286
+        type:   slip
     walls:
         tag: 3
         type:   slip
     walls2:
         tag: 4
-        type:   slip
-    
+        type:   outlet
+    walls3:
+        tag: 5
+        type:   outlet
 
 spatial:
     polyOrder:      1
     riemannSolver:  HLL
     limiter:
-        type:       Multi
+        type:       BJ
         indicator:  BJ
 
 time:
-    restart: false
-    restartCycle:  100
-    nSavedFrames: 10
+    restart: 0
+    restartCycle: 2000
+    nSavedFrames: 1
 
     order:  2
 
-    tEnd:   4.0
-    dt:     1e-4
+    tEnd:   1e-1
+    dt:     1e-10
 
     type:   dynamic
-    CoMax:  0.1
+    CoMax:  0.3
 
 postProcess:
     format:     vtk
-    visSteps:   1000
-    checkTotalEnergy: 0
-    writeIndicators: 0
-        
+    visSteps:   500
+    checkTotalEnergy: false

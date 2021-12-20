@@ -1,0 +1,65 @@
+### YAML case settings for ConvergingDiverging nozzle
+
+mesh: 
+    file: cdn_800.msh
+    serialRefLevels: 0
+    parallelRefLevels: 0
+    
+    adaptive: 0
+    totalErrorFraction: 0.0             ### use purely local threshold
+    maxElemError: 2e-4
+    hysteresis: 0.1                     ### derefinement safety coefficient
+    preferConformingRefinement: false
+    nonConformingLimit: 1
+
+physics:
+    type:   perfectGas
+    gamma:  1.4
+    R:      287
+
+internalField:
+    type:       constant
+    rho:        1.229
+    U:          [0,0,0]
+    p:          1.75e+5
+
+boundaryField:
+    inlet:
+        type:   subsonicInletFixedPressure
+        pFix:   3e+5
+        TTot:   500
+
+    walls:
+        type:   slip
+
+    outlet:
+        type:   fixedPressureOutlet
+        pFix:   1.75e+5
+
+spatial:
+    polyOrder:      1
+    riemannSolver:  HLL
+    limiter:
+        type:       Multi
+        indicator:  BJ
+        linearize:  0
+        haveLastHope: 1
+
+time:
+    restart: 0
+    restartCycle: 2000
+    nSavedFrames: 1
+
+    order:  3
+
+    tEnd:   0.05
+    dt:     1e-6
+
+    type:   dynamic
+    CoMax:  0.4
+
+postProcess:
+    format:     vtk
+    visSteps:   5000
+    checkTotalEnergy: 0
+    writeIndicators: 0

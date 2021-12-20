@@ -1,49 +1,52 @@
-### YAML case settings for Sod2D
+### YAML case settings for DoubleMach
 
 mesh: 
-    file: sod1d.msh
+    file: dm1.msh
     serialRefLevels: 0
     parallelRefLevels: 0
     
-    adaptive: 0
+    adaptive: 1
     totalErrorFraction: 0.0             ### use purely local threshold
-    maxElemError: 5e-4
-    hysteresis: 0.25                     ### derefinement safety coefficient
+    maxElemError: 0.5e-3
+    hysteresis: 0.5                     ### derefinement safety coefficient
     preferConformingRefinement: false
-    nonConformingLimit: 3               ### maximum level of hanging nodes
+    nonConformingLimit: 1               ### maximum level of hanging nodes
 
 physics:
     type:   perfectGas
     gamma:  1.4
-    R:      1.0
 
 internalField:
     type:       planeBreakup
 #    rho:    1.0
 #    U:      [0,0,0]
 #    p:      1.0
-    origin:     [0.5,0,0]
+    origin:     [0.15,0,0]
     normal:     [1,0,0]
     left:
-        rho:    1.0
+        rho:    8.0
+        U:      [8.25,0,0]
+        p:      116.518
+    right:
+        rho:    1.4
         U:      [0,0,0]
         p:      1.0
-    right:
-        rho:    0.125
-        U:      [0,0,0]
-        p:      0.1
 
 boundaryField:
-    Patch1: #inlet:
+    inlet:
         tag: 1
-        type:   slip
-    Patch2: #outlet:
+        type:   supersonicInlet
+        rhoI:   8.0
+        UI:     [-8.25,0,0]
+        pI:     116.528
+    outlet:
         tag: 2
-        type:   slip
-    Patch3: #walls:
+        type:   outlet
+        p:      1.0
+    walls:
         tag: 3
         type:   slip
-    Patch4: #walls2:
+    walls2:
         tag: 4
         type:   slip
 
@@ -57,19 +60,20 @@ spatial:
 time:
     restart: false
     
-    restartCycle:  100
-    nSavedFrames: 10
+    restartCycle:  1
+    nSavedFrames: 2
 
     order:  2
 
     tEnd:   0.2
-    dt:     0.0082
+    dt:     0.0001
 
     type:   dynamic
-    CoMax:  0.2
+    CoMax:  0.1
 
 postProcess:
     format:     vtk
     visSteps:   1000
-    checkTotalEnergy: 1
-    writeIndicators: 1
+    checkTotalEnergy: false
+    writeIndicators: 0
+            

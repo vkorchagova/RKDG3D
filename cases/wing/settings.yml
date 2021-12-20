@@ -1,18 +1,18 @@
-### YAML case settings for Sod2D
+### YAML case settings for ForwardStep
 
 test: 1.5
 
 mesh: 
-    file: fs.msh
+    file: x4_extr2DplaneQGDFoam_meshtest_0/internal.vtu #Face_Plane.msh
     serialRefLevels: 0
     parallelRefLevels: 0
     
-    adaptive: 0
+    adaptive: false
     totalErrorFraction: 0.0             ### use purely local threshold
-    maxElemError: 1e-4
-    hysteresis: 0.1                     ### derefinement safety coefficient
+    maxElemError: 10e-3
+    hysteresis: 0.5                     ### derefinement safety coefficient
     preferConformingRefinement: false
-    nonConformingLimit: 1
+    nonConformingLimit: 1               ### maximum level of hanging nodes
 
 physics:
     type:   perfectGas
@@ -20,28 +20,25 @@ physics:
 
 internalField:
     type:       constant
-    rho:        1.0
-    U:          [3.0,0,0]
-    p:          0.714285714286
+    rho:        1.176413
+    U:          [577.2273,0,0]
+    p:          101325
 
 boundaryField:
     inlet:
         tag: 1
-        type:   supersonicInlet
-        rhoI:   1.0
-        UI:     [-3,0,0]
-        pI:     0.714285714286
+        type:   inlet
+        rhoI:   1.176413
+        UI:     [-577.2273,0,0]
+        pI:     101325
     outlet:
         tag: 2
         type:   outlet
-        rhoI:   1.0
-        U:      [3.0,0,0]
-        pI:     0.714285714286
     walls:
-        tag: 3
+        tag: 0
         type:   slip
     walls2:
-        tag: 4
+        tag: 3
         type:   slip
     
 
@@ -49,7 +46,7 @@ spatial:
     polyOrder:      1
     riemannSolver:  HLL
     limiter:
-        type:       Multi
+        type:       BJ
         indicator:  BJ
 
 time:
@@ -67,7 +64,4 @@ time:
 
 postProcess:
     format:     vtk
-    visSteps:   1000
-    checkTotalEnergy: 0
-    writeIndicators: 0
-        
+    visSteps:   100

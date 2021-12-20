@@ -1,0 +1,55 @@
+### YAML case settings for pulse from Shengtai Li
+
+mesh: 
+    file: pulse_stat.msh
+    serialRefLevels: 0
+    parallelRefLevels: 0
+
+    adaptive: 0
+    totalErrorFraction: 0.0             ### use purely local threshold
+    maxElemError: 0.5e-3
+    hysteresis: 0.5                     ### derefinement safety coefficient
+    preferConformingRefinement: false
+    nonConformingLimit: 1               ### maximum level of hanging nodes
+
+physics:
+    type:   perfectGas
+    gamma:  1.4
+
+internalField:
+    type:       densityPulse
+    origin:     [0,0,0]
+    epsilon:    1
+    rho:    1.0
+    U:      [1.0,1.0,0]
+    p:      1.0
+
+boundaryField:
+#    periodic boundaries - directly in mesh topology
+
+spatial:
+    polyOrder:      1
+    riemannSolver:  HLL
+    limiter:
+        type:       FinDiff #BJ
+        indicator:  Nowhere
+
+time:
+    restart: 0
+    
+    restartCycle:  0
+    nSavedFrames: 10
+
+    order:  3
+
+    tEnd:   10
+    dt:     0.0001
+
+    type:   dynamic
+    CoMax:  0.05
+
+postProcess:
+    format:     vtk
+    visSteps:   1000
+    checkTotalEnergy: true
+    writeIndicators: 1

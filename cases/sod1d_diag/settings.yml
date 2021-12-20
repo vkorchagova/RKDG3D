@@ -1,29 +1,25 @@
 ### YAML case settings for Sod2D
 
 mesh: 
-    file: sod1d.msh
+    file: sod2d.msh
     serialRefLevels: 0
     parallelRefLevels: 0
     
     adaptive: 0
     totalErrorFraction: 0.0             ### use purely local threshold
-    maxElemError: 5e-4
-    hysteresis: 0.25                     ### derefinement safety coefficient
+    maxElemError: 2e-4
+    hysteresis: 0.5                     ### derefinement safety coefficient
     preferConformingRefinement: false
     nonConformingLimit: 3               ### maximum level of hanging nodes
 
 physics:
     type:   perfectGas
     gamma:  1.4
-    R:      1.0
 
 internalField:
     type:       planeBreakup
-#    rho:    1.0
-#    U:      [0,0,0]
-#    p:      1.0
-    origin:     [0.5,0,0]
-    normal:     [1,0,0]
+    origin:     [0,0,0]
+    normal:     [1,0.5,0]
     left:
         rho:    1.0
         U:      [0,0,0]
@@ -34,17 +30,17 @@ internalField:
         p:      0.1
 
 boundaryField:
-    Patch1: #inlet:
+    inlet:
+        tag: 0
+        type:   slip
+    outlet:
         tag: 1
         type:   slip
-    Patch2: #outlet:
+    walls:
         tag: 2
         type:   slip
-    Patch3: #walls:
+    walls2:
         tag: 3
-        type:   slip
-    Patch4: #walls2:
-        tag: 4
         type:   slip
 
 spatial:
@@ -55,21 +51,20 @@ spatial:
         indicator:  BJ
 
 time:
-    restart: false
+    restart: 0
     
-    restartCycle:  100
-    nSavedFrames: 10
+    restartCycle:  5
+    nSavedFrames: 1
 
     order:  2
 
-    tEnd:   0.2
-    dt:     0.0082
+    tEnd:   0.1
+    dt:     0.001
 
-    type:   dynamic
-    CoMax:  0.2
+    type:   constant
+    CoMax:  0.1
 
 postProcess:
     format:     vtk
-    visSteps:   1000
-    checkTotalEnergy: 1
-    writeIndicators: 1
+    visSteps:   50
+    checkTotalEnergy: true

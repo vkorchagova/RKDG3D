@@ -1,7 +1,7 @@
 ### YAML case settings for Sod2D
 
 mesh: 
-    file: sod1d.msh
+    file: KG.msh
     serialRefLevels: 0
     parallelRefLevels: 0
     
@@ -15,61 +15,54 @@ mesh:
 physics:
     type:   perfectGas
     gamma:  1.4
-    R:      1.0
 
 internalField:
     type:       planeBreakup
 #    rho:    1.0
 #    U:      [0,0,0]
 #    p:      1.0
-    origin:     [0.5,0,0]
-    normal:     [1,0,0]
+    origin:     [0,0,0]
+    normal:     [0,1,0]
     left:
         rho:    1.0
         U:      [0,0,0]
         p:      1.0
     right:
-        rho:    0.125
-        U:      [0,0,0]
-        p:      0.1
+        rho:    1.0
+        U:      [1.0,0,0]
+        p:      1.0
 
 boundaryField:
-    Patch1: #inlet:
+    inlet:
         tag: 1
-        type:   slip
-    Patch2: #outlet:
+        type:   outlet
+    outlet:
         tag: 2
-        type:   slip
-    Patch3: #walls:
-        tag: 3
-        type:   slip
-    Patch4: #walls2:
-        tag: 4
-        type:   slip
+        type:   outlet
 
 spatial:
     polyOrder:      1
-    riemannSolver:  HLL
+    riemannSolver:  HLLC
     limiter:
-        type:       Multi
-        indicator:  BJ
+        type:       BJ
+        indicator:  Everywhere
 
 time:
     restart: false
     
     restartCycle:  100
-    nSavedFrames: 10
+    nSavedFrames: 2
 
     order:  2
 
-    tEnd:   0.2
+    tEnd:   20
     dt:     0.0082
 
     type:   dynamic
-    CoMax:  0.2
+    CoMax:  0.5
 
 postProcess:
     format:     vtk
-    visSteps:   1000
+    visSteps:   50
     checkTotalEnergy: 1
     writeIndicators: 1

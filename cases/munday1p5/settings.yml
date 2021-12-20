@@ -1,0 +1,81 @@
+### YAML case settings for Munday nozzle
+
+mesh: 
+    file: nozzle.msh
+    serialRefLevels: 0
+    parallelRefLevels: 0
+
+    adaptive: 0
+    totalErrorFraction: 0.0             ### use purely local threshold
+    maxElemError: 5e-4
+    hysteresis: 0.1                     ### derefinement safety coefficient
+    preferConformingRefinement: false
+    nonConformingLimit: 1
+
+physics:
+    type:   perfectGas
+    gamma:  1.4
+    R:      287
+
+internalField:
+    type:       constant
+    rho:        1.204
+    U:          [0,0,0]
+    p:          101325
+
+boundaryField:
+    inlet:
+        type: slip
+#        type:   subsonicInletTotalPressure
+#        pTot:   463955
+#        TTot:   293.15
+#        type:   totalPressureFixedTemperatureOutlet
+        pTot:   101325
+        TFix:   293.15
+
+    nozzle:
+        type:   slip
+
+    wall:
+        type: slip
+#        type:   totalPressureFixedTemperatureOutlet
+        pTot:   101325
+        TFix:   293.15
+
+    top:
+        type: slip
+#        type:   totalPressureFixedTemperatureOutlet
+        pTot:   101325
+        TFix:   293.15
+
+    outlet:
+        type: slip
+#        type:   totalPressureFixedTemperatureOutlet
+        pTot:   101325
+        TFix:   293.15
+
+spatial:
+    polyOrder:      1
+    riemannSolver:  HLL
+    limiter:
+        type:       Multi
+        indicator:  BJ #Nowhere
+
+time:
+    restart: 0
+    restartCycle: 2000
+    nSavedFrames: 1
+
+    order:  2
+
+    tEnd:   0.2
+    dt:     1e-5
+
+    type:   dynamic
+    CoMax:  0.4
+
+postProcess:
+    format:     vtk
+    visSteps:   230
+    checkTotalEnergy: 0
+    writeIndicators: 0
