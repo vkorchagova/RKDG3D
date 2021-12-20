@@ -53,9 +53,13 @@ Volume(26) = {25};
 
 
 // boundaries
-Physical Surface("top") = {16};
-Physical Surface("bottom") = {14};
-Physical Surface("sides") = {18, 20, 22, 24};
+Physical Surface("top",2) = {16};
+Physical Surface("bottom",3) = {14};
+Physical Surface("left",4) = {18};
+Physical Surface("right",5) = {22};
+Physical Surface("front",6) = {20};
+Physical Surface("back",7) = {24};
+
 Physical Volume("internal") = {26};
 
 
