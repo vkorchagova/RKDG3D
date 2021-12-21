@@ -752,7 +752,7 @@ void CaseManager::addBoundaryIntegrators(ParNonlinearForm& A, ParMesh& mesh, Rie
         }
         else if (type == "slip")
         {
-            A.AddBdrFaceIntegrator(new BoundaryIntegratorWall(rsolver, dim), bdr_markers[patchNumber] );
+            A.AddBdrFaceIntegrator(new BoundaryIntegratorSlip(rsolver, dim), bdr_markers[patchNumber] );
         }
         else if (type == "outlet")
         {

@@ -294,7 +294,14 @@ int main(int argc, char *argv[])
                 indicatorData,
                 offsets,
                 offsets_const,
-                avgr
+                avgr,
+                U,
+                p,
+                T,
+                UMean,
+                pMean,
+                TMean,
+                rhoMean
             );
 
             // cout << "... after rebalance " << vfes.GlobalTrueVSize() << endl;
@@ -349,7 +356,14 @@ int main(int argc, char *argv[])
                 indicatorData,
                 offsets,
                 offsets_const,
-                avgr
+                avgr,
+                U,
+                p,
+                T,
+                UMean,
+                pMean,
+                TMean,
+                rhoMean
             );
 
             // cout << "after second basic rebalance" << endl;
@@ -580,7 +594,14 @@ int main(int argc, char *argv[])
                     indicatorData,
                     offsets,
                     offsets_const,
-                    avgr
+                    avgr,
+                    U,
+                    p,
+                    T,
+                    UMean,
+                    pMean,
+                    TMean,
+                    rhoMean
                 );
 
                 // cout << "... after rebalance " << vfes.GlobalTrueVSize() << endl;
@@ -643,7 +664,14 @@ int main(int argc, char *argv[])
                     indicatorData,
                     offsets,
                     offsets_const,
-                    avgr
+                    avgr,
+                    U,
+                    p,
+                    T,
+                    UMean,
+                    pMean,
+                    TMean,
+                    rhoMean
                 );
 
                 // cout << "after second basic rebalance" << endl;

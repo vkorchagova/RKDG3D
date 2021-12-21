@@ -7,15 +7,18 @@
 using namespace std;
 using namespace mfem;
 
-// Maximum characteristic speed (updated by integrators)
+/// Maximum characteristic speed (updated by integrators)
 extern double max_char_speed;
 
+/// Number of equations
 extern int num_equation;
 
 /// Proc rank 
 extern int myRank;
 
-// Interior face term: <F.n(u),[w]>
+///
+/// Interior face term: <F.n(u),[w]>
+///
 class FaceIntegrator : public NonlinearFormIntegrator
 {
 private:

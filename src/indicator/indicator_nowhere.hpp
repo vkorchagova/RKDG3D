@@ -6,14 +6,14 @@
 using namespace std;
 using namespace mfem;
 
+/// Number of equations
 extern int num_equation;
 
 /// Proc rank 
 extern int myRank;
 
 /// 
-/// Abstract class for checking discontinuities
-/// for the DG slopes
+/// Set all cells should NOT be be limited
 ///
 class IndicatorNowhere : public Indicator
 {   

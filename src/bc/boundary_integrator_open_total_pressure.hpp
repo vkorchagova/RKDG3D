@@ -6,9 +6,10 @@
 using namespace std;
 using namespace mfem;
 
-// Maximum characteristic speed (updated by integrators)
+/// Maximum characteristic speed (updated by integrators)
 extern double max_char_speed;
 
+/// Number of equations
 extern int num_equation;
 
 extern double specific_heat_ratio;
@@ -18,12 +19,18 @@ extern double gas_constant;
 /// Proc rank 
 extern int myRank;
 
-// Interior face term: <F.n(u),[w]>
+///
+/// Open boundary where total pressure and static temperature are fixed
+/// Have a switch between subsonic and supersonic flows
+///
 class BoundaryIntegratorOpenTotalPressure : public BoundaryIntegrator
 {
 private:
 
+    /// Constant value of total pressure
     double pTotal;
+
+    /// Constant value of static temperature
     double TFix;
 
 public:
@@ -31,12 +38,7 @@ public:
     /// Constructor
     BoundaryIntegratorOpenTotalPressure(RiemannSolver &rsolver_, const int dim, double _pres = 101325, double _TFix = 293.15);
 
-    // /// Compute part of -<F.n(u), [w]> for the given face 
-    // virtual void AssembleFaceVector(const FiniteElement &el1,
-    //                                 const FiniteElement &el2,
-    //                                 FaceElementTransformations &Tr,
-    //                                 const Vector &elfun, Vector &elvect);
-
+    /// Compute state outside the boundary for Riemann solver
     virtual void computeRightState(const Vector& state1, Vector& state2, const Vector& nor) override;
 };
 

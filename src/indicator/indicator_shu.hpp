@@ -4,7 +4,7 @@
 #include "indicator.hpp"
 
 /// 
-/// Barth-Jespersen indicator based on limiting algorithm
+/// Shu indicator
 ///
 class IndicatorShu : public Indicator
 {
@@ -21,8 +21,6 @@ private:
 
    /// sum | u_avg_0 - u_avg_extrap_j|, j \in stensil_neibs
    Vector sumFabsDiffExtrap;
-
-   
   
 
 public:

@@ -8,6 +8,7 @@
 using namespace std;
 using namespace mfem;
 
+/// Number of equations
 extern int num_equation;
 
 /// Proc rank 
@@ -85,15 +86,15 @@ protected:
 
    /// Compute stencil
    void getStencil(const int iCell);
+
+   /// Clean stencil
    void cleanStencil();
 
-   // Zerify Axy term in approximation
+   /// Zerify Axy term in approximation
    bool needLinearize;
 
-   // Remove slopes in case of non-physical values in cell vertices  
+   /// Remove slopes in case of non-physical values in cell vertices  
    bool haveLastHope;
-
-
 
 public:
 

@@ -4,8 +4,10 @@
 using namespace std;
 using namespace mfem;
 
+/// Number of equations
 extern int num_equation;
 
+/// Update and rebalance all FEspaces and grid functions after each change of mesh 
 void UpdateAndRebalance(
     ParMesh &pmesh, 
     ParFiniteElementSpace &fes,
@@ -29,5 +31,12 @@ void UpdateAndRebalance(
     BlockVector &u_ind,
     Array<int> &offsets,
     Array<int> &offsets_const,
-    Averager& avgr
+    Averager& avgr,
+    ParGridFunction &U,
+    ParGridFunction &p,
+    ParGridFunction &T,
+    ParGridFunction &UMean,
+    ParGridFunction &pMean,
+    ParGridFunction &TMean,
+    ParGridFunction &rhoMean
 );

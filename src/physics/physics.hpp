@@ -3,6 +3,7 @@
 using namespace std;
 using namespace mfem;
 
+/// Physics parameters (updated by case)
 extern double specific_heat_ratio;
 extern double covolume_constant;
 extern double gas_constant;

@@ -7,44 +7,70 @@
 using namespace std;
 using namespace mfem;
 
+/// Number of equations
 extern int num_equation;
 
 /// Proc rank 
 extern int myRank;
 
 /// 
-/// Initial conditions 
+/// Abstract class for different types of initial conditions 
 ///
-
 class IC
 {
 
 protected:
 
+    /// Density function
     std::function<double(const Vector& x)> initRho;
+
+    /// Pressure function
     std::function<double(const Vector& x)> initP;
+
+    /// velocity X component function
     std::function<double(const Vector& x)> initU;
+
+    /// velocity Y component function
     std::function<double(const Vector& x)> initV;
+
+    /// velocity Z component function
     std::function<double(const Vector& x)> initW;
 
 public:
+
+    /// Constructor
     IC() {};
+
+    /// Destructor
     virtual ~IC() {};
 
+    /// Define initial conditions
     virtual std::function<void(const Vector &, Vector &)> setIC() = 0;
 };
 
-
+/// 
+/// Constant initial values in the whole flow domain
+///
 class ICConstant : public IC
 {
+    /// Initial value of density
     double den;
+
+    /// Initial value of velocity X component
     double velX;
+
+    /// Initial value of velocity Y component
     double velY;
+
+    /// Initial value of velocity Z component
     double velZ;
+
+    /// Initial value of pressure
     double pres;
 
 public:
 
+    /// Constructor
     ICConstant(const Vector& sol) 
      : 
     IC(),
@@ -55,8 +81,10 @@ public:
     pres(sol[num_equation-1])
     {};
     
+    /// Destructor
     ~ICConstant() {};
 
+    /// Define initial conditions
     virtual std::function<void(const Vector &, Vector &)> setIC() override
     {
         initRho = [=](const Vector& x) { return den; };
@@ -100,25 +128,50 @@ public:
     }
 };
 
+/// 
+/// Two constant initial states in the flow domain separated by plane
+///
 class ICPlaneBreakup : public IC
 {
+    /// Plane origin
     Vector origin;
+
+    /// Plane normal
     Vector normal;
 
+    /// Initial value of density behind plane
     double den1;
+
+    /// Initial value of velocity X component behind plane
     double velX1;
+
+    /// Initial value of velocity Y component behind plane
     double velY1;
+
+    /// Initial value of velocity Z component behind plane
     double velZ1;
+
+    /// Initial value of pressure behind plane
     double pres1;
 
+    /// Initial value of density forward of plane
     double den2;
+
+    /// Initial value of velocity X component forward of plane
     double velX2;
+
+    /// Initial value of velocity Y component forward of plane
     double velY2;
+
+    /// Initial value of velocity Z component forward of plane
     double velZ2;
+
+    /// Initial value of pressure forward of plane
     double pres2;
 
 public:
 
+    /// Constructor
     ICPlaneBreakup(const Vector& sol1_, const Vector& sol2_,const Vector& origin_, const Vector& normal_) 
      : 
     IC(),
@@ -134,15 +187,12 @@ public:
     pres2(sol2_[num_equation-1]),
     origin(origin_),
     normal(normal_)
-    {
-        // origin = origin_;
-        // normal = normal_;
-        // origin(origin_.GetData(),origin_.Size()),
-        // normal(normal_.GetData(),normal_.Size())
-    };
+    {};
     
+    /// Destructor
     ~ICPlaneBreakup() {};
 
+    /// Define a plane equation
     double plane(const Vector& x)
     {
         const int dim = x.Size();
@@ -155,11 +205,12 @@ public:
                     normal[2] * (x[2] - origin[2]);
         else
         {
-            cout << "Wrong dimension inside planeBreakup" << endl;
+            cout << "Wrong dimension inside ICPlaneBreakup" << endl;
             exit(1);
         }
     }
 
+    /// Define initial conditions
     virtual std::function<void(const Vector &, Vector &)> setIC() override
     {
         initRho = [=](const Vector& x) 
@@ -219,27 +270,53 @@ public:
 };
 
 
-
+/// 
+/// Two constant initial states in the flow domain separated by sphere
+///
 class ICSphericalBreakup : public IC
 {
+    /// Center of sphere
     Vector origin;
+
+    /// Radius of sphere (squared)
     double rSquared;
+
+    /// Radius of smoothing part (linear transition between two states) (squared)
     double rSquaredDelta;
 
+    /// Initial value of density inside sphere
     double den1;
+
+    /// Initial value of velocity X component inside sphere
     double velX1;
+
+    /// Initial value of velocity Y component inside sphere
     double velY1;
+
+    /// Initial value of velocity Z component inside sphere
     double velZ1;
+
+    /// Initial value of pressure inside sphere
     double pres1;
 
+    /// Initial value of density outside sphere
     double den2;
+
+    /// Initial value of velocity X component outside sphere
     double velX2;
+
+    /// Initial value of velocity Y component outside sphere
     double velY2;
+
+    /// Initial value of velocity Z component outside sphere
     double velZ2;
+
+    /// Initial value of pressure outside sphere
     double pres2;
 
 public:
 
+    /// Constructor
     ICSphericalBreakup(const Vector& sol1_, const Vector& sol2_,const Vector& origin_, const double radius_) 
      : 
     IC(),
@@ -256,15 +333,12 @@ public:
     origin(origin_),
     rSquared(radius_*radius_),
     rSquaredDelta(0.2*0.2*rSquared)
-    {
-        // origin = origin_;
-        // normal = normal_;
-        // origin(origin_.GetData(),origin_.Size()),
-        // normal(normal_.GetData(),normal_.Size())
-    };
+    {};
     
+    /// Destructor
     ~ICSphericalBreakup() {};
 
+    /// Define a sphere equation
     double sphere(const Vector& x)
     {
         const int dim = x.Size();
@@ -277,16 +351,18 @@ public:
                    (x[2] - origin[2])*(x[2] - origin[2]) - rSquared;
         else
         {
-            cout << "Wrong dimension inside planeBreakup" << endl;
+            cout << "Wrong dimension inside ICSphericalBreakup" << endl;
             exit(1);
         }
     }
 
+    /// Get a linear transition between two states
     double linear(const Vector& x, double r1, double r2, double val1, double val2)
     {
         return (x.DistanceTo(origin) - r1) * (val2 - val1) / (r2 - r1) + val1;
     }
 
+    /// Define initial conditions
     virtual std::function<void(const Vector &, Vector &)> setIC() override
     {
         initRho = [=](const Vector& x) 
@@ -345,18 +421,32 @@ public:
     }
 };
 
-
+/// 
+/// Constant initial values in the whole flow domain for velocity and pressure
+/// Exponential pulse for density
+///
 class ICDensityPulse : public IC
 {
+    /// Origin of density pulse
     Vector origin;
+
+    /// Amplitude of density pulse
     double epsilon;
 
+    /// Initial value of velocity X component
     double velX;
+
+    /// Initial value of velocity Y component
     double velY;
+
+    /// Initial value of velocity Z component
     double velZ;
+
+    /// Initial value of pressure
     double pres;
 
-    double sphere(const Vector& x)
+    /// Compute 1-r^2 for defined point
+    double oneMinusR2(const Vector& x)
     {
         const int dim = x.Size();
         if (dim == 2)
@@ -368,7 +458,7 @@ class ICDensityPulse : public IC
                    (x[2] - origin[2])*(x[2] - origin[2]) - 1.0;
         else
         {
-            cout << "Wrong dimension inside planeBreakup" << endl;
+            cout << "Wrong dimension inside ICDensityPulse" << endl;
             exit(1);
         }
     }
@@ -392,7 +482,7 @@ public:
     {
         initRho = [=](const Vector& x) 
         { 
-            return pow((1.0 - (specific_heat_ratio - 1.0)*epsilon*epsilon*exp(-sphere(x))/(8.0*specific_heat_ratio*3.14169265*3.14169265)), 1.0 / (specific_heat_ratio - 1.0)); 
+            return pow((1.0 - (specific_heat_ratio - 1.0)*epsilon*epsilon*exp(oneMinusR2(x))/(8.0*specific_heat_ratio*3.14169265*3.14169265)), 1.0 / (specific_heat_ratio - 1.0)); 
         };
         initP   = [=](const Vector& x) 
         { 

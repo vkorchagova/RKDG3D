@@ -9,6 +9,7 @@ using namespace mfem;
 // Maximum characteristic speed (updated by integrators)
 extern double max_char_speed;
 
+/// Number of equations
 extern int num_equation;
 
 extern double specific_heat_ratio;
@@ -18,15 +19,17 @@ extern double gas_constant;
 /// Proc rank 
 extern int myRank;
 
-// Interior face term: <F.n(u),[w]>
+///
+/// Subsonic inlet boundary where static pressure and total temperature are fixed
+///
 class BoundaryIntegratorSubsonicInletFixedPressure : public BoundaryIntegrator
 {
 private:
 
-    /// Dirichlet state
-    Vector fixedState;
-
+    /// Constant value of static pressure
     double pFix;
+
+    /// Constant value of total temperature
     double TTot;
 
 public:
@@ -34,12 +37,7 @@ public:
     /// Constructor
     BoundaryIntegratorSubsonicInletFixedPressure(RiemannSolver &rsolver_, const int dim, double _pFix, double _TTot);
 
-    // /// Compute part of -<F.n(u), [w]> for the given face 
-    // virtual void AssembleFaceVector(const FiniteElement &el1,
-    //                                 const FiniteElement &el2,
-    //                                 FaceElementTransformations &Tr,
-    //                                 const Vector &elfun, Vector &elvect);
-
+    /// Compute state outside the boundary for Riemann solver
     virtual void computeRightState(const Vector& state1, Vector& state2, const Vector& nor) override;
 };
 

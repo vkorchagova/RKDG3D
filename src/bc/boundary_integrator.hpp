@@ -7,15 +7,19 @@
 using namespace std;
 using namespace mfem;
 
-// Maximum characteristic speed (updated by integrators)
+/// Maximum characteristic speed (updated by integrators)
 extern double max_char_speed;
 
+/// Number of equations
 extern int num_equation;
 
 /// Proc rank 
 extern int myRank;
 
-// Interior face term: <F.n(u),[w]>
+///
+/// Abstract class for boundary condition
+/// Implemented as boundary face term: <F.n(u),[w]>
+///
 class BoundaryIntegrator : public NonlinearFormIntegrator
 {
 protected:
@@ -41,6 +45,7 @@ protected:
     /// Projection of face integration point to the reference space of left FE
     IntegrationPoint eip1;
 
+    /// Space dimension
     int dim;
 
 public:
@@ -54,6 +59,7 @@ public:
                                     FaceElementTransformations &Tr,
                                     const Vector &elfun, Vector &elvect);
 
+    /// Compute state outside the boundary for Riemann solver
     virtual void computeRightState(const Vector& state1, Vector& state2, const Vector& nor) = 0;
 };
 

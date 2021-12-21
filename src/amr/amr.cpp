@@ -23,7 +23,14 @@ void UpdateAndRebalance(
     BlockVector &u_ind,
     Array<int> &offsets,
     Array<int> &offsets_const,
-    Averager& avgr
+    Averager& avgr,
+    ParGridFunction &U,
+    ParGridFunction &p,
+    ParGridFunction &T,
+    ParGridFunction &UMean,
+    ParGridFunction &pMean,
+    ParGridFunction &TMean,
+    ParGridFunction &rhoMean
 )
 {
     // Update the space: recalculate the number of DOFs and construct a matrix
@@ -53,6 +60,15 @@ void UpdateAndRebalance(
     rhok.MakeRef(&fes,x,offsets[0]);
     mom.MakeRef(&dfes,x,offsets[1]);
     energy.MakeRef(&fes,x,offsets[num_equation-1]);
+
+    U.Update();
+    p.Update();
+    T.Update();
+    UMean.Update();
+    pMean.Update();
+    TMean.Update();
+    rhoMean.Update();
+
     avgr.updateSolutions();
 
     if (pmesh.Nonconforming())
@@ -88,7 +104,16 @@ void UpdateAndRebalance(
         mom.MakeRef(&dfes,x,offsets[1]);
         energy.MakeRef(&fes,x,offsets[num_equation-1]);
 
+        U.Update();
+        p.Update();
+        T.Update();
+        UMean.Update();
+        pMean.Update();
+        TMean.Update();
+        rhoMean.Update();
+
         avgr.updateSolutions();
+
 
         // cout << " end Nonconforming()" << endl;
     } 
