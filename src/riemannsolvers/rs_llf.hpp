@@ -4,25 +4,22 @@
 #include "mfem.hpp"
 #include "rs_basic.hpp"
 
-
 using namespace std;
 using namespace mfem;
 
+/// Number of equations
 extern int num_equation;
 
 ///
-/// Implements a simple Rusanov flux
+/// Implements a simple Local Lax -- Fridriechs flux
 ///
 class RiemannSolverLLF : public RiemannSolver
 {
 
-private:
-    Vector lambdaF;
-
 public:
 
     /// Constructor
-    RiemannSolverLLF() : RiemannSolver() {lambdaF.SetSize(num_equation);};
+    RiemannSolverLLF() : RiemannSolver() {};
 
     /// Destructor
     ~RiemannSolverLLF() {};
@@ -32,4 +29,4 @@ public:
                const Vector &nor, Vector &flux, bool debug = false) override;
 };
 
-#endif // RIEMANN_SOLVER_RUS_H
+#endif // RIEMANN_SOLVER_LLF_H

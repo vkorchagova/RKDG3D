@@ -38,6 +38,21 @@ Averager::Averager(ParFiniteElementSpace* _fes, const Array<int>& _offsets, int 
    u_block_avg_extrap = new BlockVector(*avgs_extrap, offsets_avg_extrap);
 };
 
+Averager::~Averager()
+{
+   delete avgs_extrap; 
+   delete u_block_avg_extrap; 
+   delete fes_avg_extrap_component;
+   delete fes_avg_extrap; 
+   delete fec_avg_extrap;
+   delete avgs; 
+   delete u_block_avg; 
+   delete fes_avg_component;
+   delete fes_avg; 
+   delete fec_avg;
+};
+
+
 void Averager::updateSpaces()
 {
    // cout << "before fes_avg->Update();" << endl;
@@ -58,6 +73,7 @@ void Averager::updateSolutions()
    // Interpolate the solution on the new mesh by applying the transformation
    // matrix computed in the finite element space. Multiple GridFunctions could
    // be updated here.
+   //parGridX->Update();
    avgs->Update();
    avgs_extrap->Update();
 
@@ -87,6 +103,13 @@ void Averager::computeMeanValues()
    for (int i = 0; i < num_equation; ++i)
    {
       // cout << "before ParGridFunction..." << endl;
+      // cout << "v.Size() = " 
+      //      << parGridX->Size() 
+      //      << ", v_offset = " 
+      //      << offsets[i]
+      //      << ", f->GetVSize() = "
+      //      << fes->GetVSize()
+      //      << endl;
       ParGridFunction sol_i, avgs_i;
       // cout << "sol make ref before..." << endl;  
       sol_i.MakeRef(fes, *parGridX, offsets[i]);

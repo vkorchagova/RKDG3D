@@ -3,8 +3,13 @@
 using namespace std;
 using namespace mfem;
 
+/// Physics parameters (updated by case)
 extern double specific_heat_ratio;
 extern double covolume_constant;
+extern double gas_constant;
+
+/// Proc rank 
+extern int myRank;
 
 /// Square
 template<class T>
@@ -17,6 +22,9 @@ bool StateIsPhysicalSay(const Vector &state, const int dim);
 
 // Pressure (EOS) computation
 double ComputePressure(const Vector &state, int dim);
+
+// Temperature computation
+double ComputeTemperature(const Vector &state, int dim);
 
 // Energy by given pressure (EOS)
 double ComputeEnergy(double rho, double u, double v, double w, double p);
@@ -37,6 +45,13 @@ void ComputeFluxF(const Vector &state, const int dim,
 // Compute the maximum characteristic speed.
 double ComputeMaxCharSpeed(const Vector &state, const int dim);
 
+// Compute Mach number
+double ComputeM(const Vector &state, const int dim);
+
+
+// Compute char speeds for defined state
+// void ComputeCharSpeedsByState(const Vector &state, Vector& lambdaF, const int dim);
+
 // Compute Einfeldt averaged char speeds via two states
 void ComputeEinfeldtCharSpeeds(const Vector &state1, const Vector &state2, Vector& lambdaF, const int dim);
 
@@ -46,3 +61,6 @@ void ComputeToroCharSpeeds(const Vector &state1, const Vector &state2, Vector& l
 
 // Compute primitive variables (rho, u, v, w, p)
 void TransformConservativeToPrimitive(Vector& state);
+
+// void ComputeU(const GridFunction& sol, const FiniteElementSpace& vfes, GridFunction& U);
+// void ComputeP(const GridFunction& sol, GridFunction& p);

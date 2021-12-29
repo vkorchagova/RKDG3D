@@ -6,12 +6,15 @@
 using namespace std;
 using namespace mfem;
 
+/// Number of equations
 extern int num_equation;
 
 /// Proc rank 
 extern int myRank;
 
-
+///
+/// Class for cell stencil needed for limiters
+///
 class Stencil
 {
 
@@ -20,7 +23,7 @@ public:
    /// Stencil for current cell (cell numbers)
    Array<int> cell_num;
 
-   /// Max stencil size
+   /// Max stencil size (just for reserve)
    const int max_size = 10;
 
    /// Internal face numbers in stencil
@@ -31,6 +34,7 @@ public:
 
 public:
 
+   /// Constructor
    Stencil()
    {
       cell_num.Reserve(max_size);
@@ -38,6 +42,7 @@ public:
       shared_face_numbers.Reserve(max_size);
    };
 
+   /// Destructor
    ~Stencil() {};
 
    // Clean stencil values

@@ -6,8 +6,10 @@
 using namespace std;
 using namespace mfem;
 
+/// Number of equations
 extern int num_equation;
 
+/// Proc rank 
 extern int myRank;
 
 ///
@@ -15,6 +17,12 @@ extern int myRank;
 ///
 class RiemannSolver
 {
+
+protected:
+
+    /// Set of eigenvalues
+    Vector lambdaF;
+
 public:
     
     /// Physical flux F, left side
@@ -23,8 +31,10 @@ public:
     /// Physical flux F, right side
     Vector flux2;
 
+    /// Get normal and tangential components by normal to the cell boundary
     void Rotate(Vector& state, const Vector& nor, int dim);
 
+    /// Get initial components by normal to the cell boundary
     void InverseRotate(Vector& state, const Vector& nor, int dim);
 
 public:

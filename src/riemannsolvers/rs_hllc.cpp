@@ -3,7 +3,6 @@
 
 RiemannSolverHLLC::RiemannSolverHLLC() : RiemannSolver() 
 {
-   lambdaF.SetSize(num_equation);
    D.SetSize(num_equation);
    D = 0.0;
    FStar.SetSize(num_equation);
@@ -73,8 +72,8 @@ double RiemannSolverHLLC::Eval(const Vector &state1, const Vector &state2,
 {
    const int dim = nor.Size();
 
-   if (!StateIsPhysicalSay(state1, dim)) exit(1);
-   if (!StateIsPhysicalSay(state2, dim)) exit(1);
+   if (!StateIsPhysicalSay(state1, dim)) { cout << "Found in state 1"; return -1;};
+   if (!StateIsPhysicalSay(state2, dim)) { cout << "Found in state 2"; return -1;};
 
    Rotate(const_cast<Vector&>(state1), nor, dim);
    Rotate(const_cast<Vector&>(state2), nor, dim);

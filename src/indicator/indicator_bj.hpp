@@ -34,7 +34,7 @@ private:
 public:
    
    /// Constructor
-   IndicatorBJ(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, BlockVector& _idata);
+   IndicatorBJ(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, ParGridFunction& _idata);
    
    /// Destructor
    ~IndicatorBJ() {};

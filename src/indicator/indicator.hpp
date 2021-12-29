@@ -7,14 +7,14 @@
 using namespace std;
 using namespace mfem;
 
+/// Number of equations
 extern int num_equation;
 
 /// Proc rank 
 extern int myRank;
 
 /// 
-/// Abstract class for checking discontinuities
-/// for the DG slopes
+/// Abstract class for search of cells where solution should be limited
 ///
 class Indicator
 {
@@ -35,7 +35,6 @@ protected:
 
    /// Vector to store limited values
    Vector xNew;
-
 
    /// Pointer to finite element
    const FiniteElement *fe;
@@ -61,14 +60,13 @@ protected:
    /// Offsets to deal with variables component-by-component
    const Array<int>& offsets;
    
-
 public:
 
    /// Values of indicator field associated with ParaView external writer
-   BlockVector& values;
+   ParGridFunction& values;
 
    /// Constructor
-   Indicator(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, BlockVector& _idata); 
+   Indicator(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, ParGridFunction& _idata);
 
    /// Destructor
    virtual ~Indicator() {};

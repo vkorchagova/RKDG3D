@@ -6,15 +6,15 @@
 using namespace std;
 using namespace mfem;
 
-// Problem definition
-extern int problem;
-
-// Maximum characteristic speed (updated by integrators)
+///  Maximum characteristic speed (updated by integrators)
 extern double max_char_speed;
 
+/// Number of equations
 extern int num_equation;
+
+/// Physics parameters (updated by case)
 extern double specific_heat_ratio;
-extern const double gas_constant;
+extern double gas_constant;
 extern double covolume_constant;
 
 /// Proc rank 
@@ -40,8 +40,8 @@ private:
    /// Matrix of the nonlinear form with domain integrators
    SparseMatrix *Aflux;
 
-   /// Inverse mass matrix
-   DenseTensor Me_inv;
+   /// Inverse mass matrices
+   std::vector<DenseMatrix> Me_inv;
 
    /// Vector to store solution at point
    mutable Vector state;
@@ -66,16 +66,18 @@ public:
    FE_Evolution(FiniteElementSpace &_vfes,
                 Operator &_A, SparseMatrix *_Aflux);
 
+   /// Destructor
+   virtual ~FE_Evolution() { }
+
    /// Compute rhs
    //  @param x solution
    //  @param y result
    virtual void Mult(const Vector &x, Vector &y) const;
 
+   /// Update inverse mass matrix (in AMR case)
    void UpdateInverseMassMatrix();
 
-   /// Destructor
-   virtual ~FE_Evolution() { }
-
+   /// Update pointer to the matrix of the nonlinear form (in AMR case)
    void UpdateAfluxPointer(SparseMatrix *_Aflux) {Aflux = _Aflux; };
 };
 

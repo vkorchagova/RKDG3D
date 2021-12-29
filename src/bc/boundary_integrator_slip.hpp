@@ -1,5 +1,5 @@
-#ifndef BND_INTEGRATOR_SUPERSONIC_INLET_H
-#define BND_INTEGRATOR_SUPERSONIC_INLET_H
+#ifndef BND_INTEGRATOR_SLIP_H
+#define BND_INTEGRATOR_SLIP_H
 
 #include "boundary_integrator.hpp"
 
@@ -16,22 +16,20 @@ extern int num_equation;
 extern int myRank;
 
 ///
-/// Supersonic inlet. All variables are fixed.
+/// Slip boundary condition
+/// U_n = 0
 ///
-class BoundaryIntegratorSupersonicInlet : public BoundaryIntegrator
+class BoundaryIntegratorSlip : public BoundaryIntegrator
 {
 private:
-
-    /// Dirichlet state
-    Vector fixedState;
 
 public:
 
     /// Constructor
-    BoundaryIntegratorSupersonicInlet(RiemannSolver &rsolver_, const int dim, const Vector& _fst);
+    BoundaryIntegratorSlip(RiemannSolver &rsolver_, const int dim);
 
     /// Compute state outside the boundary for Riemann solver
     virtual void computeRightState(const Vector& state1, Vector& state2, const Vector& nor) override;
 };
 
-#endif // BND_INTEGRATOR_WALL_H
+#endif // BND_INTEGRATOR_SLIP_H

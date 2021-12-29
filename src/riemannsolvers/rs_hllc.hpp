@@ -4,10 +4,10 @@
 #include "mfem.hpp"
 #include "rs_basic.hpp"
 
-
 using namespace std;
 using namespace mfem;
 
+/// Number of equations
 extern int num_equation;
 
 ///
@@ -15,10 +15,8 @@ extern int num_equation;
 ///
 class RiemannSolverHLLC : public RiemannSolver
 {
+
 private:
-    
-    /// Eigenvalues
-    Vector lambdaF;
 
     /// Aux vector
     Vector D;

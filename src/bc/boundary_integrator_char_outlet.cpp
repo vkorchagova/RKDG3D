@@ -1,15 +1,56 @@
-#include "boundary_integrator.hpp"
+#include "boundary_integrator_char_outlet.hpp"
+#include "physics.hpp"
 
-// Implementation of class BoundaryIntegrator
-BoundaryIntegrator::BoundaryIntegrator(RiemannSolver &rsolver_, const int dim) :
-   rsolver(rsolver_),
-   funval1(num_equation),
-   funval2(num_equation),
-   nor(dim),
-   fluxN(num_equation),
-   dim(dim) { }
 
-void BoundaryIntegrator::AssembleFaceVector(const FiniteElement &el1,
+// Implementation of class BoundaryIntegratorCharOutlet
+BoundaryIntegratorCharOutlet::BoundaryIntegratorCharOutlet(RiemannSolver &rsolver_, const int dim, const Vector& _fst) :
+   BoundaryIntegrator(rsolver_,dim), fixedState(_fst), cOut(0.0), MOut(0.0), UOut(0.0)
+{ 
+    cOut = ComputeSoundSpeed(fixedState, dim);
+    MOut = ComputeM(fixedState, dim);
+    UOut = fixedState[1]/fixedState[0];
+}
+
+void BoundaryIntegratorCharOutlet::computeRightState(const Vector& state1, Vector& state2, const Vector& nor) 
+{
+    double M = ComputeM(state1, dim);
+   
+    double rhoB = 0.0;
+    double UB = 0.0;
+    double cB = 0.0;
+    double sB = 0.0;
+    double pB = 0.0;
+
+    double cIn = ComputeSoundSpeed(state1, dim);
+
+
+    rsolver.Rotate(state2, nor, dim);
+    double UIn = state2[1]/state2[0];
+
+    UB = 0.5*(UIn + UOut) - (cOut - cIn) / (specific_heat_ratio - 1.0);
+    cB = - 0.25*(specific_heat_ratio - 1.0)*(UOut - UIn) + 0.5*(cOut + cIn);
+
+    if (state2[1] < 0) // inflow
+    {
+        sB = cOut*cOut / pow(fixedState[0], specific_heat_ratio - 1.0) / specific_heat_ratio;
+    }
+    else // outflow
+    {
+        sB = cIn*cIn / pow(state2[0], specific_heat_ratio - 1.0) / specific_heat_ratio;
+    }
+
+    rhoB = pow(cB*cB/sB/specific_heat_ratio, 1.0 / (specific_heat_ratio - 1.0) );
+    pB = rhoB*cB*cB/specific_heat_ratio;
+
+    state2[0] = rhoB;
+    state2[1] = UB;
+    state2[num_equation-1] = ComputeEnergy(rhoB, UB, state2[2]/state2[0], dim == 3 ? state2[3]/state2[0] : 0.0, pB);
+
+    rsolver.InverseRotate(state2, nor, dim);
+};
+
+
+void BoundaryIntegratorCharOutlet::AssembleFaceVector(const FiniteElement &el1,
                                         const FiniteElement &el2,
                                         FaceElementTransformations &Tr,
                                         const Vector &elfun, Vector &elvect)
@@ -20,8 +61,6 @@ void BoundaryIntegrator::AssembleFaceVector(const FiniteElement &el1,
 
    elvect.SetSize((dof1) * num_equation);
    elvect = 0.0;
-
-   Vector eip11(3);
 
    DenseMatrix elfun1_mat(elfun.GetData(), dof1, num_equation);
 
@@ -82,36 +121,7 @@ void BoundaryIntegrator::AssembleFaceVector(const FiniteElement &el1,
       const IntegrationPoint &ip = ir->IntPoint(i);
       // std::cout << "ipoint = " << ip.index << " " << ip.x << " " << ip.y << " " << ip.z << std::endl;
 
-      // Tr.Loc1.Transform(ip, eip1);
-      // /// ========= 
-      // // shape.SetSize(FElem->GetDof());
-      // // trans.SetSize(PointMat.Height());
-      // Tr.Loc1.Transf.GetFE()->CalcShape(ip, shape1);
-      // DenseMatrix PointMat = Tr.Loc1.Transf.GetPointMat();
-      // PointMat.Mult(shape1, eip11);
-      Tr.SetAllIntPoints(&ip); // set face and element int. points
-
-      // Calculate basis functions on both elements at the face
-      el1.CalcShape(Tr.GetElement1IntPoint(), shape1);
-
-      // for (int ii = 0; ii < shape1.Size(); ++ii)
-      // {
-      //    if (fabs(shape1(ii)) < 1e-16)
-      //       shape1(ii) = 0.0;
-      // }
-
-      // if (Tr.Elem1No == 0 || Tr.Elem1No == 1512)
-      // {
-      //    cout << "Get RS info for Tr.Elem1No = " << Tr.Elem1No << endl;
-      //    // cout << "Tr.FaceGeom = " << Tr.FaceGeom << endl;
-      //    std::cout  << std::setprecision(20) << "ipoint = " << ip.index << " " << ip.x << " " << ip.y << " " << ip.z << std::endl;
-      //    // std::cout  << std::setprecision(20) << "gp_eip1 = " << eip1.x << " " << eip1.y <<  endl;
-      //    // Tr.Loc1.Transf.GetPointMat().Print(std::cout << "PointMat = " << std::setprecision(20));
-      //    // eip11.Print(std::cout  << std::setprecision(20) << "gp_eip11 = " );
-      //    shape1.Print(std::cout << "shape1 = " << std::setprecision(20));
-      //    // elfun1_mat.Print(std::cout << "elfun1_mat = " << std::setprecision(20));
-         
-      // }
+      Tr.Loc1.Transform(ip, eip1);
 
       // Get the normal vector and the flux on the face
       CalcOrtho(Tr.Face->Jacobian(), nor);
@@ -122,19 +132,54 @@ void BoundaryIntegrator::AssembleFaceVector(const FiniteElement &el1,
          normag += nor(i) * nor(i);
       }
       normag = sqrt(normag);
-    
+
       nor *= 1.0/nor.Norml2();
+
+      // if ((Tr.Elem1No == 0 || Tr.Elem2No == 0) && myRank == 3) 
+      // {
+      //    Vector gp_phys1(2);
+      //    Vector gp_phys2(2);
+         
+      //    // Tr.GetElement1Transformation().Transform(eip1,gp_phys1);
+      //    // Tr.GetElement2Transformation().Transform(eip2,gp_phys2);
+      //    std::cout << "face between elems: " << Tr.Elem1No << "|" << Tr.Elem2No << ";\n";
+      //    std::cout << "\tgp_eip1 = " << eip1.x<< " " << eip1.y<<  endl;
+      //    std::cout << "\tgp_eip2 = " << eip2.x << " " << eip2.y <<  endl;
+      //    // std::cout << "\tgp_eltrans1 = " << gp_phys1[0] << " " << gp_phys1[1] <<  endl;
+      //    // std::cout << "\tgp_eltrans2 = " << gp_phys2[0] << " " << gp_phys2[1] <<  endl;
+      // }
+
+
+
+
+      // if (myRank == 3 &&  Tr.Elem1No == 0) 
+      // {
+      //    Vector el_gp_phys(dim);
+      //    el_trans = mesh->GetElementTransformation(iCell);
+      //    el_trans->Transform(eip1,el_gp_phys);
+
+      //    std::cout << "iFace = " << iFace << "; gpoint phys = " << el_gp_phys[0] << " " << el_gp_phys[1]   << std::endl;
+      // }
+
+      //Tr.Loc1.Transf.GetPointMat().Print(std::cout);
+      //Tr.Loc2.Transf.GetPointMat().Print(std::cout);
+
+      //std::cout << "e1point = " << eip1.index << " " << eip1.x << " " << eip1.y << " " << eip1.z << std::endl;
+      //std::cout << "e2point = " << eip2.index << " " << eip2.x << " " << eip2.y << " " << eip2.z << std::endl;
+
+      // Calculate basis functions on both elements at the face
+      el1.CalcShape(eip1, shape1);
 
       //std::cout << "el1.Space = " << el1.Space() << std::endl;
       //std::cout << "el2.Space = " << el2.Space() << std::endl;
 
       // std::cout << "el1.CalcShape = "; shape1.Print(std::cout);
       // std::cout << "el2.CalcShape = "; shape2.Print(std::cout);
- 
+
       // Interpolate elfun at the point
       elfun1_mat.MultTranspose(shape1, funval1);
       
-       computeRightState(funval1, funval2, nor);
+      computeRightState(funval1, funval2, nor);
 
       // if ((Tr.Elem1No == 0 || Tr.Elem2No == 0) ) 
       // {
@@ -148,25 +193,13 @@ void BoundaryIntegrator::AssembleFaceVector(const FiniteElement &el1,
       //    std::cout << " 966 funval2 = "; funval2.Print(std::cout);
       // }
 
-      // Tr.Face->SetIntPoint(&ip);
+      Tr.Face->SetIntPoint(&ip);
+      
+      const double mcs = ComputeMaxCharSpeed(funval2, dim);
 
-      bool debugRS = false; 
+      ComputeFluxDotN(funval2, nor, fluxN);
 
-      // if (Tr.Elem1No == 0 || Tr.Elem1No == 1512)
-      // {
-      //    debugRS = true;
-       //  }
- 
-
-      const double mcs = rsolver.Eval(funval1, funval2, nor, fluxN, debugRS);
-
-      // if (Tr.Elem1No == 0 || Tr.Elem1No == 1512)
-      //  {
-      //    cout << "After RS Compute - " << Tr.Elem1No << endl;
-      //    cout << "---" << endl;
-      // }
-
-      if (mcs < 0) 
+      if (mcs < 0)
       {
          cout << "Number of neighbours: " << Tr.Elem1No << ' ' << Tr.Elem2No << endl;
          exit(1);

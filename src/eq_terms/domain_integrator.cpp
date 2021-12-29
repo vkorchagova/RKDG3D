@@ -3,7 +3,7 @@
 using namespace std;
 
 // Implementation of class DomainIntegrator
-DomainIntegrator::DomainIntegrator(const int dim) : flux(num_equation, dim) { }
+DomainIntegrator::DomainIntegrator(const int dim) /*: flux(num_equation, dim) */{ }
 
 void DomainIntegrator::AssembleElementMatrix2(const FiniteElement &trial_fe,
                                               const FiniteElement &test_fe,

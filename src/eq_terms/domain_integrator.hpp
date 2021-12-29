@@ -3,15 +3,19 @@
 
 #include "mfem.hpp"
 
-
 using namespace mfem;
 
+/// Number of equations
 extern int num_equation;
 
-// Constant (in time) mixed bilinear form multiplying the flux grid function.
-// The form is (vec(v), grad(w)) where the trial space = vector L2 space (mesh
-// dim) and test space = scalar L2 space.
-class DomainIntegrator : public DiffusionIntegrator//BilinearFormIntegrator
+///
+/// Constant (in time) mixed bilinear form multiplying the flux grid function.
+/// The form is (vec(v), grad(w)) where the trial space = vector L2 space (mesh
+/// dim) and test space = scalar L2 space.
+/// Child of DiffusionIntegrator instead of BilinearFormIntegrator for ZZEstimatior in AMR
+/// (usage of density gradient in estimator)
+///
+class DomainIntegrator : public DiffusionIntegrator
 {
 private:
 
@@ -19,7 +23,7 @@ private:
     Vector shape;
 
     /// NOT USED
-    DenseMatrix flux;
+    // DenseMatrix flux;
 
     /// Gradient of test function
     DenseMatrix dshapedr;

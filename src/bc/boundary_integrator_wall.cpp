@@ -10,7 +10,7 @@ void BoundaryIntegratorWall::computeRightState(const Vector& state1, Vector& sta
 
    rsolver.Rotate(state2, nor, dim); 
 
-   state2[1] = -state2[1];
+   state2[1] *= -1;
 
    rsolver.InverseRotate(state2, nor, dim);
 

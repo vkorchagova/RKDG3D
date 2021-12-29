@@ -8,6 +8,7 @@
 using namespace std;
 using namespace mfem;
 
+/// Number of equations
 extern int num_equation;
 
 /// Proc rank 
@@ -85,14 +86,20 @@ protected:
 
    /// Compute stencil
    void getStencil(const int iCell);
+
+   /// Clean stencil
    void cleanStencil();
 
+   /// Zerify Axy term in approximation
+   bool needLinearize;
 
+   /// Remove slopes in case of non-physical values in cell vertices  
+   bool haveLastHope;
 
 public:
 
    /// Constructor
-   Limiter(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d); 
+   Limiter(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, bool _linearize = 0, bool _haveLastHope = 1, int _d = 3); 
 
    /// Destructor
    virtual ~Limiter()

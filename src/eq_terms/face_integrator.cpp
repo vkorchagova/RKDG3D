@@ -1,5 +1,5 @@
 #include "face_integrator.hpp"
-
+ 
 // Implementation of class FaceIntegrator
 FaceIntegrator::FaceIntegrator(RiemannSolver &rsolver_, const int dim) :
    rsolver(rsolver_),
@@ -87,50 +87,24 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
       const IntegrationPoint &ip = ir->IntPoint(i);
       // std::cout << "ipoint = " << ip.index << " " << ip.x << " " << ip.y << " " << ip.z << std::endl;
 
-      Tr.Loc1.Transform(ip, eip1);
-      Tr.Loc2.Transform(ip, eip2);
-
-      // if ((Tr.Elem1No == 0 || Tr.Elem2No == 0) && myRank == 3) 
-      // {
-      //    Vector gp_phys1(2);
-      //    Vector gp_phys2(2);
-         
-      //    // Tr.GetElement1Transformation().Transform(eip1,gp_phys1);
-      //    // Tr.GetElement2Transformation().Transform(eip2,gp_phys2);
-      //    std::cout << "face between elems: " << Tr.Elem1No << "|" << Tr.Elem2No << ";\n";
-      //    std::cout << "\tgp_eip1 = " << eip1.x<< " " << eip1.y<<  endl;
-      //    std::cout << "\tgp_eip2 = " << eip2.x << " " << eip2.y <<  endl;
-      //    // std::cout << "\tgp_eltrans1 = " << gp_phys1[0] << " " << gp_phys1[1] <<  endl;
-      //    // std::cout << "\tgp_eltrans2 = " << gp_phys2[0] << " " << gp_phys2[1] <<  endl;
-      // }
-
-
-
-
-      // if (myRank == 3 &&  Tr.Elem1No == 0) 
-      // {
-      //    Vector el_gp_phys(dim);
-      //    el_trans = mesh->GetElementTransformation(iCell);
-      //    el_trans->Transform(eip1,el_gp_phys);
-
-      //    std::cout << "iFace = " << iFace << "; gpoint phys = " << el_gp_phys[0] << " " << el_gp_phys[1]   << std::endl;
-      // }
-
-      //Tr.Loc1.Transf.GetPointMat().Print(std::cout);
-      //Tr.Loc2.Transf.GetPointMat().Print(std::cout);
-
-      //std::cout << "e1point = " << eip1.index << " " << eip1.x << " " << eip1.y << " " << eip1.z << std::endl;
-      //std::cout << "e2point = " << eip2.index << " " << eip2.x << " " << eip2.y << " " << eip2.z << std::endl;
+      Tr.SetAllIntPoints(&ip); // set face and element int. points
 
       // Calculate basis functions on both elements at the face
-      el1.CalcShape(eip1, shape1);
-      el2.CalcShape(eip2, shape2);
-
+      el1.CalcShape(Tr.GetElement1IntPoint(), shape1);
+      el2.CalcShape(Tr.GetElement2IntPoint(), shape2);
       //std::cout << "el1.Space = " << el1.Space() << std::endl;
       //std::cout << "el2.Space = " << el2.Space() << std::endl;
 
       // std::cout << "el1.CalcShape = "; shape1.Print(std::cout);
       // std::cout << "el2.CalcShape = "; shape2.Print(std::cout);
+
+      // for (int ii = 0; ii < shape1.Size(); ++ii)
+      // {
+      //    if (fabs(shape1(ii)) < 1e-16)
+      //       shape1(ii) = 0.0;
+      //    if (fabs(shape2(ii)) < 1e-16)
+      //       shape2(ii) = 0.0;
+      // }
 
       // Interpolate elfun at the point
       elfun1_mat.MultTranspose(shape1, funval1);
@@ -150,7 +124,7 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
       //    std::cout << "funval2 = "; funval2.Print(std::cout);
       // }
 
-      Tr.Face->SetIntPoint(&ip);
+      // Tr.Face->SetIntPoint(&ip);
 
       // Get the normal vector and the flux on the face
       CalcOrtho(Tr.Face->Jacobian(), nor);
@@ -159,7 +133,7 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
       for (int i = 0; i < nor.Size(); i++)
       {
          normag += nor(i) * nor(i);
-      }
+      } 
       normag = sqrt(normag);
 
       nor *= 1.0/nor.Norml2();
@@ -195,17 +169,27 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
       // }
       bool debug = false;
       // if (
-      //    (Tr.Elem1No == 2550 && Tr.Elem2No == 2450) || (Tr.Elem1No == 7450 && Tr.Elem2No == 7550) ||
-      //    (Tr.Elem2No == 2550 && Tr.Elem1No == 2450) || (Tr.Elem2No == 7450 && Tr.Elem1No == 7550)
+      //    (Tr.Elem1No == 50 ) || (Tr.Elem2No == 50) ||
+      //    (Tr.Elem1No == 1562) || (Tr.Elem2No == 1562)
       // )
       // {
       //    debug = true;
       //    cout << "===============" << endl;
       //    cout << "cell nums = " << Tr.Elem1No << ' ' << Tr.Elem2No << endl;
+      //    shape1.Print(std::cout << std::setprecision(30) << "shape1 = ");
+      //    shape2.Print(std::cout << std::setprecision(30) << "shape2 = ");
+      //    // elfun1_mat.Print(std::cout << std::setprecision(30) << "elfun1_mat = ");
+      //    // elfun2_mat.Print(std::cout << std::setprecision(30) << "elfun2_mat = ");
       //    cout << "---------------" << endl;
       // }
 
       const double mcs = rsolver.Eval(funval1, funval2, nor, fluxN, debug);
+
+      if (mcs < 0)
+      {
+         cout << "Number of neighbours: " << Tr.Elem1No << ' ' << Tr.Elem2No << endl;
+         exit(1);
+      }
 
 
       // for (int iii = 0; iii < fluxN.Size(); ++iii)
@@ -223,15 +207,19 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
       //    (Tr.Elem1No == 2550 && Tr.Elem2No == 2450) || (Tr.Elem1No == 7450 && Tr.Elem2No == 7550) ||
       //    (Tr.Elem2No == 2550 && Tr.Elem1No == 2450) || (Tr.Elem2No == 7450 && Tr.Elem1No == 7550)
       // )
+
+      // if (
+      //    (Tr.Elem1No == 50 ) || (Tr.Elem2No == 50) ||
+      //    (Tr.Elem1No == 1562) || (Tr.Elem2No == 1562)
+      // )
       // {
       //    cout << "---------------" << endl;
-      //    cout << "\tfunval1: ";
-      //    funval1.Print(cout);
-      //    cout << "\tfunval2: ";
-      //    funval2.Print(cout);
+      //    cout << "Tr.Elem1No = " << Tr.Elem1No << "; Tr.Elem2No = " << Tr.Elem2No << endl;
+      //    std::cout << "ipoint = " << ip.index << " " << ip.x << " " << ip.y << " " << ip.z << std::endl;
+      //    funval1.Print(cout << "\tfunval1: ");
+      //    funval2.Print(cout << "\tfunval2: ");
       //    cout << "\tmcs = " << mcs << endl;
-      //    std::cout << "\tfluxN = ";
-      //    fluxN.Print(std::cout);
+      //    fluxN.Print(std::cout << "\tfluxN = ");
       // }
 
       

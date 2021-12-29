@@ -27,8 +27,12 @@
 #include <iostream>
 
 
-#include "dg.hpp"
+#include "fe_evolution.hpp"
+#include "domain_integrator.hpp"
+#include "face_integrator.hpp"
 #include "case_manager.hpp"
+#include "amr.hpp"
+#include "check_total_energy.hpp"
 #include <mpi.h>
 
 // Default value for the problem setup
@@ -39,7 +43,7 @@ int num_equation = 4;
 
 // Physics parameters (updated by case)
 double specific_heat_ratio = 1.4;
-const double gas_constant = 1.0;
+double gas_constant = 287;
 double covolume_constant = 0.0;
 
 // Maximum characteristic speed (updated by integrators)
@@ -50,178 +54,6 @@ int myRank;
 
 // number of procs
 int numProcs;
-
-void UpdateAndRebalance(
-    ParMesh &pmesh, 
-    ParFiniteElementSpace &fes,
-    ParFiniteElementSpace &dfes, 
-    ParFiniteElementSpace &vfes, 
-    ParFiniteElementSpace &fes_const,
-    ParGridFunction &x, 
-    ParGridFunction &x_old, 
-    MixedBilinearForm &a, /* Aflux */
-    ParNonlinearForm &b,  /* A */
-    ParGridFunction &rhok,
-    ParGridFunction &mom,
-    ParGridFunction &energy,
-    ParGridFunction &rhoInd,
-    ParGridFunction &rhoUInd,
-    ParGridFunction &rhoVInd,
-    ParGridFunction &rhoWInd,
-    ParGridFunction &EInd,
-    BlockVector &u_block,
-    BlockVector &u_block_old,
-    BlockVector &u_ind,
-    Array<int> &offsets,
-    Array<int> &offsets_const,
-    Averager& avgr
-)
-{
-    // Update the space: recalculate the number of DOFs and construct a matrix
-    // that will adjust any GridFunctions to the new mesh state.
-    
-    fes.Update(); //false in ()
-    dfes.Update();
-    vfes.Update();
-    fes_const.Update();
-    avgr.updateSpaces();
-
-    // Interpolate the solution on the new mesh by applying the transformation
-    // matrix computed in the finite element space. Multiple GridFunctions could
-    // be updated here.
-    x.Update();
-    x_old.Update();
-
-    // Compute new offsets
-    for (int k = 0; k <= num_equation; k++) 
-        offsets[k] = k * vfes.GetNDofs();
-    for (int k = 0; k <= num_equation; k++) 
-        offsets_const[k] = k * fes_const.GetNDofs();
-
-    u_block.Update(x,offsets);
-    u_ind.Update(offsets_const);
-
-    rhok.MakeRef(&fes,x,offsets[0]);
-    mom.MakeRef(&dfes,x,offsets[1]);
-    energy.MakeRef(&fes,x,offsets[num_equation-1]);
-    avgr.updateSolutions();
-
-    if (pmesh.Nonconforming())
-    {
-        // cout << "if (pmesh.Nonconforming())" << endl;
-        // Load balance the mesh.
-        pmesh.Rebalance();
-        pmesh.ExchangeFaceNbrData(); 
-        
-
-        // Update the space again, this time a GridFunction redistribution matrix
-        // is created. Apply it to the solution.
-        fes.Update();
-        dfes.Update();
-        vfes.Update();
-        fes_const.Update();
-        avgr.updateSpaces();
-
-        x.Update();
-        x_old.Update();
-        x.ExchangeFaceNbrData();
-        x_old.ExchangeFaceNbrData();
-
-        // Compute new offsets
-        for (int k = 0; k <= num_equation; k++) 
-            offsets[k] = k * vfes.GetNDofs();
-        for (int k = 0; k <= num_equation; k++) 
-            offsets_const[k] = k * fes_const.GetNDofs();
-
-        u_block.Update(x,offsets);
-        u_ind.Update(offsets_const);
-
-        rhok.MakeRef(&fes,x,offsets[0]);
-        mom.MakeRef(&dfes,x,offsets[1]);
-        energy.MakeRef(&fes,x,offsets[num_equation-1]);
-
-        avgr.updateSolutions();
-
-        // cout << " end Nonconforming()" << endl;
-    } 
-
-    // Inform the nonlinear and bilinear forms that the space has changed.
-    a.Update();
-    b.Update();
-    a.Assemble();
-
-    // Free any transformation matrices to save memory.
-    fes.UpdatesFinished();
-    dfes.UpdatesFinished();
-    vfes.UpdatesFinished();
-    fes_const.UpdatesFinished();
-    avgr.updateFinished();
-
-    // cout << "UpdateAndRebalance OK" << endl;
-}
-
-double ComputeTotalEnergy(ParMesh* mesh, ParFiniteElementSpace* vfes, ParGridFunction& sol)
-{
-    double totalEnergy = 0.0;
-    double myTotalEnergy = 0.0;
-    double totalEnergy_el = 0.0;
-
-    const FiniteElement *fe;
-    Vector el_sol;
-    Array<int> vdofs;
-    ElementTransformation* el_trans;
-    Vector nor;
-
-    for (int iCell = 0; iCell < vfes->GetNE(); ++iCell)
-    {
-        totalEnergy_el = 0.0;
-        fe = vfes->GetFE(iCell);
-        const int nDofs = fe->GetDof();
-        nor.SetSize(nDofs);
-
-        vfes->GetElementVDofs(iCell, vdofs);
-        sol.GetSubVector(vdofs, el_sol);
-
-        el_trans = mesh->GetElementTransformation(iCell);
-
-
-        // el_sol.Print(cout << "el_sol for cell #" << iCell << ": ");
-
-        const IntegrationRule *ir = &IntRules.Get(fe->GetGeomType(), fe->GetOrder() + 1);
-
-        for (int iDof = 0; iDof < nDofs; ++iDof)
-        {
-            const IntegrationPoint ip = ir->IntPoint(iDof);
-            // el_trans->SetIntPoint(&ip);
-            // CalcOrtho(el_trans->Jacobian(), nor);
-            
-
-            totalEnergy_el += ip.weight * el_sol[(num_equation - 1)*nDofs + iDof];
-        }
-
-        // cout << el_trans->Jacobian().Det() << ' ' << totalEnergy_el << ' ' << totalEnergy_el * el_trans->Jacobian().Det() << endl;
-
-        // el_trans->Jacobian().Print(cout << "Jacobian for cell #" << iCell << "= ");
-
-        myTotalEnergy += totalEnergy_el * el_trans->Jacobian().Det();
-
-
-    }
-
-    MPI_Reduce(
-                &myTotalEnergy,
-                &totalEnergy,
-                1,
-                MPI_DOUBLE,
-                MPI_SUM,
-                0,
-                mesh->GetComm()
-            );
-
-
-    return totalEnergy;
-}
-
 
 
 int main(int argc, char *argv[])
@@ -268,9 +100,12 @@ int main(int argc, char *argv[])
     int sdim = pmesh->SpaceDimension();
     manager.checkNumEqn(dim);
 
-    cout << "Dimension: " << dim << endl;
-    cout << "Number of equations: " << num_equation << endl;
-
+    if (myRank == 0) 
+    {
+        cout << "Dimension: " << dim << endl;
+        cout << "Number of equations: " << num_equation << endl;
+    }
+    
 
     // 3. Define the discontinuous DG finite element space of the given
     //     polynomial order on the refined mesh.
@@ -291,7 +126,6 @@ int main(int argc, char *argv[])
     
     if (myRank == 0) 
         cout << "Number of unknowns: " << glob_size << endl; 
-
 
     // 4. Define the initial conditions, save the corresponding mesh and grid
     //     functions to a file.
@@ -324,7 +158,6 @@ int main(int argc, char *argv[])
     A.AddInteriorFaceIntegrator(new FaceIntegrator(*rsolver, dim));
     manager.addBoundaryIntegrators(A, *pmesh, *rsolver, dim);
 
-
     // 6. Define the time-dependent evolution operator describing the ODE
     //     right-hand side, and perform time-integration (looping over the time
     //     iterations, ti, with a time-step dt).
@@ -337,11 +170,10 @@ int main(int argc, char *argv[])
     DG_FECollection fec_const(0, dim);
     ParFiniteElementSpace fes_const(pmesh, &fec_const);
     Array<int> offsets_const(num_equation + 1);
-    for (int k = 0; k <= num_equation; k++) { offsets_const[k] = k * fes_const.GetNDofs(); }
-    BlockVector indicatorData(offsets_const);
+    ParGridFunction indicatorData(&fes_const);
 
     // 7.2. Load averager, indicator and limiter objects
-    Averager avgr(&vfes, offsets, dim);
+    Averager avgr(&fes, offsets, dim);
     Indicator *ind = NULL;
     Limiter *l = NULL;
     manager.loadLimiter(avgr,ind,l,offsets,dim,indicatorData,vfes);
@@ -372,42 +204,29 @@ int main(int argc, char *argv[])
     // ascii data files, or SidreDataCollection for binary data files.
 
     manager.getVisSteps(vis_steps);
-    // DataCollection *dc = NULL;
-
-    // ParGridFunction rhok(&fes, u_block.GetBlock(0));
-    // ParGridFunction mom(&dfes, u_block.GetData() + offsets[1]);
-    // ParGridFunction energy(&fes, u_block.GetBlock(dim+1));
-
-    // ParGridFunction rhoInd(&fes_const, indicatorData.GetBlock(0));
-    // ParGridFunction rhoUInd(&fes_const, indicatorData.GetBlock(1));
-    // ParGridFunction rhoVInd(&fes_const, indicatorData.GetBlock(2));
-    // ParGridFunction rhoWInd;
-    // if (dim == 3) 
-    //     rhoWInd = ParGridFunction(&fes_const, indicatorData.GetBlock(3));
-    // ParGridFunction EInd(&fes_const, indicatorData.GetBlock(dim+1));
-
-
+    
     ParGridFunction rhok, mom, energy;
-    ParGridFunction rhoInd, rhoUInd, rhoVInd, rhoWInd, EInd;
+    ParGridFunction rhoInd;
 
     rhok.MakeRef(&fes, sol, offsets[0]);
     mom.MakeRef(&dfes, sol, offsets[1]);
     energy.MakeRef(&fes, sol, offsets[dim+1]);
 
-    // rhoInd.MakeRef(&fes_const, indicatorData, offsets_const[0]);
-    // rhoUInd.MakeRef(&fes_const, indicatorData, offsets_const[1]);
-    // rhoVInd.MakeRef(&fes_const, indicatorData, offsets_const[2]);
-    // if (dim == 3)
-    //     rhoWInd.MakeRef(&fes_const, indicatorData, offsets_const[3]);
-    // EInd.MakeRef(&fes_const, indicatorData, offsets_const[dim+1]);
+    ParGridFunction U(&dfes);
+    ParGridFunction p(&fes);
+    ParGridFunction T(&fes);
 
+    ParGridFunction UMean(&dfes);
+    ParGridFunction pMean(&fes);
+    ParGridFunction TMean(&fes);
+    ParGridFunction rhoMean(&fes);
 
     // 11. Initialize spaces and objects for dynamic mesh refinement
 
     DG_FECollection flux_fec(order, dim);
-    RT_FECollection smooth_flux_fec(order-1, dim);
+    RT_FECollection smooth_flux_fec(max(order-1,0), dim);
     ParFiniteElementSpace* flux_fes = &dfes;
-    ParFiniteElementSpace* smooth_flux_fes = new ParFiniteElementSpace(pmesh, &smooth_flux_fec, dim);
+    ParFiniteElementSpace* smooth_flux_fes = new ParFiniteElementSpace(pmesh, &smooth_flux_fec);
     ErrorEstimator* estimator = 0;
     ThresholdRefiner* refiner = 0;
     ThresholdDerefiner* derefiner = 0;
@@ -453,18 +272,20 @@ int main(int argc, char *argv[])
                 A, 
                 rhok, 
                 mom, 
-                energy, 
-                rhoInd, 
-                rhoUInd, 
-                rhoVInd, 
-                rhoWInd, 
-                EInd,
+                energy,
                 u_block,
                 u_block_old,
                 indicatorData,
                 offsets,
                 offsets_const,
-                avgr
+                avgr,
+                U,
+                p,
+                T,
+                UMean,
+                pMean,
+                TMean,
+                rhoMean
             );
 
             // cout << "... after rebalance " << vfes.GlobalTrueVSize() << endl;
@@ -488,7 +309,7 @@ int main(int argc, char *argv[])
     {
         if (derefiner->Apply(*pmesh))
         {
-           if (myRank == 0)
+            if (myRank == 0)
             {
                 // cout << "\nDerefined elements." << endl;
                 cout << "... after deref (elements num = "<< pmesh->GetNE() << ";" << vfes.TrueVSize() << ";"
@@ -508,18 +329,20 @@ int main(int argc, char *argv[])
                 A, 
                 rhok, 
                 mom, 
-                energy, 
-                rhoInd, 
-                rhoUInd, 
-                rhoVInd, 
-                rhoWInd, 
-                EInd,
+                energy,
                 u_block,
                 u_block_old,
                 indicatorData,
                 offsets,
                 offsets_const,
-                avgr
+                avgr,
+                U,
+                p,
+                T,
+                UMean,
+                pMean,
+                TMean,
+                rhoMean
             );
 
             // cout << "after second basic rebalance" << endl;
@@ -541,11 +364,35 @@ int main(int argc, char *argv[])
         sol_old = sol;
     } // end adaptive mesh
 
-    
+    Vector localState(num_equation);
+
+    int fesNDofs = fes.GetNDofs();
+
+    for (int i = 0; i < fesNDofs; ++i)
+    {
+        U[i] = mom[i]/rhok[i];
+        U[i+fesNDofs] = mom[i+fesNDofs]/rhok[i];
+        if (dim == 3) U[i+2*fesNDofs] = mom[i+2*fesNDofs]/rhok[i];
+
+        localState[0] = rhok[i];
+        localState[1] = mom[i];
+        localState[2] = mom[i+fesNDofs];
+        if (dim == 3) localState[3] = mom[i+2*fesNDofs];
+        localState[num_equation-1] = energy[i];
+
+        p[i] = ComputePressure(localState, dim);
+        T[i] = ComputeTemperature(localState, dim);
+
+        UMean[i] = 0.0;
+        UMean[i+fesNDofs] = 0.0;
+        if (dim == 3) UMean[i+2*fesNDofs] = 0.0;
+        pMean[i] = 0.0;
+        TMean[i] = 0.0;
+        rhoMean[i] = 0.0;
+    }
 
 
-    cout << "before paraview data coll" << endl;
-
+    if (myRank == 0) cout << "Projection of initial conditions OK" << endl;
 
     // 13. Initialize data collection for ParaView
     ParaViewDataCollection *pd = NULL;
@@ -555,26 +402,31 @@ int main(int argc, char *argv[])
         pd->RegisterField("mom", &mom);
         pd->RegisterField("rho", &rhok);
         pd->RegisterField("energy", &energy);
-        // pd->RegisterField("rhoInd", &rhoInd);
-        // pd->RegisterField("rhoUInd", &rhoUInd);
-        // pd->RegisterField("rhoVInd", &rhoVInd);
-        // if (dim == 3) pd->RegisterField("rhoWInd", &rhoWInd);
-        // pd->RegisterField("EInd", &EInd);
+
+        if (manager.write_indicators())
+        {
+            pd->RegisterField("indicator", &indicatorData);
+        }
+
+        pd->RegisterField("U", &U);
+        pd->RegisterField("p", &p);
+        pd->RegisterField("T", &T);
+
+        pd->RegisterField("UMean", &UMean);
+        pd->RegisterField("pMean", &pMean);
+        pd->RegisterField("TMean", &TMean);
+        pd->RegisterField("rhoMean", &rhoMean);
 
         pd->SetLevelsOfDetail(1);
         pd->SetCycle(0);
         pd->SetTime(0.0);
         pd->Save();
-        cout << "paraview OK" << endl;
-    }
 
-    cout << "before manager.initializeRestartQueue();" << endl;
+        if (myRank == 0) cout << "Paraview OK" << endl;
+    }
 
     // 14. Initialize restart queue for control of number of saved frames
     manager.initializeRestartQueue();
-
-    cout << "after manager.initializeRestartQueue();" << endl;
-
 
     // 15. Start the timer.
     
@@ -586,8 +438,6 @@ int main(int argc, char *argv[])
     ode_solver->Init(euler);
 
     socketstream sout;
-
-    cout << "before if (cfl > 0)" << endl;
 
     if (!manager.is_restart())
     {
@@ -627,6 +477,10 @@ int main(int argc, char *argv[])
     double t_real = 0.0;
     double e_tot = 0.0;
 
+
+    Array<int> vdofs;
+    Vector el_x;
+    
     for (int ti = manager.setStartTimeCycle(); !done; )
     {
         t_real = tic_toc.RealTime();
@@ -646,6 +500,16 @@ int main(int argc, char *argv[])
         {
             ode_solver->Step(sol, t, dt_real);
 
+            // vfes.GetElementVDofs(50, vdofs);
+            // sol.GetSubVector(vdofs, el_x);
+
+            // el_x.Print(cout << std::setprecision(30) << "sol 50 = ");
+
+            // vfes.GetElementVDofs(1562, vdofs);
+            // sol.GetSubVector(vdofs, el_x);
+
+            // el_x.Print(cout << std::setprecision(30) << "sol 1562 = ");
+
             if (cfl > 0)
             {
                 // Reduce to find the global maximum wave speed
@@ -656,6 +520,11 @@ int main(int argc, char *argv[])
                     max_char_speed = all_max_char_speed;
                 }
                 dt = cfl * hmin / max_char_speed / (2*order+1);
+
+                // if (myRank == 0)
+                // {
+                //     cout << "hmin = " << hmin << "; max_char_speed = " << max_char_speed << "; 2*order+1 = " << 2*order+1 << endl;
+                // }
             }
 
             // cout << "--- REF ITER #" << ref_it << endl;
@@ -689,18 +558,20 @@ int main(int argc, char *argv[])
                     A, 
                     rhok, 
                     mom, 
-                    energy, 
-                    rhoInd, 
-                    rhoUInd, 
-                    rhoVInd, 
-                    rhoWInd, 
-                    EInd,
+                    energy,
                     u_block,
                     u_block_old,
                     indicatorData,
                     offsets,
                     offsets_const,
-                    avgr
+                    avgr,
+                    U,
+                    p,
+                    T,
+                    UMean,
+                    pMean,
+                    TMean,
+                    rhoMean
                 );
 
                 // cout << "... after rebalance " << vfes.GlobalTrueVSize() << endl;
@@ -752,18 +623,20 @@ int main(int argc, char *argv[])
                     A, 
                     rhok, 
                     mom, 
-                    energy, 
-                    rhoInd, 
-                    rhoUInd, 
-                    rhoVInd, 
-                    rhoWInd, 
-                    EInd,
+                    energy,
                     u_block,
                     u_block_old,
                     indicatorData,
                     offsets,
                     offsets_const,
-                    avgr
+                    avgr,
+                    U,
+                    p,
+                    T,
+                    UMean,
+                    pMean,
+                    TMean,
+                    rhoMean
                 );
 
                 // cout << "after second basic rebalance" << endl;
@@ -787,6 +660,8 @@ int main(int argc, char *argv[])
             sol_old = sol;
         } // end adaptive mesh
 
+
+
         // update time step
         t += dt;
 
@@ -797,44 +672,67 @@ int main(int argc, char *argv[])
 
         t_real = tic_toc.RealTime() - t_real;
 
+        for (int i = 0; i < fes.GetNDofs(); ++i)
+        {
+            U[i] = mom[i]/rhok[i];
+            U[i+fes.GetNDofs()] = mom[i+fes.GetNDofs()]/rhok[i];
+            if (dim == 3) U[i+2*fes.GetNDofs()] = mom[i+2*fes.GetNDofs()]/rhok[i];
+
+            localState[0] = rhok[i];
+            localState[1] = mom[i];
+            localState[2] = mom[i+fes.GetNDofs()];
+            if (dim == 3) localState[3] = mom[i+2*fes.GetNDofs()];
+            localState[num_equation-1] = energy[i];
+
+            p[i] = ComputePressure(localState, dim);
+            T[i] = ComputeTemperature(localState, dim);
+
+            UMean[i] += U[i] * dt;
+            UMean[i+fesNDofs] += U[i+fesNDofs] * dt;
+            if (dim == 3) UMean[i+2*fesNDofs] += U[i+2*fesNDofs] * dt;
+            pMean[i] += p[i] * dt;
+            TMean[i] += T[i] * dt;
+            rhoMean[i] += rhok[i] * dt;
+        }
+
         done = (t >= t_final - 1e-8*dt);
 
         if (done || ti % vis_steps == 0)
-        {
-            
+        {   
             MPI_Barrier(pmesh->GetComm());
+
+            for (int i = 0; i < fes.GetNDofs(); ++i)
+            {
+                UMean[i] /= t;
+                UMean[i+fesNDofs] /= t;
+                if (dim == 3) UMean[i+2*fesNDofs] /= t;
+                pMean[i] /= t;
+                TMean[i] /= t;
+                rhoMean[i] /= t;
+            }
 
             if (paraview)
             {
-                // rhok.SetFromTrueDofs(u_block.GetBlock(0));
-                // mom.SetFromTrueDofs(u_block.GetBlock(1));
-                // energy.SetFromTrueDofs(u_block.GetBlock(2));
-          
-                // rhoInd.SetFromTrueDofs(u_block.GetBlock(0));
-                // rhoUInd.SetFromTrueDofs(u_block.GetBlock(1));
-                // rhoVInd.SetFromTrueDofs(u_block.GetBlock(2));
-                // if (dim == 3)
-                //     rhoWInd.SetFromTrueDofs(u_block.GetBlock(3));
-                // EInd.SetFromTrueDofs(u_block.GetBlock(dim+1));
-
-                //  rhoInd.MakeTRef(&fes_const, indicatorData, offsets_const[0]);
-                // rhoUInd.MakeTRef(&fes_const, indicatorData, offsets_const[1]);
-                // rhoVInd.MakeTRef(&fes_const, indicatorData, offsets_const[2]);
-                // if (dim == 3)
-                //     rhoWInd.MakeTRef(&fes_const, indicatorData, offsets_const[3]);
-                // EInd.MakeTRef(&fes_
-                
                 pd->SetCycle(ti);
                 pd->SetTime(t);
                 pd->Save();
                 if (myRank == 0) {cout << "ParaView OK\n";}
-                
             }
 
             restart_dc.SetCycle(ti);
             restart_dc.SetTime(t);
             restart_dc.SetTimeStep(dt);
             restart_dc.Save();
+
+            for (int i = 0; i < fes.GetNDofs(); ++i)
+            {
+                UMean[i] *= t;
+                UMean[i+fesNDofs] *= t;
+                if (dim == 3) UMean[i+2*fesNDofs] *= t;
+                pMean[i] *= t;
+                TMean[i] *= t;
+                rhoMean[i] *= t;
+            }
 
             if (myRank == 0) 
             {
@@ -850,7 +748,8 @@ int main(int argc, char *argv[])
                  << "\tPhys time: " << t 
                  << " \tExecution time: " << tic_toc.RealTime() 
                  << " \tReal dt time: " << t_real 
-                 << " \t E_total: " << setprecision(12) << (manager.check_total_energy() ? to_string(e_tot) : "NOT COMPUTED")
+                 << " \t E_total: " << setprecision(18) << e_tot /*(manager.check_total_energy() ? e_tot : "NOT COMPUTED");*/
+                 << setprecision(6)
                  << endl;
         }
 
@@ -867,19 +766,14 @@ int main(int argc, char *argv[])
     delete pd;
     delete derefiner;
     delete refiner;
-    delete estimator;
-    //delete smooth_flux_fes;
-
-    
+    delete estimator; 
+    delete smooth_flux_fes;   
     delete ode_solver;
     delete l;
     delete ind;
-    // delete rsolver;
-    // delete integ;
-    // delete pmesh;
-    cout << "before mpi finalize" << endl;
+    delete rsolver;
+    delete pmesh;
     MPI_Finalize();
-    cout << "after mpi finalize" << endl;
 
     return 0;
 }

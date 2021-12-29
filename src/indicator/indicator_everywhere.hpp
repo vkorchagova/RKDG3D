@@ -6,14 +6,14 @@
 using namespace std;
 using namespace mfem;
 
+/// Number of equations
 extern int num_equation;
 
 /// Proc rank 
 extern int myRank;
 
 /// 
-/// Abstract class for checking discontinuities
-/// for the DG slopes
+/// Set all cells should be limited
 ///
 class IndicatorEverywhere : public Indicator
 {   
@@ -21,7 +21,7 @@ class IndicatorEverywhere : public Indicator
 public:
 
    /// Constructor
-   IndicatorEverywhere(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, BlockVector& _idata)
+   IndicatorEverywhere(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, ParGridFunction& _idata)
       : Indicator(_avgr, _fes,_offsets,_d, _idata) {};
 
    /// Destructor
@@ -33,7 +33,9 @@ public:
       const Stencil* stencil, 
       const DenseMatrix& elfun1_mat
    ) 
-   { for (int iEq = 0; iEq < num_equation; ++iEq) values.GetBlock(iEq)[iCell] = 0.0; };
+   { 
+      values[iCell] = 0.0; 
+   };
 };
 
 #endif // INDICATOR_EVERYWHERE_H

@@ -4,7 +4,7 @@
 #include "limiter.hpp"
 
 /// 
-/// Barth-Jespersen limiting algorithm
+/// Limitation by simple multiplication of slopes to predefined coefficients
 ///
 class LimiterMultiplier : public Limiter
 {
@@ -17,7 +17,7 @@ class LimiterMultiplier : public Limiter
 public:
    
    /// Constructor
-   LimiterMultiplier(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace *_fes, const Array<int>& _offsets, int _d);
+   LimiterMultiplier(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace *_fes, const Array<int>& _offsets, bool _linearize = 0, bool _haveLastHope = 1, int _d = 3);
    
    /// Destructor
    ~LimiterMultiplier() {};

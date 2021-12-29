@@ -6,30 +6,28 @@
 using namespace std;
 using namespace mfem;
 
-// Maximum characteristic speed (updated by integrators)
+/// Maximum characteristic speed (updated by integrators)
 extern double max_char_speed;
 
+/// Number of equations
 extern int num_equation;
 
 /// Proc rank 
 extern int myRank;
 
-// Interior face term: <F.n(u),[w]>
+///
+/// Simple open boundary dU/dn = 0
+/// Just use equal values inside cell near the boundary and outside
+///
 class BoundaryIntegratorOpen : public BoundaryIntegrator
 {
-private:
 
 public:
 
     /// Constructor
     BoundaryIntegratorOpen(RiemannSolver &rsolver_, const int dim);
 
-    // /// Compute part of -<F.n(u), [w]> for the given face 
-    // virtual void AssembleFaceVector(const FiniteElement &el1,
-    //                                 const FiniteElement &el2,
-    //                                 FaceElementTransformations &Tr,
-    //                                 const Vector &elfun, Vector &elvect);
-
+    /// Compute state outside the boundary for Riemann solver
     virtual void computeRightState(const Vector& state1, Vector& state2, const Vector& nor) override;
 };
 
