@@ -131,6 +131,14 @@ class CaseManager
    /// Normal for IC types
    Vector normal; //(num_equation-2)
 
+   /// Cube 1 for special IC type
+   Vector c1min; //(num_equation-2);
+   Vector c1max; //(num_equation-2);
+
+   /// Cube 2 for special IC type
+   Vector c2min; //(num_equation-2)
+   Vector c2max; //(num_equation-2);
+
    /// Runge -- Kutta Butcher coefficients
    double* a;
    double* b;
@@ -148,6 +156,12 @@ class CaseManager
    /// True if need to cut slopes if find non-physical values in vertices (limiters)
    bool haveLastHope;
 
+   /// Group attrigute for cells where slopes must be suppressed (limiters)
+   int fdGroupAttr;
+
+   /// Space dimension
+   int spaceDim;
+
    /// Project initial condition functions to finite elements
    static void setIC(const Vector&x, Vector& y);
 
@@ -158,6 +172,9 @@ class CaseManager
 
    /// Additional reading for physical groups for possibility to write boundary names in setttings instead of boundary tags directly
    void readPhysicalNames(ParMesh*& mesh);
+
+   /// Get mesh attribute for defined group to cut slopes
+   int getFinDiffGroupAttribute(std::string fdGroupName);
 
 public:
 
@@ -200,7 +217,7 @@ public:
    void loadRiemannSolver(RiemannSolver*& rsolver);
 
    /// Load indicator and limiter
-   void loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, const Array<int>& offsets, const int dim, ParGridFunction& indicatorData, ParFiniteElementSpace& vfes);
+   void loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, const Array<int>& offsets, const int dim, ParFiniteElementSpace& fes_const, ParFiniteElementSpace& vfes);
 
    /// Load RK time solver
    void loadTimeSolver(ODESolver*& ode_solver, Limiter* l);
@@ -234,6 +251,9 @@ public:
 
    /// Check step for VTK output of solution
    void getVisSteps(int& vis_steps);
+
+   /// Check level of details
+   double getParaviewLevelOfDetails() {return paraviewLevelOfDetails;};
 };
 
 #endif // CASE_MANAGER_H

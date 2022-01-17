@@ -26,13 +26,17 @@ private:
 public:
    
    /// Constructor
-   IndicatorShu(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, ParGridFunction& _idata);
-   
+   IndicatorShu
+   (
+      Averager& _avgr, 
+      ParFiniteElementSpace* _fes,
+      ParFiniteElementSpace* _fes_const, 
+      const Array<int>& _offsets, 
+      int _d
+   );
+
    /// Destructor
-   ~IndicatorShu()
-   {
-      
-   };
+   ~IndicatorShu() {};
 
    /// Limit solution
    virtual void checkDiscontinuity(

@@ -3,18 +3,27 @@
 
 // bool pleaseWriteMe = false;
 
-LimiterMultiplier::LimiterMultiplier(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace*_fes, const Array<int>& _offsets, bool _linearize, bool _haveLastHope, int _d) : Limiter(_ind, _avgr, _fes, _offsets,_linearize,_haveLastHope, _d) 
+LimiterMultiplier::LimiterMultiplier
+(
+   Indicator& _ind, 
+   Averager& _avgr, 
+   ParFiniteElementSpace*_fes, 
+   const Array<int>& _offsets, 
+   bool _linearize, 
+   bool _haveLastHope, 
+   int _fdGroupAttribute, 
+   int _d
+) : Limiter(_ind, _avgr, _fes, _offsets,_linearize,_haveLastHope, _fdGroupAttribute, _d) 
 {
    el_shape.SetSize(num_equation);
 };
 
-
-void LimiterMultiplier::limit(const int iCell, const Vector& el_ind, DenseMatrix& elfun1_mat) 
+void LimiterMultiplier::limit(const int iCell, const double ind_value, DenseMatrix& elfun1_mat) 
 {
    // get FE
    fe = fes->GetFE(iCell);
 
-   if  (indicator.values[iCell] > 0.999999999999) return;
+   if  (ind_value > 0.999999) return;
 
    const int nDofs = fe->GetDof();
 
@@ -36,11 +45,11 @@ void LimiterMultiplier::limit(const int iCell, const Vector& el_ind, DenseMatrix
          for (int iDof = 0; iDof < nDofs; ++iDof)
          {
             // elfun1_mat(iDof, iEq) = el_uMean[iEq] + el_ind[iEq] * (elfun1_mat(iDof, iEq) - el_uMean[iEq]);
-            elfun1_mat(iDof, iEq) = el_uMean[iEq] + indicator.values[iCell] * (elfun1_mat(iDof, iEq) - el_uMean[iEq]);
+            elfun1_mat(iDof, iEq) = el_uMean[iEq] + ind_value * (elfun1_mat(iDof, iEq) - el_uMean[iEq]);
          }
          // if (myRank == 0 && iCell == 0 && iEq == 0) {cout << "   funval after lim = " << elfun1_mat(iDof, iEq) << endl;}
       }
-
+   
    // // Last hope limiter
    if (haveLastHope)
    {

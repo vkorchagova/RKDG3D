@@ -25,6 +25,10 @@ CaseManager::CaseManager(std::string& caseFileName, VisItDataCollection& rdc)
     ICInterface(NULL),
     origin(3),
     normal(3),
+    c1min(3),
+    c1max(3),
+    c2min(3),
+    c2max(3),
     a(NULL),
     b(NULL),
     c(NULL),
@@ -215,6 +219,40 @@ void CaseManager::parse(std::string& caseFileName)
 
         ICInterface = new ICDensityPulse(sol, origin, epsilon);
     }
+    else if (icType == "twoHexahedronsBreakup")
+    {
+        Vector sol1(num_equation);
+        Vector sol2(num_equation);
+
+        c4::from_chars((*settings)["internalField"]["min1"][0].val(), &c1min[0]);
+        c4::from_chars((*settings)["internalField"]["min1"][1].val(), &c1min[1]);
+        c4::from_chars((*settings)["internalField"]["min1"][2].val(), &c1min[2]);
+        c4::from_chars((*settings)["internalField"]["max1"][0].val(), &c1max[0]);
+        c4::from_chars((*settings)["internalField"]["max1"][1].val(), &c1max[1]);
+        c4::from_chars((*settings)["internalField"]["max1"][2].val(), &c1max[2]);
+
+        c4::from_chars((*settings)["internalField"]["min2"][0].val(), &c2min[0]);
+        c4::from_chars((*settings)["internalField"]["min2"][1].val(), &c2min[1]);
+        c4::from_chars((*settings)["internalField"]["min2"][2].val(), &c2min[2]);
+        c4::from_chars((*settings)["internalField"]["max2"][0].val(), &c2max[0]);
+        c4::from_chars((*settings)["internalField"]["max2"][1].val(), &c2max[1]);
+        c4::from_chars((*settings)["internalField"]["max2"][2].val(), &c2max[2]);
+
+        c4::from_chars((*settings)["internalField"]["left"]["rho"].val(), &sol1[0]);
+        c4::from_chars((*settings)["internalField"]["left"]["U"][0].val(), &sol1[1]);
+        c4::from_chars((*settings)["internalField"]["left"]["U"][1].val(), &sol1[2]);
+        c4::from_chars((*settings)["internalField"]["left"]["U"][2].val(), &sol1[3]);
+        c4::from_chars((*settings)["internalField"]["left"]["p"].val(), &sol1[num_equation-1]);
+
+        c4::from_chars((*settings)["internalField"]["right"]["rho"].val(), &sol2[0]);
+        c4::from_chars((*settings)["internalField"]["right"]["U"][0].val(), &sol2[1]);
+        c4::from_chars((*settings)["internalField"]["right"]["U"][1].val(), &sol2[2]);
+        c4::from_chars((*settings)["internalField"]["right"]["U"][2].val(), &sol2[3]);
+        c4::from_chars((*settings)["internalField"]["right"]["p"].val(), &sol2[num_equation-1]);
+
+        ICInterface = new ICTwoHexahedronsBreakup(sol1, sol2, c1min, c1max, c2min, c2max);
+    }
+
     else
     {
         if (myRank == 0)
@@ -306,8 +344,9 @@ void CaseManager::loadMesh(ParMesh*& pmesh)
 
     if (myRank == 0) cout << pmesh->Dimension() << endl;
 
+    spaceDim = pmesh->SpaceDimension();
     readPhysicalNames(pmesh);
-    minimizeAttributes(pmesh);
+    // minimizeAttributes(pmesh);
 }
 
 void CaseManager::readPhysicalNames(ParMesh*& mesh)
@@ -325,7 +364,7 @@ void CaseManager::readPhysicalNames(ParMesh*& mesh)
 
     while (input >> buff)
     {
-        if (buff == "$PhysicalNames") // reading mesh vertices
+        if (buff == "$PhysicalNames") 
         {
             input >> number_of_physical_groups;
             getline(input, buff);
@@ -426,7 +465,7 @@ void CaseManager::minimizeAttributes(ParMesh*& mesh)
             // }
             if (curAttr == mesh->bdr_attributes[iAttr])
             {
-                mesh->SetBdrAttribute(iCell, iAttr + 1 + mesh->attributes.Size());
+                mesh->SetBdrAttribute(iCell, iAttr + 1);
                 break;
             }
         }
@@ -443,7 +482,7 @@ void CaseManager::minimizeAttributes(ParMesh*& mesh)
         {
             if (it->second == mesh->bdr_attributes[iAttr])
             {
-                it->second = iAttr + 1 + mesh->attributes.Size();
+                it->second = iAttr + 1;
                 break;
             }
         }
@@ -454,7 +493,7 @@ void CaseManager::minimizeAttributes(ParMesh*& mesh)
     //     mesh->bdr_attributes[i + hasUnitBdrAttribute] = i + 1 + mesh->attributes.Size();
     
     for (int i = 0; i < mesh->bdr_attributes.Size(); ++i)
-        mesh->bdr_attributes[i] = i + 1 + mesh->attributes.Size();
+        mesh->bdr_attributes[i] = i + 1;
 
     // if (hasUnitBdrAttribute)
     //     mesh->bdr_attributes[0] = 1;
@@ -556,7 +595,22 @@ void CaseManager::loadRiemannSolver(RiemannSolver*& rsolver)
     }
 }
 
-void CaseManager::loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, const Array<int>& offsets, const int dim, ParGridFunction& indicatorData, ParFiniteElementSpace& vfes)
+int CaseManager::getFinDiffGroupAttribute(std::string fdGroupName)
+{
+    std::map<std::string,int>& map_phys_names_tag = (spaceDim == 2) ? map_phys_names_tag_2D : map_phys_names_tag_3D;
+
+    for(std::map<std::string,int>::iterator it = map_phys_names_tag.begin(); it != map_phys_names_tag.end(); it++)
+    {
+        if (it->first == fdGroupName)
+        {
+            return it->second;
+        }
+    }
+
+    return -1;
+}
+
+void CaseManager::loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, const Array<int>& offsets, const int dim, ParFiniteElementSpace& fes_const, ParFiniteElementSpace& vfes)
 {
     std::string limiterType = ryml::preprocess_json<std::string>((*settings)["spatial"]["limiter"]["type"].val());
 
@@ -572,6 +626,16 @@ void CaseManager::loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, cons
     else
         haveLastHope = 1;
 
+    std::string fdGroupName = "";
+
+    if ((*settings)["spatial"]["limiter"]["cutSlopeGroup"].val().size() != 0)
+    {
+        fdGroupName = ryml::preprocess_json<std::string>((*settings)["spatial"]["limiter"]["cutSlopeGroup"].val());
+        fdGroupAttr = getFinDiffGroupAttribute(fdGroupName);
+    }
+    else
+        fdGroupAttr = -1;
+
     if (myRank == 0)  cout << "Additional linearization: " << linearize << endl;
     if (myRank == 0)  cout << "Cut slopes in case of nonphysical values in vertices: " << haveLastHope << endl;
     // if (limiterType == "BJ") 
@@ -586,19 +650,19 @@ void CaseManager::loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, cons
 
     if (indicatorType == "Nowhere")
     {
-       ind = new IndicatorNowhere(avgr, &vfes, offsets, dim, indicatorData);
+       ind = new IndicatorNowhere(avgr, &vfes, &fes_const, offsets, dim);
     }
     else if (indicatorType == "Everywhere")
     {
-        ind = new IndicatorEverywhere(avgr, &vfes, offsets, dim, indicatorData); 
+        ind = new IndicatorEverywhere(avgr, &vfes, &fes_const, offsets, dim); 
     }
     else if (indicatorType == "BJ")
     {
-        ind = new IndicatorBJ(avgr, &vfes, offsets, dim, indicatorData); 
+        ind = new IndicatorBJ(avgr, &vfes, &fes_const, offsets, dim); 
     }
     else if (indicatorType == "Shu")
     {
-        ind = new IndicatorShu(avgr, &vfes, offsets, dim, indicatorData);    
+        ind = new IndicatorShu(avgr, &vfes, &fes_const, offsets, dim);    
     }
     else
     {
@@ -610,15 +674,15 @@ void CaseManager::loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, cons
     
     if (limiterType == "FinDiff")
     {
-        l = new LimiterFinDiff(*ind, avgr, &vfes, offsets, linearize, haveLastHope, dim);
+        l = new LimiterFinDiff(*ind, avgr, &vfes, offsets, linearize, haveLastHope, fdGroupAttr, dim);
     }
     else if (limiterType == "Multi")
     {
-        l = new LimiterMultiplier(*ind, avgr, &vfes, offsets, linearize, haveLastHope, dim);
+        l = new LimiterMultiplier(*ind, avgr, &vfes, offsets, linearize, haveLastHope, fdGroupAttr, dim);
     }
     else if (limiterType == "None")
     {
-         l = new LimiterNone(*ind, avgr, &vfes, offsets, linearize, haveLastHope, dim);
+         l = new LimiterNone(*ind, avgr, &vfes, offsets, linearize, haveLastHope, fdGroupAttr, dim);
     }
     else
     {
@@ -1008,9 +1072,8 @@ void CaseManager::getVisSteps(int& vis_steps)
 
     if (myRank == 0) cout << "vis_steps = " << vis_steps << endl;
 
-        
-    if ((*settings)["postProcess"]["visSteps"].val().size() != 0)
-        c4::from_chars((*settings)["postProcess"]["visSteps"].val(), &paraviewLevelOfDetails);
+    if ((*settings)["postProcess"]["levelOfDetails"].val().size() != 0)
+        c4::from_chars((*settings)["postProcess"]["levelOfDetails"].val(), &paraviewLevelOfDetails);
     else
         paraviewLevelOfDetails = 1;
 

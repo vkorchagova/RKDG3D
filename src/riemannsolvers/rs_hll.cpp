@@ -8,16 +8,18 @@ double RiemannSolverHLL::Eval(const Vector &state1, const Vector &state2,
 {
    const int dim = nor.Size();
 
-   if (!StateIsPhysicalSay(state1, dim)) { cout << "Found in state 1"; return -1;};
-   if (!StateIsPhysicalSay(state2, dim)) { cout << "Found in state 2"; return -1;};
+   if (!StateIsPhysicalSay(state1, dim)) { cout << "Found in state 1 on proc #" << myRank; return -1;};
+   if (!StateIsPhysicalSay(state2, dim)) { cout << "Found in state 2 on proc #" << myRank; return -1;};
 
    Rotate(const_cast<Vector&>(state1), nor, dim);
    Rotate(const_cast<Vector&>(state2), nor, dim);
 
-   ComputeFluxF(state1, dim, flux1);
-   ComputeFluxF(state2, dim, flux2);
+   GetPrimitiveFromConservative(state1, primState1);
+   GetPrimitiveFromConservative(state2, primState2);
 
-   ComputeToroCharSpeeds(state1, state2, lambdaF, dim);
+   ComputeFluxF(state1, primState1, dim, flux1);
+   ComputeFluxF(state2, primState2, dim, flux2);
+   
    const double maxE = max(fabs(lambdaF[0]), fabs(lambdaF[dim+1]));
 
    if (lambdaF[0] >= 0)

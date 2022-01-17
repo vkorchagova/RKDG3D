@@ -187,6 +187,10 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
 
       if (mcs < 0)
       {
+         cout << "mcs = " << mcs << endl;
+         cout << "\tmyRank = " << myRank << endl;
+         funval1.Print(cout << "\tfunval1: ");
+         funval2.Print(cout << "\tfunval2: ");
          cout << "Number of neighbours: " << Tr.Elem1No << ' ' << Tr.Elem2No << endl;
          exit(1);
       }

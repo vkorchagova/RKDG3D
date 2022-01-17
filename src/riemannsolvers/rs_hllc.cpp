@@ -72,14 +72,17 @@ double RiemannSolverHLLC::Eval(const Vector &state1, const Vector &state2,
 {
    const int dim = nor.Size();
 
-   if (!StateIsPhysicalSay(state1, dim)) { cout << "Found in state 1"; return -1;};
-   if (!StateIsPhysicalSay(state2, dim)) { cout << "Found in state 2"; return -1;};
+   if (!StateIsPhysicalSay(state1, dim)) { cout << "Found in state 1 on proc #" << myRank; return -1;};
+   if (!StateIsPhysicalSay(state2, dim)) { cout << "Found in state 2 on proc #" << myRank; return -1;};
 
    Rotate(const_cast<Vector&>(state1), nor, dim);
    Rotate(const_cast<Vector&>(state2), nor, dim);
 
-   ComputeFluxF(state1, dim, flux1);
-   ComputeFluxF(state2, dim, flux2);
+   GetPrimitiveFromConservative(state1, primState1);
+   GetPrimitiveFromConservative(state2, primState2);
+
+   ComputeFluxF(state1, primState1, dim, flux1);
+   ComputeFluxF(state2, primState2, dim, flux2);
 
    // if (debug)
    // {
@@ -93,8 +96,8 @@ double RiemannSolverHLLC::Eval(const Vector &state1, const Vector &state2,
    //    flux2.Print(cout);
    // }
 
-   ComputeToroCharSpeeds(state1, state2, lambdaF, dim);
-   const double maxE = max(lambdaF[0], lambdaF[dim+1]);
+   ComputeToroCharSpeeds(state1, state2, primState1, primState2, lambdaF, dim);
+   const double maxE = max(fabs(lambdaF[0]), fabs(lambdaF[dim+1]));
 
 
    double SL = lambdaF[0];
@@ -117,11 +120,11 @@ double RiemannSolverHLLC::Eval(const Vector &state1, const Vector &state2,
 
    else
    {
-      double pLeft = ComputePressure(state1, dim);
-      double pRight = ComputePressure(state2, dim);
+      double pLeft = primState1[dim+1]; //ComputePressure(state1, dim);
+      double pRight = primState2[dim+1]; // ComputePressure(state2, dim);
 
-      double cLeft = SL - state1[1] / state1[0];
-      double cRight = SR - state2[1] / state2[0];
+      double cLeft = SL - primState1[1]; //state1[1] / state1[0];
+      double cRight = SR - primState2[1]; //state2[1] / state2[0];
 
       double sStar = (pRight - pLeft + state1[1] * cLeft - state2[1] * cRight) / \
                       (state1[0] * cLeft - state2[0] * cRight);

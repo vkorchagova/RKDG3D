@@ -2,8 +2,14 @@
 
 // bool pleaseWriteMe = false;
 
-IndicatorBJ::IndicatorBJ(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, ParGridFunction& _idata)
-    : Indicator(_avgr, _fes, _offsets, _d, _idata) 
+IndicatorBJ::IndicatorBJ
+(
+    Averager& _avgr, 
+    ParFiniteElementSpace* _fes,
+    ParFiniteElementSpace* _fes_const, 
+    const Array<int>& _offsets, 
+    int _d
+) : Indicator(_avgr, _fes, _fes_const, _offsets, _d) 
 {
    mI.SetSize(num_equation);
    MI.SetSize(num_equation);
@@ -194,5 +200,5 @@ void IndicatorBJ::checkDiscontinuity(
 
    // set indicator values to the external field 
  
-   values[iCell] = yMin[0];
+   setValue(iCell, yMin[0]);
 };

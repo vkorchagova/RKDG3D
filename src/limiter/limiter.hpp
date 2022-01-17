@@ -96,10 +96,13 @@ protected:
    /// Remove slopes in case of non-physical values in cell vertices  
    bool haveLastHope;
 
+   /// Cell numbers inside fin diff group
+   Array<bool> fdGroupCells;
+
 public:
 
    /// Constructor
-   Limiter(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, bool _linearize = 0, bool _haveLastHope = 1, int _d = 3); 
+   Limiter(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, bool _linearize = 0, bool _haveLastHope = 1, int _fdGroupAttribute = -1, int _d = 3); 
 
    /// Destructor
    virtual ~Limiter()
@@ -111,7 +114,7 @@ public:
    void update(Vector &x);
 
    /// Limit solution
-   virtual void limit(const int iCell, const Vector& el_ind, DenseMatrix& elfun1_mat) = 0;
+   virtual void limit(const int iCell, const double ind_value, DenseMatrix& elfun1_mat) = 0;
    
 };
 

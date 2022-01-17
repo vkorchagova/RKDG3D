@@ -1,7 +1,7 @@
 #include "limiter.hpp"
 
 
-Limiter::Limiter(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, bool _linearize, bool _haveLastHope, int _d) : 
+Limiter::Limiter(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, bool _linearize, bool _haveLastHope, int _fdGroupAttribute, int _d) : 
    indicator(_ind),
    averager(_avgr),
    fes(_fes), 
@@ -16,6 +16,22 @@ Limiter::Limiter(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace* _fes, 
    el_uMean.SetSize(num_equation);
 
    stencil = new Stencil();
+
+   fdGroupCells.SetSize(mesh->GetNE());
+   fdGroupCells = 0;
+
+   if (_fdGroupAttribute > 0)
+   {
+      for (int iCell = 0; iCell < mesh->GetNE(); ++iCell)
+      {
+         int curAttr = mesh->GetAttribute(iCell);mesh->GetAttribute(iCell);
+
+         if (curAttr == _fdGroupAttribute)
+         {
+            fdGroupCells[iCell] = 1;
+         }
+      }
+   }
 };
 
 
@@ -34,9 +50,6 @@ void Limiter::update(Vector &x)
    parGridX.ExchangeFaceNbrData();
    averager.update(&x, &parGridX);
    averager.computeMeanValues();
-
-
-   Vector el_ind(num_equation);
 
    for (int iCell = 0; iCell < mesh->GetNE(); ++iCell)
    {
@@ -75,17 +88,45 @@ void Limiter::update(Vector &x)
       // make matrix from values data
       DenseMatrix elfun1_mat(el_x.GetData(), nDofs, num_equation);
 
-      indicator.checkDiscontinuity(iCell, stencil, elfun1_mat);
+      /// Suppress slopes in defined group
+      if (fdGroupCells[iCell])
+      {
+         averager.readElementAverageByNumber(iCell, el_uMean);
+         for (int iEq = 0; iEq < num_equation; ++iEq)
+            for (int iDof = 0; iDof < nDofs; ++iDof)
+            {
+               // if (myRank == 0 && iCell == 0 && iEq == 0) {cout << "   funval before lim = " << elfun1_mat(iDof, iEq) << endl;}
+               elfun1_mat(iDof, iEq) = el_uMean(iEq);
+               // if (myRank == 0 && iCell == 0 && iEq == 0) {cout << "   funval after lim = " << elfun1_mat(iDof, iEq) << endl;}
+            }
 
-      for (int iEq = 0; iEq < num_equation; ++iEq)
-         el_ind[iEq] = indicator.values[iCell];
+         indicator.setValue(iCell, 0.0);
+      }
+      else // if not defined group - general limiting algorithm
+      {
+         indicator.checkDiscontinuity(iCell, stencil, elfun1_mat);
 
-      limit(iCell, el_ind, elfun1_mat);
+         // if (indicator.values[iCell] < 1e-6)
+         //    {
+         //       el_ind.Print(cout << "Negative indicator.value: ");
+         //       cout << "iCell = " << iCell << endl;
+         //       elfun1_mat.Print(cout << "elfun1_mat = ");
+         //    }
+
+         limit(iCell, indicator.getValue(iCell), elfun1_mat);
+      }
 
       xNew.SetSubVector(el_vdofs, el_x);
 
       stencil->clean();
    }
+
+   // for (int iCell = 0; iCell < mesh->GetNE(); ++iCell)
+   //    if (indicator.values[iCell] < 1e-6 && myRank == 39)
+   //          {
+   //             cout << "Negative indicator value: " << indicator.values[iCell]
+   //              << "; iCell = " << iCell << " in rank = " << myRank << endl;
+   //          }
 
    // replace solution values to the new one
    x = xNew;

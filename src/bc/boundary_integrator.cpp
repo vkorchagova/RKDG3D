@@ -3,11 +3,12 @@
 // Implementation of class BoundaryIntegrator
 BoundaryIntegrator::BoundaryIntegrator(RiemannSolver &rsolver_, const int dim) :
    rsolver(rsolver_),
+   shape1(num_equation),
    funval1(num_equation),
    funval2(num_equation),
    nor(dim),
    fluxN(num_equation),
-   dim(dim) { }
+   dim(dim) {}
 
 void BoundaryIntegrator::AssembleFaceVector(const FiniteElement &el1,
                                         const FiniteElement &el2,
@@ -21,7 +22,7 @@ void BoundaryIntegrator::AssembleFaceVector(const FiniteElement &el1,
    elvect.SetSize((dof1) * num_equation);
    elvect = 0.0;
 
-   Vector eip11(3);
+   // Vector eip11(3);
 
    DenseMatrix elfun1_mat(elfun.GetData(), dof1, num_equation);
 
@@ -134,7 +135,7 @@ void BoundaryIntegrator::AssembleFaceVector(const FiniteElement &el1,
       // Interpolate elfun at the point
       elfun1_mat.MultTranspose(shape1, funval1);
       
-       computeRightState(funval1, funval2, nor);
+      computeRightState(funval1, funval2, nor);
 
       // if ((Tr.Elem1No == 0 || Tr.Elem2No == 0) ) 
       // {

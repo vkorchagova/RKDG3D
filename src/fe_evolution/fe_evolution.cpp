@@ -37,7 +37,6 @@ FE_Evolution::FE_Evolution(FiniteElementSpace &_vfes,
     //     }
     // }
     // }
-    cout << "-------" << endl;
     
     for (int i = 0; i < vfes.GetNE(); i++)
     {
@@ -245,8 +244,8 @@ void FE_Evolution::GetFlux(const DenseMatrix &x, DenseTensor &flux) const
             }
         }
 
-        // Update max char speed
-        const double mcs = ComputeMaxCharSpeed(state, dim);
-        if (mcs > max_char_speed) { max_char_speed = mcs; }
+        // // Update max char speed
+        // const double mcs = ComputeMaxCharSpeed(state, dim);
+        // if (mcs > max_char_speed) { max_char_speed = mcs; }
     }
 }

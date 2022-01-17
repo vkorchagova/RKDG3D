@@ -21,8 +21,14 @@ class IndicatorEverywhere : public Indicator
 public:
 
    /// Constructor
-   IndicatorEverywhere(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, ParGridFunction& _idata)
-      : Indicator(_avgr, _fes,_offsets,_d, _idata) {};
+   IndicatorEverywhere
+   (
+      Averager& _avgr, 
+      ParFiniteElementSpace* _fes,
+      ParFiniteElementSpace* _fes_const, 
+      const Array<int>& _offsets, 
+      int _d
+   ) : Indicator(_avgr, _fes, _fes_const, _offsets, _d) {};
 
    /// Destructor
    ~IndicatorEverywhere() {};
@@ -34,7 +40,7 @@ public:
       const DenseMatrix& elfun1_mat
    ) 
    { 
-      values[iCell] = 0.0; 
+      setValue(iCell, 0.0); 
    };
 };
 

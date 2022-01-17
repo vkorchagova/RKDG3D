@@ -31,6 +31,12 @@ public:
     /// Physical flux F, right side
     Vector flux2;
 
+    /// Primitive variables, left side
+    Vector primState1;
+
+    /// Primitive variables, right side
+    Vector primState2;
+
     /// Get normal and tangential components by normal to the cell boundary
     void Rotate(Vector& state, const Vector& nor, int dim);
 

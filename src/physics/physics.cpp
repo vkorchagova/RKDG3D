@@ -139,6 +139,12 @@ double ComputeSoundSpeed(const Vector &state, int dim)
    return sqrt( specific_heat_ratio * p / den / (1.0 - den * covolume_constant));
 }
 
+// Sound speed (EOS) computation
+double ComputeSoundSpeed(double rho, double p)
+{
+   return sqrt( specific_heat_ratio * p / rho / (1.0 - rho * covolume_constant));
+}
+
 // Compute the vector flux F(u)
 void ComputeFlux(const Vector &state, int dim, DenseMatrix &flux)
 {
@@ -195,15 +201,15 @@ void ComputeFluxDotN(const Vector &state, const Vector &nor,
 }
 
 // Compute the scalar F(u).n
-void ComputeFluxF(const Vector &state, const int dim,
+void ComputeFluxF(const Vector &state, const Vector &primState, const int dim,
                      Vector &flux)
 {
-   const double pres = ComputePressure(state, dim);
+   const double pres = primState(dim+1);
 
    flux(0) = state(1); //rho u
-   flux(1) = state(1) * state(1) / state(0) + pres; // rho u^2 + p
+   flux(1) = state(1) * primState(1) + pres; // rho u^2 + p
    for (int d = 1; d < dim; d++)
-      flux(d+1) = state(1) * state(d+1) / state(0); // rho u v, rho u w
+      flux(d+1) = state(1) * primState(d+1); // rho u v, rho u w
 
    const double H = (state(1 + dim) + pres) / state(0);
    flux(1 + dim) = state(1) * H;
@@ -295,30 +301,32 @@ void ComputeEinfeldtCharSpeeds(const Vector &state1, const Vector &state2, Vecto
 
 }
 
-void TransformConservativeToPrimitive(Vector& state)
+void GetPrimitiveFromConservative(const Vector& state, Vector& primState)
 {
    const int dim = state.Size() - 2;
 
-   for (int i = 1; i < dim+1; ++i)
-      state[i] /= state[0];
+   primState = state;
 
-   state[dim+1] = ComputePressure(state, dim);
+   for (int i = 1; i < dim+1; ++i)
+      primState[i] /= primState[0];
+
+   primState[dim+1] = ComputePressure(state, dim);
 }
 
 // Compute Toro averaged char speeds via two states
-void ComputeToroCharSpeeds(const Vector &state1, const Vector &state2, Vector& lambdaF, const int dim)
+void ComputeToroCharSpeeds(const Vector &state1, const Vector &state2, const Vector &primState1, const Vector &primState2, Vector& lambdaF, const int dim)
 {
-   double cLeft = ComputeSoundSpeed(state1, dim);
-   double cRight = ComputeSoundSpeed(state2, dim);
+   //double rhouLeft = state1[1];
+   //double rhouRight = state2[1];
 
-   double rhouLeft = state1[1];
-   double rhouRight = state2[1];
+   double uLeft = primState1[1]; //rhouLeft / state1[0];
+   double uRight = primState2[1]; //rhouRight / state2[0];
 
-   double uLeft = rhouLeft / state1[0];
-   double uRight = rhouRight / state2[0];
+   double pLeft = primState1[dim+1]; //ComputePressure(state1, dim);
+   double pRight = primState2[dim+1]; //ComputePressure(state2, dim);
 
-   double pLeft = ComputePressure(state1, dim);
-   double pRight = ComputePressure(state2, dim);
+   double cLeft = ComputeSoundSpeed(state1[0], pLeft);
+   double cRight = ComputeSoundSpeed(state2[0], pRight);
 
    //  double pvrs = 0.5 * (pLeft + pRight) + \
    //    0.125 * (uLeft - uRight) * (state1[0] + state2[0]) * (cLeft + cRight);
@@ -346,7 +354,6 @@ void ComputeToroCharSpeeds(const Vector &state1, const Vector &state2, Vector& l
 
    for (int i = 1; i < dim + 1; ++i)
       lambdaF[i] = uLeft;
-
 }
 
 
