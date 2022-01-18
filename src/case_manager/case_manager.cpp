@@ -1,5 +1,5 @@
 #include <case_manager.hpp>
-
+ 
 using namespace std;
 
 CaseManager::CaseManager(std::string& caseFileName, VisItDataCollection& rdc)
@@ -276,12 +276,19 @@ void CaseManager::loadMesh(ParMesh*& pmesh)
     c4::from_chars((*settings)["mesh"]["parallelRefLevels"].val(), &parRefLevels);
     c4::from_chars((*settings)["mesh"]["adaptive"].val(), &adaptive_mesh);
 
+    if ((*settings)["mesh"]["localRefinement"] != 0)
+        // c4::from_chars((*settings)["mesh"]["localRefinement"].val(), &local_refinement);
+        local_refinement = 1.0;
+    else
+        local_refinement = 0.0;
+
     if (myRank == 0)
     {
         cout << "Reading mesh from " << ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()).c_str() << "..." << endl;
         cout << "* Serial refinement levels = " << serRefLevels << endl;
         cout << "* Parallel refinement levels = " << parRefLevels << endl;
         cout << "* Adaptive: " << (adaptive_mesh ? "true" : "false") << endl;
+        cout << "* Local refinement: " << (local_refinement ? "true" : "false") << endl;
     }
     // read adaptive mesh settings
 
@@ -324,6 +331,55 @@ void CaseManager::loadMesh(ParMesh*& pmesh)
         {
             mesh->UniformRefinement();
         }
+
+        if (local_refinement)
+        {
+            c4::from_chars((*settings)["mesh"]["localRefinement"]["refLevels"].val(), &localRefLevels);
+            c4::from_chars((*settings)["mesh"]["localRefinement"]["inside"].val(), &localRefInside);
+            localRefType = ryml::preprocess_json<std::string>((*settings)["mesh"]["localRefinement"]["type"].val());
+            if (localRefType == "sphere")
+            {
+                double radius = 0.0;
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["origin"][0].val(), &origin[0]);
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["origin"][1].val(), &origin[1]);
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["origin"][2].val(), &origin[2]);
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["radius"].val(), &radius);
+                SphericalLocalRefiner locref(origin,radius,mesh,localRefLevels,localRefInside);
+                locref.Refine();
+            }
+            else if (localRefType == "hex")
+            {
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["min1"][0].val(), &c1min[0]);
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["min1"][1].val(), &c1min[1]);
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["min1"][2].val(), &c1min[2]);
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["max1"][0].val(), &c1max[0]);
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["max1"][1].val(), &c1max[1]);
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["max1"][2].val(), &c1max[2]);
+                HexahedronLocalRefiner locref(c1min,c1max,mesh,localRefLevels,localRefInside);
+                locref.Refine();
+            }
+            else if (localRefType == "cylinder")
+            {
+                double radius = 0.0;
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["p1"][0].val(), &c1min[0]);
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["p1"][1].val(), &c1min[1]);
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["p1"][2].val(), &c1min[2]);
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["p2"][0].val(), &c1max[0]);
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["p2"][1].val(), &c1max[1]);
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["p2"][2].val(), &c1max[2]);
+                c4::from_chars((*settings)["mesh"]["localRefinement"]["radius"].val(), &radius);
+                CylindricalLocalRefiner locref(c1min,c1max,radius,mesh,localRefLevels,localRefInside);
+                locref.Refine();
+            }
+            else
+            {
+                if (myRank == 0) 
+                    cout << "Unknown local refiner type: " << localRefType << '\n';
+                exit(1);
+            }
+        }
+
+
 
         //if (myRank == 0) { cout << "Number of cells: " << mesh->GetNE() << endl; }
 

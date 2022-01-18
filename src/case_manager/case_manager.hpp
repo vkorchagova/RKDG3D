@@ -2,6 +2,7 @@
 #define CASE_MANAGER_H
 
 #include "mfem.hpp"
+#include "local_refiner.hpp"
 #include "ic.hpp"
 #include "rk_explicit_limited.hpp"
 
@@ -89,6 +90,18 @@ class CaseManager
 
    /// True if adaptively refinement mesh
    bool adaptive_mesh;
+
+   /// True for local non-conforming mesh refinement
+   bool local_refinement;
+
+   /// Local refinement mesh levels
+   int localRefLevels;
+
+   /// True if local refinement inside domain
+   bool localRefInside;
+
+   /// Local refinement type
+   string localRefType;
 
    /// Spatial polynomial order
    int spatialOrder;
