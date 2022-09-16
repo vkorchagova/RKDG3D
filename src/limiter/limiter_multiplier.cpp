@@ -24,15 +24,15 @@ void LimiterMultiplier::limit(const int iCell, const double ind_value, const dou
 
    averager.readElementAverageByNumber(iCell, el_uMean);
 
-   // cout << needLinearize << endl;
+   // std::cout << needLinearize << std::endl;
 
-   // cout <<  indicator.minValues[iCell] << endl;
+   // std::cout <<  indicator.minValues[iCell] << std::endl;
 
    // replace solution to mean values
    for (int iEq = 0; iEq < num_equation; ++iEq)
       for (int iDof = 0; iDof < nDofs; ++iDof)
       {
-         // if (myRank == 0 && iCell == 0 && iEq == 0) {cout << "   funval before lim = " << elfun1_mat(iDof, iEq) << endl;}
+         // if (myRank == 0 && iCell == 0 && iEq == 0) {std::cout << "   funval before lim = " << elfun1_mat(iDof, iEq) << std::endl;}
          // if (needLinearize && el_ind[iEq] < 1.0 && fe->GetGeomType() != Geometry::TRIANGLE)
          if (needLinearize && fe->GetGeomType() != Geometry::TRIANGLE)
             linearize(iCell, el_uMean, elfun1_mat);
@@ -43,7 +43,7 @@ void LimiterMultiplier::limit(const int iCell, const double ind_value, const dou
             elfun1_mat(iDof, iEq) = ind_value * elfun1_mat(iDof, iEq) + (1.0 - ind_value) * el_uMean[iEq];
             //elfun1_mat(iDof, iEq) = 0.75 * elfun1_mat(iDof, iEq) + 0.25 * el_uMean[iEq];
          }
-         // if (myRank == 0 && iCell == 0 && iEq == 0) {cout << "   funval after lim = " << elfun1_mat(iDof, iEq) << endl;}
+         // if (myRank == 0 && iCell == 0 && iEq == 0) {std::cout << "   funval after lim = " << elfun1_mat(iDof, iEq) << std::endl;}
       }
    
    // // Last hope limiter
@@ -71,22 +71,22 @@ void LimiterMultiplier::limit(const int iCell, const double ind_value, const dou
 
          // if (!StateIsPhysical(funval1Vert,dim))
          // {
-         //    // let's try to correct slope aсcording to positive internal energy
+         //   // let's try to correct slope aсcording to positive internal energy
             
-         //    alpha = min( alpha, 2.0 * funval1Vert[0] * (funval1Vert[dim+1] - minEps) / (funval1Vert[1]*funval1Vert[1] + funval1Vert[2]*funval1Vert[2]) );
-         //    // for (int iEq = 0; iEq < num_equation; ++iEq)
-         //    //    for (int iDof = 0; iDof < nDofs; ++iDof)  
-         //    //       elfun1_mat(iDof, iEq) = uMean(iEq,iCell);
+         //   alpha = std::min( alpha, 2.0 * funval1Vert[0] * (funval1Vert[dim+1] - minEps) / (funval1Vert[1]*funval1Vert[1] + funval1Vert[2]*funval1Vert[2]) );
+         //   // for (int iEq = 0; iEq < num_equation; ++iEq)
+         //   //   for (int iDof = 0; iDof < nDofs; ++iDof)  
+         //   //       elfun1_mat(iDof, iEq) = uMean(iEq,iCell);
          // }
 
          // if (alpha < 1)
          // {
-         //    // cout << "find alpha = " << alpha << " in cell #" << iCell << endl;
-         //    for (int iEq = 1; iEq < num_equation - 1; ++iEq)
+         //   // std::cout << "find alpha = " << alpha << " in cell #" << iCell << std::endl;
+         //   for (int iEq = 1; iEq < num_equation - 1; ++iEq)
          //       for (int iDof = 0; iDof < nDofs; ++iDof) 
          //       {
          //          // const double beta = (sqrt(alpha) - 1.0) * uMean(iEq,iCell) / (elfun1_mat(iDof, iEq) - uMean(iEq,iCell)) + sqrt(alpha);
-         //          // cout << " \tfind beta = " << beta << " for eqn #" << iEq << endl;
+         //          // std::cout << " \tfind beta = " << beta << " for eqn #" << iEq << std::endl;
 
          //          // elfun1_mat(iDof, iEq) = uMean(iEq,iCell) + beta * (elfun1_mat(iDof, iEq) - uMean(iEq,iCell));
          //          elfun1_mat(iDof, iEq) = alpha * elfun1_mat(iDof, iEq);
@@ -97,8 +97,8 @@ void LimiterMultiplier::limit(const int iCell, const double ind_value, const dou
             averager.readElementAverageByNumber(iCell, el_uMean);
 
             for (int iEq = 0; iEq < num_equation; ++iEq)
-               for (int iDof = 0; iDof < nDofs; ++iDof)  
-                  elfun1_mat(iDof, iEq) = el_uMean(iEq);
+                for (int iDof = 0; iDof < nDofs; ++iDof)  
+                   elfun1_mat(iDof, iEq) = el_uMean(iEq);
          }
       }
    }
@@ -153,7 +153,7 @@ void LimiterMultiplier::linearize(const int iCell, const Vector& el_uMean, Dense
 
    // if (iCell == 6950)
    // {
-   //    cout << "etype = " << fe->GetGeomType() << "; order = " << fe->GetOrder() << endl;
+   //   std::cout << "etype = " << fe->GetGeomType() << "; order = " << fe->GetOrder() << std::endl;
    // }
    
 
@@ -164,13 +164,13 @@ void LimiterMultiplier::linearize(const int iCell, const Vector& el_uMean, Dense
 
       // if (iCell == 6950)
       // {
-      //    cout << "point = " << ip.x << ' ' << ip.y << "; phys = " << ip_phys[0] << ' ' << ip_phys[1] << endl;
+      //   std::cout << "point = " << ip.x << ' ' << ip.y << "; phys = " << ip_phys[0] << ' ' << ip_phys[1] << std::endl;
       // }
    
       for (int iEq = 0; iEq < num_equation; ++iEq)
       {
-         // if (iCell == 6950) cout << "\t old val = " << elfun1_mat(iDof, iEq) << endl;
-         // if (iCell == 6950) cout << "\t dF = " << dF(iEq,0) << ' ' << dF(iEq,1) << endl;
+         // if (iCell == 6950) std::cout << "\t old val = " << elfun1_mat(iDof, iEq) << std::endl;
+         // if (iCell == 6950) std::cout << "\t dF = " << dF(iEq,0) << ' ' << dF(iEq,1) << std::endl;
 
          elfun1_mat(iDof, iEq) = el_uMean(iEq) - \
             dF(iEq,0) * (el_center_ref.x - ip.x) - \
@@ -181,7 +181,7 @@ void LimiterMultiplier::linearize(const int iCell, const Vector& el_uMean, Dense
 
             // dF(iEq,0) * (el_center_phys[0] - ip_phys[0]) - \
             dF(iEq,1) * (el_center_phys[1] - ip_phys[1]) ;
-         // if (iCell == 6950) cout << "\t new val = " << elfun1_mat(iDof, iEq) << endl;
+         // if (iCell == 6950) std::cout << "\t new val = " << elfun1_mat(iDof, iEq) << std::endl;
       }
    }
 }

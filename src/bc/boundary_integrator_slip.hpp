@@ -3,7 +3,7 @@
 
 #include "boundary_integrator.hpp"
 
-using namespace std;
+
 using namespace mfem;
 
 // Maximum characteristic speed (updated by integrators)
@@ -25,11 +25,11 @@ private:
 
 public:
 
-    /// Constructor
-    BoundaryIntegratorSlip(RiemannSolver &rsolver_, const int dim);
+   /// Constructor
+   BoundaryIntegratorSlip(RiemannSolver &rsolver_, const int dim);
 
-    /// Compute state outside the boundary for Riemann solver
-    virtual void computeRightState(const Vector& state1, Vector& state2, const Vector& nor) override;
+   /// Compute state outside the boundary for Riemann solver
+   virtual void computeRightState(const Vector& state1, Vector& state2, const Vector& nor) override;
 };
 
 #endif // BND_INTEGRATOR_SLIP_H

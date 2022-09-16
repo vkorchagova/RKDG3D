@@ -2,11 +2,11 @@
 
 IndicatorMichalak::IndicatorMichalak
 (
-    Averager& _avgr, 
-    ParFiniteElementSpace* _fes,
-    ParFiniteElementSpace* _fes_const, 
-    const Array<int>& _offsets, 
-    int _d
+   Averager& _avgr, 
+   ParFiniteElementSpace* _fes,
+   ParFiniteElementSpace* _fes_const, 
+   const Array<int>& _offsets, 
+   int _d
 ) : IndicatorBJ(_avgr, _fes, _fes_const, _offsets, _d) 
 {};
 

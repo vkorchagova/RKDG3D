@@ -55,12 +55,12 @@ Averager::~Averager()
 
 void Averager::updateSpaces()
 {
-   // cout << "before fes_avg->Update();" << endl;
+   // std::cout << "before fes_avg->Update();" << std::endl;
 
    fes_avg->Update();
    fes_avg_component->Update();
 
-   // cout << "after fes_avg->Update();" << endl;
+   // std::cout << "after fes_avg->Update();" << std::endl;
    fes_avg_extrap->Update();
    fes_avg_extrap_component->Update();
 }
@@ -98,26 +98,26 @@ void Averager::updateFinished()
 
 void Averager::computeMeanValues()
 {
-   // cout << "in computeMeanValues..." << endl;
+   // std::cout << "in computeMeanValues..." << std::endl;
    
    for (int i = 0; i < num_equation; ++i)
    {
-      // cout << "before ParGridFunction..." << endl;
-      // cout << "v.Size() = " 
+      // std::cout << "before ParGridFunction..." << std::endl;
+      // std::cout << "v.Size() = " 
       //      << parGridX->Size() 
       //      << ", v_offset = " 
       //      << offsets[i]
       //      << ", f->GetVSize() = "
       //      << fes->GetVSize()
-      //      << endl;
+      //      << std::endl;
       ParGridFunction sol_i, avgs_i;
-      // cout << "sol make ref before..." << endl;  
+      // std::cout << "sol make ref before..." << std::endl;  
       sol_i.MakeRef(fes, *parGridX, offsets[i]);
-      // cout << "sol make ref..." << endl; 
+      // std::cout << "sol make ref..." << std::endl; 
       avgs_i.MakeRef(fes_avg_component, *avgs, offsets_avg[i]);
-      // cout << i << " " << sol_i.Size() << " " << avgs_i.Size() << " " << offsets[i] << " "<< offsets_avg[i] <<endl;
+      // std::cout << i << " " << sol_i.Size() << " " << avgs_i.Size() << " " << offsets[i] << " "<< offsets_avg[i] <<std::endl;
       sol_i.GetElementAverages(avgs_i);
-      // cout << "OK" << endl;
+      // std::cout << "OK" << std::endl;
    }
 
    avgs->ExchangeFaceNbrData();
@@ -150,13 +150,13 @@ void Averager::computeStencilExtrapAveragesVector(
 {
    for (int i = 0; i < num_equation; ++i)
    {
-      // cout << "-------------------- num eqn = " << i << endl;
+      // std::cout << "-------------------- num eqn = " << i << std::endl;
       ParGridFunction sol_i, avgs_extrap_i;
-      // cout << "sol make ref..." << endl;  
+      // std::cout << "sol make ref..." << std::endl;  
       sol_i.MakeRef(fes, *parGridX, offsets[i]);
-      // cout << "sol avg make ref..." << endl; 
+      // std::cout << "sol avg make ref..." << std::endl; 
       avgs_extrap_i.MakeRef(fes_avg_extrap_component, *avgs_extrap, offsets_avg[i]);
-      // cout << sol_i.Size() << " " << avgs_extrap_i.Size() << " " << offsets[i] << " "<< offsets_avg[i] <<endl;
+      // std::cout << sol_i.Size() << " " << avgs_extrap_i.Size() << " " << offsets[i] << " "<< offsets_avg[i] <<std::endl;
       computeStencilExtrapAverages(sol_i, stencil, avgs_extrap_i);
    }
 
@@ -170,7 +170,7 @@ void Averager::computeStencilExtrapAverages(
    ParGridFunction& avgs_local
 )
 {
-   // cout << "in extrap avg" << endl;
+   // std::cout << "in extrap avg" << std::endl;
    MassIntegrator Mi;
    DenseMatrix loc_mass, loc_mass_shifted;
    Array<int> te_dofs, tr_dofs;
@@ -180,11 +180,11 @@ void Averager::computeStencilExtrapAverages(
    int_psi = 0.0;
 
    int iCellTroubled = stencil->cell_num[0];
-   // cout << "=== first cycle in stencil\n";
+   // std::cout << "=== first cycle in stencil\n";
 
    for (int i : stencil->cell_num)
    {
-      // cout << "i = " << i << endl;
+      // std::cout << "i = " << i << std::endl;
       // loc_mass = shape function in gauss points * gauss weights
       Mi.AssembleElementMatrix2(
          *fes->GetFE(i), 
@@ -199,34 +199,34 @@ void Averager::computeStencilExtrapAverages(
          *fes->GetElementTransformation(i),
          *fes->GetElementTransformation(iCellTroubled), 
          loc_mass_shifted);
-      // cout << "after ass shift ang" << endl;
+      // std::cout << "after ass shift ang" << std::endl;
       fes->GetElementDofs(i, tr_dofs);
       avgs_local.FESpace()->GetElementDofs(i, te_dofs);
       x.GetSubVector(tr_dofs, loc_this);
       loc_avgs.SetSize(te_dofs.Size());
       loc_mass_shifted.Mult(loc_this, loc_avgs);
-      // cout << "loc_avgs = ";
-      // loc_avgs.Print (cout);
-      // cout << "te_dofs = ";
-      // te_dofs.Print (cout);
+      // std::cout << "loc_avgs = ";
+      // loc_avgs.Print (std::cout);
+      // std::cout << "te_dofs = ";
+      // te_dofs.Print (std::cout);
 
       avgs_local.SetSubVector(te_dofs, loc_avgs);
-      // cout << "add elem vector: avgs = " << avgs(i) << ' '  << avgs(te_dofs[0])<< endl;
+      // std::cout << "add elem vector: avgs = " << avgs(i) << ' '  << avgs(te_dofs[0])<< std::endl;
       loc_this = 1.0; // assume the local basis for 'this' sums to 1
       loc_mass.Mult(loc_this, loc_avgs);
       int_psi.SetSubVector(te_dofs, loc_avgs);
-      // cout << "1st cycle: avgs / psi = " << avgs(i) << ' ' << int_psi(i) << endl;
+      // std::cout << "1st cycle: avgs / psi = " << avgs(i) << ' ' << int_psi(i) << std::endl;
    }
-   // cout << "=== second cycle in stencil\n";
+   // std::cout << "=== second cycle in stencil\n";
    for (int i : stencil->cell_num)
    {
-      // cout << "before: avgs / psi = " << avgs(i) << ' ' << int_psi(i) << endl;
+      // std::cout << "before: avgs / psi = " << avgs(i) << ' ' << int_psi(i) << std::endl;
       avgs_local(i) /= int_psi(i);
-      // cout << "after: avgs = " << avgs(i) << '\n';
+      // std::cout << "after: avgs = " << avgs(i) << '\n';
    }
-   // cout << endl;
+   // std::cout << std::endl;
 
-   // cout << "======\nend extrap avg" << endl;
+   // std::cout << "======\nend extrap avg" << std::endl;
 }
 
 
@@ -239,7 +239,7 @@ void Averager::assembleShiftedElementMatrix(
    DenseMatrix &elmat
 )
 {
-   // cout << "in ass shift avg" << endl;
+   // std::cout << "in ass shift avg" << std::endl;
    int nDofsTrial = trial_fe.GetDof();
    int nDofsTroubled = troubled_fe.GetDof();
    int nDofsTest = test_fe.GetDof();
@@ -265,13 +265,13 @@ void Averager::assembleShiftedElementMatrix(
       const IntegrationPoint &ip = ir->IntPoint(i);
       TransTroubled.Transform(ir->IntPoint(i), ipPhys);
       Trans.TransformBack(ipPhys,ipRef);
-      // cout << ip.x << ' ' << ip.y << endl;;
+      // std::cout << ip.x << ' ' << ip.y << std::endl;;
       trial_fe.CalcShape(ipRef, trial_shape);  // element - shifted, gauss points - troubled
-      // cout << "trial shape = ";
-      // trial_shape.Print(cout);
+      // std::cout << "trial shape = ";
+      // trial_shape.Print(std::cout);
       test_fe.CalcShape(ipRef, te_shape);   // should be only 1
-      // cout << "test shape = ";
-      // te_shape.Print(cout);
+      // std::cout << "test shape = ";
+      // te_shape.Print(std::cout);
 
       //Trans.SetIntPoint (&ipRef);
       w = Trans.Weight() * ip.weight;
@@ -279,10 +279,10 @@ void Averager::assembleShiftedElementMatrix(
       AddMultVWt(te_shape, trial_shape, elmat);
    }
 
-   // cout << "elmat = ";
-   //    (elmat).Print(cout);
+   // std::cout << "elmat = ";
+   //   (elmat).Print(std::cout);
 
    // delete te_shape;
    // delete trial_shape;
-   // cout << "end ass shift avg" << endl;
+   // std::cout << "end ass shift avg" << std::endl;
 }

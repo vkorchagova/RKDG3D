@@ -8,12 +8,12 @@ bool StateIsPhysical(const Vector &state, const int dim)
 {
    if (state(0) < 0 || !std::isfinite(state(0)))
    {
-      state.Print(cout << "Rank #" << myRank << ": " << "Negative density in state ");
+      state.Print(std::cout << "Rank #" << myRank << ": " << "Negative density in state ");
       return false;
    }
    if (state(1 + dim) <= 0 || !std::isfinite(state(1 + dim)))
    {
-      state.Print(cout << "Rank #" << myRank << ": " << "Negative energy in state ");
+      state.Print(std::cout << "Rank #" << myRank << ": " << "Negative energy in state ");
       return false;
    }
 
@@ -21,7 +21,7 @@ bool StateIsPhysical(const Vector &state, const int dim)
 
    if (pres <= 0 || !std::isfinite(pres))
    {
-      state.Print(cout << "Rank #" << myRank << ": " << "Negative pressure in state ");
+      state.Print(std::cout << "Rank #" << myRank << ": " << "Negative pressure in state ");
       return false;
    }
    return true;
@@ -32,18 +32,18 @@ bool StateIsPhysicalSay(const Vector &state, const Vector &primState, const int 
 {
    if (state(0) < 0 || !std::isfinite(state(0)))
    {
-      state.Print(cout << "Rank #" << myRank << ": " << "Negative density in state ");
+      state.Print(std::cout << "Rank #" << myRank << ": " << "Negative density in state ");
       return false;
    }
    if (state(1 + dim) <= 0 || !std::isfinite(state(1 + dim)))
    {
-      state.Print(cout << "Rank #" << myRank << ": " << "Negative energy in state ");
+      state.Print(std::cout << "Rank #" << myRank << ": " << "Negative energy in state ");
       return false;
    }
 
    if (primState(1 + dim) <= 0 || !std::isfinite(primState(1 + dim)))
    {
-      state.Print(cout << "Rank #" << myRank << ": " << "Negative pressure in prim state ");
+      state.Print(std::cout << "Rank #" << myRank << ": " << "Negative pressure in prim state ");
       return false;
    }
    return true;
@@ -128,7 +128,7 @@ void ComputeFlux(const Vector &state, int dim, DenseMatrix &flux)
 
 // Compute the scalar F(u).n
 void ComputeFluxDotN(const Vector &state, const Vector &nor,
-                     Vector &fluxN)
+                      Vector &fluxN)
 {
    // NOTE: nor in general is not a unit normal
    const int dim = nor.Size();
@@ -155,7 +155,7 @@ void ComputeFluxDotN(const Vector &state, const Vector &nor,
 
 // Compute the scalar F(u).n
 void ComputeFluxF(const Vector &state, const Vector &primState, const int dim,
-                     Vector &flux)
+                      Vector &flux)
 {
    const double pres = primState(dim+1);
 
@@ -183,7 +183,7 @@ void ComputeFluxF(const Vector &state, const Vector &primState, const int dim,
    // fluxN(0) = den_velN;
    // for (int d = 0; d < dim; d++)
    // {
-   //    fluxN(1+d) = den_velN * den_vel(d) / den + pres * nor(d);
+   //   fluxN(1+d) = den_velN * den_vel(d) / den + pres * nor(d);
    // }
 
    
@@ -286,9 +286,9 @@ void ComputeToroCharSpeeds(const Vector &state1, const Vector &state2, const Vec
    double cRight = ComputeSoundSpeed(state2[0], pRight);
 
    //  double pvrs = 0.5 * (pLeft + pRight) + \
-   //    0.125 * (uLeft - uRight) * (state1[0] + state2[0]) * (cLeft + cRight);
+   //   0.125 * (uLeft - uRight) * (state1[0] + state2[0]) * (cLeft + cRight);
 
-   // double pStar = max(0.0, pvrs);
+   // double pStar = std::max(0.0, pvrs);
 
    double gm1 = 0.5 * (specific_heat_ratio - 1.0);
    double gp1 = 0.5 * (specific_heat_ratio + 1.0);
@@ -316,10 +316,10 @@ void ComputeToroCharSpeeds(const Vector &state1, const Vector &state2, const Vec
    for(int i = 0; i <= dim+1; ++i)
       if (!std::isfinite(lambdaF[i]))
       {
-         cout << "Infinite lambda!" << endl;
-         state1.Print(cout << "\tstate 1 = ");
-         state2.Print(cout << "\tstate 2 = ");
-         lambdaF.Print(cout << "\tlambdaF = ");
+         std::cout << "Infinite lambda!" << std::endl;
+         state1.Print(std::cout << "\tstate 1 = ");
+         state2.Print(std::cout << "\tstate 2 = ");
+         lambdaF.Print(std::cout << "\tlambdaF = ");
 
          lambdaF = -1;
          return;

@@ -3,7 +3,7 @@
 
 #include "boundary_integrator.hpp"
 
-using namespace std;
+
 using namespace mfem;
 
 /// Maximum characteristic speed (updated by integrators)
@@ -21,25 +21,25 @@ extern int myRank;
 class BoundaryIntegratorCharOutlet : public BoundaryIntegrator
 {
 private:
-    /// Dirichlet state
-    Vector fixedState;
+   /// Dirichlet state
+   Vector fixedState;
 
-    double cOut;
-    double MOut;
-    double UOut;
+   double CSpeedOut;
+   double MOut;
+   double UOut;
 
 public:
 
-    /// Constructor
-    BoundaryIntegratorCharOutlet(RiemannSolver &rsolver_, const int dim, const Vector& _fst);
+   /// Constructor
+   BoundaryIntegratorCharOutlet(RiemannSolver &rsolver_, const int dim, const Vector& _fst);
 
-    /// Compute part of -<F.n(u), [w]> for the given face 
-    virtual void AssembleFaceVector(const FiniteElement &el1,
-                                    const FiniteElement &el2,
-                                    FaceElementTransformations &Tr,
-                                    const Vector &elfun, Vector &elvect);
-    /// Compute state outside the boundary for Riemann solver
-    virtual void computeRightState(const Vector& state1, Vector& state2, const Vector& nor) override;
+   /// Compute part of -<F.n(u), [w]> for the given face 
+   virtual void AssembleFaceVector(const FiniteElement &el1,
+                                       const FiniteElement &el2,
+                                       FaceElementTransformations &Tr,
+                                       const Vector &elfun, Vector &elvect);
+   /// Compute state outside the boundary for Riemann solver
+   virtual void computeRightState(const Vector& state1, Vector& state2, const Vector& nor) override;
 };
 
 #endif // BND_INTEGRATOR_OPEN_H

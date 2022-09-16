@@ -69,17 +69,17 @@ void Limiter::update(Vector &x)
 
       // if (iCell == 1840 || iCell == 1842 || iCell == 1845)
       // {
-      //    cout << "-- Cell #" << iCell << endl;
-      //    cout << "el_x: ";
-      //    el_x.Print(cout);
-      //    cout << "Stencil cells: ";
-      //    for (int i = 0; i < stencil->cell_num.Size(); ++i)
-      //       cout << stencil->cell_num[i] << ' ';
-      //    cout << endl;
-      //    cout << "Stencil edges: ";
-      //    for (int i = 0; i < stencil->internal_face_numbers.Size(); ++i)
-      //       cout << stencil->internal_face_numbers[i] << ' ';
-      //    cout << endl;
+      //   std::cout << "-- Cell #" << iCell << std::endl;
+      //   std::cout << "el_x: ";
+      //   el_x.Print(std::cout);
+      //   std::cout << "Stencil cells: ";
+      //   for (int i = 0; i < stencil->cell_num.Size(); ++i)
+      //       std::cout << stencil->cell_num[i] << ' ';
+      //   std::cout << std::endl;
+      //   std::cout << "Stencil edges: ";
+      //   for (int i = 0; i < stencil->internal_face_numbers.Size(); ++i)
+      //       std::cout << stencil->internal_face_numbers[i] << ' ';
+      //   std::cout << std::endl;
       // }
 
       // make matrix from values data
@@ -92,9 +92,9 @@ void Limiter::update(Vector &x)
          for (int iEq = 0; iEq < num_equation; ++iEq)
             for (int iDof = 0; iDof < nDofs; ++iDof)
             {
-               // if (myRank == 0 && iCell == 0 && iEq == 0) {cout << "   funval before lim = " << elfun1_mat(iDof, iEq) << endl;}
-               elfun1_mat(iDof, iEq) = el_uMean(iEq);
-               // if (myRank == 0 && iCell == 0 && iEq == 0) {cout << "   funval after lim = " << elfun1_mat(iDof, iEq) << endl;}
+                // if (myRank == 0 && iCell == 0 && iEq == 0) {std::cout << "   funval before lim = " << elfun1_mat(iDof, iEq) << std::endl;}
+                elfun1_mat(iDof, iEq) = el_uMean(iEq);
+                // if (myRank == 0 && iCell == 0 && iEq == 0) {std::cout << "   funval after lim = " << elfun1_mat(iDof, iEq) << std::endl;}
             }
 
          indicator.setValue(iCell, 0.0);
@@ -109,8 +109,8 @@ void Limiter::update(Vector &x)
 
          // if ((iCell == 50 || iCell == 54) && (myRank == 0 || myRank == 3))
          // {
-         //    stencil->Print(*mesh, iCell, myRank); 
-         //    cout << "cell #" << iCell << ": iVal = "<< setprecision(18) << iVal << setprecision(6) << endl;
+         //   stencil->Print(*mesh, iCell, myRank); 
+         //   std::cout << "cell #" << iCell << ": iVal = "<< std::setprecision(18) << iVal << std::setprecision(6) << std::endl;
          // } 
 
          // if (iVal < 0.999999) iVal = 0.9; 
@@ -118,7 +118,7 @@ void Limiter::update(Vector &x)
          limit(iCell, iVal, nDofs, elfun1_mat);
 
          // if (iCell == 50 || iCell == 1562)
-         //    elfun1_mat.Print(cout << "cell #" << iCell << "; ivalue = " << iVal << "; el_fun1 = ");
+         //   elfun1_mat.Print(std::cout << "cell #" << iCell << "; ivalue = " << iVal << "; el_fun1 = ");
       }
  
       xNew.SetSubVector(el_vdofs, el_x);
@@ -127,10 +127,10 @@ void Limiter::update(Vector &x)
    }
 
    // for (int iCell = 0; iCell < mesh->GetNE(); ++iCell)
-   //    if (indicator.values[iCell] < 1e-6 && myRank == 39)
+   //   if (indicator.values[iCell] < 1e-6 && myRank == 39)
    //          {
-   //             cout << "Negative indicator value: " << indicator.values[iCell]
-   //              << "; iCell = " << iCell << " in rank = " << myRank << endl;
+   //              std::cout << "Negative indicator value: " << indicator.values[iCell]
+   //               << "; iCell = " << iCell << " in rank = " << myRank << std::endl;
    //          }
 
    // replace solution values to the new one
@@ -153,7 +153,7 @@ void Limiter::getStencil(const int iCell)
       mesh->GetElementFaces(iCell,face_numbers,face_orient);
    else
    {
-      cout << "Unknown dimension number: " << dim << endl;
+      std::cout << "Unknown dimension number: " << dim << std::endl;
       return;
    }
 
@@ -173,39 +173,39 @@ void Limiter::getStencil(const int iCell)
    {
       // if (iCell == 1840 || iCell == 1842 || iCell == 1845)
       // {
-      //    cout << "face #" << iFace;
-      //    cout << " is_internal: " << mesh->FaceIsInterior(iFace);
-      //    int info1 = 0;
-      //    int info2 = 0;
-      //    int infoNC = 0;
-      //    mesh->GetFaceInfos(iFace, &info1, &info2, &infoNC);
-      //    cout << "; info 1 = " << info1;
-      //    cout << "; info 2 = " << info2;
-      //    cout << "; infoNC = " << infoNC;
-      //    cout << endl;
+      //   std::cout << "face #" << iFace;
+      //   std::cout << " is_internal: " << mesh->FaceIsInterior(iFace);
+      //   int info1 = 0;
+      //   int info2 = 0;
+      //   int infoNC = 0;
+      //   mesh->GetFaceInfos(iFace, &info1, &info2, &infoNC);
+      //   std::cout << "; info 1 = " << info1;
+      //   std::cout << "; info 2 = " << info2;
+      //   std::cout << "; infoNC = " << infoNC;
+      //   std::cout << std::endl;
       // }
       bool is_interior = mesh->FaceIsInterior(iFace);
       //std::cout << iFace << " is interior: " << is_interior << std::endl;
 
       // if (myRank == 3 && iCell == 16) 
-      //    {std::cout << iFace << " is interior ? " << is_interior << std::endl;}
+      //   {std::cout << iFace << " is interior ? " << is_interior << std::endl;}
 
       if (is_interior)
       {
          // face_el_trans = mesh->GetInteriorFaceTransformations(iFace);
          // int neib_cell_num = face_el_trans->Elem1No == iCell ? face_el_trans->Elem2No : face_el_trans->Elem1No;
-         // if (iCell == 5369) cout << "my_num = " <<  (face_el_trans->Elem1No == iCell ? 1 : 2) << endl;
+         // if (iCell == 5369) std::cout << "my_num = " <<  (face_el_trans->Elem1No == iCell ? 1 : 2) << std::endl;
 
          // stencil->cell_num.Append(neib_cell_num);
          stencil->internal_face_numbers.Append(iFace);
          // stencil_size++;
 
          // if (myRank == 22)
-         //    {
-         //       cout << "\tinternal face_el_trans->Elem1No = " << face_el_trans->Elem1No << "; face_el_trans->Elem2No = " << face_el_trans->Elem2No << "; mesh->GetNE() = " << mesh->GetNE() << endl;
-         //       cout << "\tavg neib elem = ";
-         //       Vector(uMean.GetColumn(neib_cell_num), num_equation).Print(cout);
-         //    }
+         //   {
+         //       std::cout << "\tinternal face_el_trans->Elem1No = " << face_el_trans->Elem1No << "; face_el_trans->Elem2No = " << face_el_trans->Elem2No << "; mesh->GetNE() = " << mesh->GetNE() << std::endl;
+         //       std::cout << "\tavg neib elem = ";
+         //       Vector(uMean.GetColumn(neib_cell_num), num_equation).Print(std::cout);
+         //   }
       }
       else
       {
@@ -215,32 +215,32 @@ void Limiter::getStencil(const int iCell)
          mesh->GetFaceInfos(iFace, &info1, &info2, &infoNC);
 
          // if (iCell == 1789 && myRank == 17)
-         //    cout << "face no " << iFace << " with info " << info2 << endl;
+         //   std::cout << "face no " << iFace << " with info " << info2 << std::endl;
 
           if (infoNC >= 0 )
           {
             stencil->internal_face_numbers.Append(iFace);
             // if (iCell == 1840 || iCell == 1842 || iCell == 1845)
             // {
-            //    // for (int jjj = 0; jjj < mesh->ncmesh->GetEdgeList().masters.Size(); ++jjj)
-            //    // {
-            //    //    cout << mesh->ncmesh->GetEdgeList().masters[jjj].index << ' ';
-            //    //    cout << mesh->ncmesh->GetEdgeList().masters[jjj].element << ' ';
-            //    //    cout << mesh->ncmesh->GetEdgeList().masters[jjj].slaves_begin << ' ';
-            //    //    cout << mesh->ncmesh->GetEdgeList().masters[jjj].slaves_end << ' ';
-            //    //    cout << endl;
-            //    // }
+            //   // for (int jjj = 0; jjj < mesh->ncmesh->GetEdgeList().masters.Size(); ++jjj)
+            //   // {
+            //   //   std::cout << mesh->ncmesh->GetEdgeList().masters[jjj].index << ' ';
+            //   //   std::cout << mesh->ncmesh->GetEdgeList().masters[jjj].element << ' ';
+            //   //   std::cout << mesh->ncmesh->GetEdgeList().masters[jjj].slaves_begin << ' ';
+            //   //   std::cout << mesh->ncmesh->GetEdgeList().masters[jjj].slaves_end << ' ';
+            //   //   std::cout << std::endl;
+            //   // }
 
-            //    int masterFaceID = mesh->GetNCFacesInfo()[infoNC].MasterFace;
+            //   int masterFaceID = mesh->GetNCFacesInfo()[infoNC].MasterFace;
 
-               
+                
 
-            //    int slaves_begin = mesh->ncmesh->GetEdgeList().masters[masterFaceID].slaves_begin ;
-            //    int slaves_end = mesh->ncmesh->GetEdgeList().masters[masterFaceID].slaves_end ;
+            //   int slaves_begin = mesh->ncmesh->GetEdgeList().masters[masterFaceID].slaves_begin ;
+            //   int slaves_end = mesh->ncmesh->GetEdgeList().masters[masterFaceID].slaves_end ;
 
-            //    cout << "get num faces = " << mesh->GetNumFaces() << endl;
-            //    // face_el_trans = mesh->GetInteriorFaceTransformations(slaves_begin);
-            //    cout << "masterFaceID = " << masterFaceID
+            //   std::cout << "get num faces = " << mesh->GetNumFaces() << std::endl;
+            //   // face_el_trans = mesh->GetInteriorFaceTransformations(slaves_begin);
+            //   std::cout << "masterFaceID = " << masterFaceID
             //         << "; slaves beg = " << slaves_begin 
             //         << "; is_interior = " << mesh->FaceIsInterior(slaves_begin)
             //         << "; slave master = " << mesh->ncmesh->GetEdgeList().slaves[slaves_begin].master
@@ -248,9 +248,9 @@ void Limiter::getStencil(const int iCell)
             //         << "; slave element = " << mesh->ncmesh->GetEdgeList().slaves[slaves_begin].element
             //         // << "; face_el_trans->Elem1No = " << face_el_trans->Elem1No
             //         // << "; face_el_trans->Elem2No = " << face_el_trans->Elem2No
-            //          << endl;
-            //    // face_el_trans = mesh->GetInteriorFaceTransformations(slaves_begin);
-            //    cout << "slaves end = " << slaves_end-1
+            //          << std::endl;
+            //   // face_el_trans = mesh->GetInteriorFaceTransformations(slaves_begin);
+            //   std::cout << "slaves end = " << slaves_end-1
             //         << "; is_interior = " << mesh->FaceIsInterior(slaves_end-1)
             //         << "; slave master = " << mesh->ncmesh->GetEdgeList().slaves[slaves_end-1].master
             //         << "; slave index = " << mesh->ncmesh->GetEdgeList().slaves[slaves_begin].index
@@ -258,25 +258,25 @@ void Limiter::getStencil(const int iCell)
 
             //         // << "; face_el_trans->Elem1No = " << face_el_trans->Elem1No
             //         // << "; face_el_trans->Elem2No = " << face_el_trans->Elem2No
-            //          << endl;
+            //          << std::endl;
             // }
          }
 
          if (info2 >= 0)// && iCell == 1789 && myRank == 17)
          {
-            // cout << "found shared face no " << iFace << " with info " << info2 << endl;
+            // std::cout << "found shared face no " << iFace << " with info " << info2 << std::endl;
             std::map<int,int>::iterator mit = lf2sf.find(iFace); // find local no of face
             int sharedFaceNo = mit->second;
             // if (myRank == 22)
-            // cout << "iFace = " << iFace << "; shared face num " << sharedFaceNo << "; total num of sh faces = " << mesh->GetNSharedFaces() << endl;
+            // std::cout << "iFace = " << iFace << "; shared face num " << sharedFaceNo << "; total num of sh faces = " << mesh->GetNSharedFaces() << std::endl;
 
             face_el_trans = mesh->GetSharedFaceTransformations(sharedFaceNo);
             int neibCellNo = face_el_trans->Elem2No;
 
             // if (myRank == 22)
             // {
-            //    cout << "\ttr->Elem1No = " << face_el_trans->Elem1No << "; face_el_trans->Elem2No = " << face_el_trans->Elem2No << "; mesh->GetNE() = " << mesh->GetNE() << endl;
-            //    pleaseWriteMe = true;
+            //   std::cout << "\ttr->Elem1No = " << face_el_trans->Elem1No << "; face_el_trans->Elem2No = " << face_el_trans->Elem2No << "; mesh->GetNE() = " << mesh->GetNE() << std::endl;
+            //   pleaseWriteMe = true;
             // }
 
             // fe = fes->GetFaceNbrFE(neibCellNo - mesh->GetNE());

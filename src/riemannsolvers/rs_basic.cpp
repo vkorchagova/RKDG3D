@@ -62,7 +62,7 @@ void RiemannSolver::InverseRotate(Vector& state, const Vector& nor, int dim)
 
       mx = cosPsi * cosTheta * mom[0] - sinTheta * mom[1] - sinPsi * cosTheta * mom[2];
       my = cosPsi * sinTheta * mom[0] + cosTheta * mom[1] - sinPsi * sinTheta * mom[2];
-      mz =            sinPsi * mom[0]                                + cosPsi * mom[2];
+      mz =            sinPsi * mom[0]                                 + cosPsi * mom[2];
 
       mom[0] = mx;
       mom[1] = my;

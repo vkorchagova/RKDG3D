@@ -51,14 +51,14 @@ void RiemannSolverHLLC::getFStar(
    // var 0
    // getUStar(state, pK, SK, cK, SStar, dim, UStar);
    // for (int i = 0; i < state.Size(); ++i)
-   //    FStar[i] = fK[i] + (UStar[i] - state[i]) * SK;
+   //   FStar[i] = fK[i] + (UStar[i] - state[i]) * SK;
 
    
 
-    // var 2
-//    return ( SStar * (state*SK - fK) + D * pK * SK ) * (1.0 / (SK - SStar));
+   // var 2
+//   return ( SStar * (state*SK - fK) + D * pK * SK ) * (1.0 / (SK - SStar));
 
-    // var 1
+   // var 1
    D[1] = 1.0;
    D[dim+1] = SStar;
    for (int i = 0; i < state.Size(); ++i)
@@ -68,7 +68,7 @@ void RiemannSolverHLLC::getFStar(
 
 
 double RiemannSolverHLLC::Eval(const Vector &state1, const Vector &state2,
-                           const Vector &nor, Vector &flux, bool debug)
+                              const Vector &nor, Vector &flux, bool debug)
 {
    const int dim = nor.Size();
 
@@ -78,38 +78,38 @@ double RiemannSolverHLLC::Eval(const Vector &state1, const Vector &state2,
    GetPrimitiveFromConservative(state1, primState1);
    GetPrimitiveFromConservative(state2, primState2);
 
-   if (!StateIsPhysicalSay(state1, primState1, dim)) { cout << "Found in state 1 on proc #" << myRank; return -1;};
-   if (!StateIsPhysicalSay(state2, primState2, dim)) { cout << "Found in state 2 on proc #" << myRank; return -1;};
+   if (!StateIsPhysicalSay(state1, primState1, dim)) { std::cout << "Found in state 1 on proc #" << myRank; return -1;};
+   if (!StateIsPhysicalSay(state2, primState2, dim)) { std::cout << "Found in state 2 on proc #" << myRank; return -1;};
 
    ComputeFluxF(state1, primState1, dim, flux1);
    ComputeFluxF(state2, primState2, dim, flux2);
 
    // if (debug)
    // {
-   //    cout << "\tstate1 = ";
-   //    state1.Print(cout);
-   //    cout << "\tstate2 = ";
-   //    state2.Print(cout);
-   //    cout << "\tflux1 = ";
-   //    flux1.Print(cout);
-   //    cout << "\tflux2 = ";
-   //    flux2.Print(cout);
+   //   std::cout << "\tstate1 = ";
+   //   state1.Print(std::cout);
+   //   std::cout << "\tstate2 = ";
+   //   state2.Print(std::cout);
+   //   std::cout << "\tflux1 = ";
+   //   flux1.Print(std::cout);
+   //   std::cout << "\tflux2 = ";
+   //   flux2.Print(std::cout);
    // }
 
    ComputeToroCharSpeeds(state1, state2, primState1, primState2, lambdaF, dim);
-   const double maxE = max(fabs(lambdaF[0]), fabs(lambdaF[dim+1]));
+   const double maxE = std::max(fabs(lambdaF[0]), fabs(lambdaF[dim+1]));
 
 
    double SL = lambdaF[0];
    double SR = lambdaF[dim+1];
 
-   // double SL = min(lambdaF[0],lambdaF[dim+1]);
-   // double SR = max(lambdaF[0],lambdaF[dim+1]);
+   // double SL = std::min(lambdaF[0],lambdaF[dim+1]);
+   // double SR = std::max(lambdaF[0],lambdaF[dim+1]);
 
    // if (debug)
    // {
-   //    cout << "SL = " << SL << endl;
-   //    cout << "SR = " << SR << endl;
+   //   std::cout << "SL = " << SL << std::endl;
+   //   std::cout << "SR = " << SR << std::endl;
    // }
 
    if (SL >= 0)
@@ -127,14 +127,14 @@ double RiemannSolverHLLC::Eval(const Vector &state1, const Vector &state2,
       double cRight = SR - primState2[1]; //state2[1] / state2[0];
 
       double sStar = (pRight - pLeft + state1[1] * cLeft - state2[1] * cRight) / \
-                      (state1[0] * cLeft - state2[0] * cRight);
+                        (state1[0] * cLeft - state2[0] * cRight);
       // if (debug)
       // {
-      //    cout << "pLeft = " << pLeft << endl;
-      //    cout << "pRight = " << pRight << endl;
-      //    cout << "cLeft = " << cLeft << endl;
-      //    cout << "cRight = " << cRight << endl;
-      //    cout << "sStar = " << sStar << endl;
+      //   std::cout << "pLeft = " << pLeft << std::endl;
+      //   std::cout << "pRight = " << pRight << std::endl;
+      //   std::cout << "cLeft = " << cLeft << std::endl;
+      //   std::cout << "cRight = " << cRight << std::endl;
+      //   std::cout << "sStar = " << sStar << std::endl;
       // }
 
       if (sStar > 0.0)
@@ -145,8 +145,8 @@ double RiemannSolverHLLC::Eval(const Vector &state1, const Vector &state2,
 
       // if (debug)
       // {
-      //    cout << "flux = ";
-      //    flux.Print(cout);
+      //   std::cout << "flux = ";
+      //   flux.Print(std::cout);
       // }
 
    }
@@ -154,8 +154,8 @@ double RiemannSolverHLLC::Eval(const Vector &state1, const Vector &state2,
    InverseRotate(flux, nor, dim);
    // if (debug)
    // {
-   //    cout << "flux after rot = ";
-   //    flux.Print(cout);
+   //   std::cout << "flux after rot = ";
+   //   flux.Print(std::cout);
    // }
 
 

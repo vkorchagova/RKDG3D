@@ -4,11 +4,11 @@
 
 IndicatorShu::IndicatorShu
 (
-    Averager& _avgr, 
-    ParFiniteElementSpace* _fes,
-    ParFiniteElementSpace* _fes_const, 
-    const Array<int>& _offsets, 
-    int _d
+   Averager& _avgr, 
+   ParFiniteElementSpace* _fes,
+   ParFiniteElementSpace* _fes_const, 
+   const Array<int>& _offsets, 
+   int _d
 ) : Indicator(_avgr, _fes, _fes_const, _offsets, _d)  
 {
    maxFabsPj.SetSize(num_equation);
@@ -28,13 +28,13 @@ double IndicatorShu::checkDiscontinuity(
    Vector el_uMean(num_equation);
    Vector el_uMean_extrap(num_equation);
 
-   // cout << "=== iCell = " << iCell << endl;
+   // std::cout << "=== iCell = " << iCell << std::endl;
 
    averager.computeStencilExtrapAveragesVector(stencil);
 
    // if (iCell == 3052)
    // {
-   //    cout << "avgs_extrap:\n";
+   //   std::cout << "avgs_extrap:\n";
    // find max fabs of average values among stencil
    for (int k : stencil->cell_num)
    {
@@ -49,18 +49,18 @@ double IndicatorShu::checkDiscontinuity(
 
          sumFabsDiffExtrap[iSol] += fabs(el_uMean[iSol] - el_uMean_extrap[iSol]);
 
-         // cout << "diff = " << el_uMean[iSol] << '-' <<el_uMean_extrap[iSol] << "; bool = " << (double)(k != iCell) << endl;
+         // std::cout << "diff = " << el_uMean[iSol] << '-' <<el_uMean_extrap[iSol] << "; bool = " << (double)(k != iCell) << std::endl;
       }
    }
-   // cout << "...\n";
+   // std::cout << "...\n";
    // }
 
    // if (iCell == 3052)
    // {
-   //    cout << "maxFabsPj:";
-   //    maxFabsPj.Print(cout);
-   //    cout << "sumFabsDiffExtrap:";
-   //    sumFabsDiffExtrap.Print(cout);
+   //   std::cout << "maxFabsPj:";
+   //   maxFabsPj.Print(std::cout);
+   //   std::cout << "sumFabsDiffExtrap:";
+   //   sumFabsDiffExtrap.Print(std::cout);
    // }
 
    // set indicator values to the external field
@@ -69,7 +69,7 @@ double IndicatorShu::checkDiscontinuity(
          ? 
          1.0 
          : 
-         min(1.0, Ck * maxFabsPj[0] / (sumFabsDiffExtrap[0] + eps));
+         std::min(1.0, Ck * maxFabsPj[0] / (sumFabsDiffExtrap[0] + eps));
 
    setValue(iCell, indVal);
 
@@ -77,7 +77,7 @@ double IndicatorShu::checkDiscontinuity(
 
 
    // for (int iEq = 0; iEq < num_equation; ++iEq)
-   //    values.GetBlock(iEq)[iCell] = (sumFabsDiffExtrap[iEq] / (maxFabsPj[iEq] + eps) > Ck) ? 0.0 : 1.0;
+   //   values.GetBlock(iEq)[iCell] = (sumFabsDiffExtrap[iEq] / (maxFabsPj[iEq] + eps) > Ck) ? 0.0 : 1.0;
 
    // if (iCell == 1) exit(1);
 };

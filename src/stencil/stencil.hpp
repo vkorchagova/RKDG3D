@@ -3,7 +3,6 @@
 
 #include "mfem.hpp"
 
-using namespace std;
 using namespace mfem;
 
 /// Number of equations
@@ -56,31 +55,32 @@ public:
    /// Print values
    void Print(ParMesh& mesh, int iCell, int rank = 0)
    {
-      cout << "======" << endl;
-      cout << "Stencil for cell #" << iCell << ", proc #" << rank << endl;
-      cout << "------" << endl;
-      cell_num.Print(cout << "cell num = ");
-      internal_face_numbers.Print(cout << "internal_face_numbers num = ");
-      shared_face_numbers.Print(cout << "shared_face_numbers num = ");
-      cout << "Cell centres:" << endl;
+      std::cout << "======" << std::endl;
+      std::cout << "Stencil for cell #" << iCell << ", proc #" << rank << std::endl;
+      std::cout << "------" << std::endl;
+      cell_num.Print(std::cout << "cell num = ");
+      internal_face_numbers.Print(std::cout << "internal_face_numbers num = ");
+      shared_face_numbers.Print(std::cout << "shared_face_numbers num = ");
+      std::cout << "Cell centres:" << std::endl;
+      
       for (int iCellNum : cell_num)
       {
          // int iCellNumOk = iCellNum;
          // if (iCellNum > mesh->GetNE())
-         //    iCellNumOk(avgs->FaceNbrData())[iEq  + (iCell - mesh->GetNE()) * num_equation];
+         //   iCellNumOk(avgs->FaceNbrData())[iEq  + (iCell - mesh->GetNE()) * num_equation];
          if (iCellNum > mesh.GetNE())
          {
             FaceElementTransformations* face_el_trans = mesh.GetSharedFaceTransformations(shared_face_numbers[0]);
-            cout << face_el_trans->Elem1No << ' ' << face_el_trans->Elem2No << endl;
+            std::cout << face_el_trans->Elem1No << ' ' << face_el_trans->Elem2No << std::endl;
          }
          else
          {
             Vector cellCenter(3);
             mesh.GetElementCenter(iCellNum,cellCenter);
-            cellCenter.Print(cout << "\t centre of cell #" << iCellNum);
+            cellCenter.Print(std::cout << "\t centre of cell #" << iCellNum);
          }
       }
-      cout << "======" << endl;
+      std::cout << "======" << std::endl;
    }
 };
 

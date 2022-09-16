@@ -9,9 +9,9 @@ FaceIntegrator::FaceIntegrator(RiemannSolver &rsolver_, const int dim) :
    fluxN(num_equation) { }
 
 void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
-                                        const FiniteElement &el2,
-                                        FaceElementTransformations &Tr,
-                                        const Vector &elfun, Vector &elvect)
+                                           const FiniteElement &el2,
+                                           FaceElementTransformations &Tr,
+                                           const Vector &elfun, Vector &elvect)
 {
    // Compute the term <F.n(u),[w]> on the interior faces.
    const int dof1 = el1.GetDof();
@@ -25,27 +25,27 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
 
    DenseMatrix elfun1_mat(elfun.GetData(), dof1, num_equation);
    DenseMatrix elfun2_mat(elfun.GetData() + dof1 * num_equation, dof2,
-                          num_equation);
+                             num_equation);
 
    DenseMatrix elvect1_mat(elvect.GetData(), dof1, num_equation);
    DenseMatrix elvect2_mat(elvect.GetData() + dof1 * num_equation, dof2,
-                           num_equation);
+                              num_equation);
 
    // std::cout << "======= elfun\n";
    // elfun.Print(std::cout);
    // if ((Tr.Elem1No == 0) && myRank == 3) 
    // {
-   //    std::cout << "======= elfun1_mat\n";
-   //    elfun1_mat.Print(std::cout);
-   //    std::cout << "======= elfun2_mat\n";
-   //    elfun2_mat.Print(std::cout);
+   //   std::cout << "======= elfun1_mat\n";
+   //   elfun1_mat.Print(std::cout);
+   //   std::cout << "======= elfun2_mat\n";
+   //   elfun2_mat.Print(std::cout);
    // }
 
    // Integration order calculation from DGTraceIntegrator
    int intorder;
    if (Tr.Elem2No >= 0)
-      intorder = (min(Tr.Elem1->OrderW(), Tr.Elem2->OrderW()) +
-                  2*max(el1.GetOrder(), el2.GetOrder()));
+      intorder = (std::min(Tr.Elem1->OrderW(), Tr.Elem2->OrderW()) +
+                   2*std::max(el1.GetOrder(), el2.GetOrder()));
    else
    {
       intorder = Tr.Elem1->OrderW() + 2*el1.GetOrder();
@@ -62,19 +62,19 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
 
    // if ((Tr.Elem1No == 0) && myRank == 3) 
    // {
-   //    IntegrationRule nds1 = el1.GetNodes();
-   //    IntegrationRule nds2 = el2.GetNodes();
+   //   IntegrationRule nds1 = el1.GetNodes();
+   //   IntegrationRule nds2 = el2.GetNodes();
 
-   //    for (int i = 0; i < nds1.GetNPoints(); i++)
-   //    {
+   //   for (int i = 0; i < nds1.GetNPoints(); i++)
+   //   {
    //       const IntegrationPoint &ip = nds1.IntPoint(i);
-   //       cout << "node cell1 = " << ip.x << " " << ip.y << endl;
-   //    }
-   //    for (int i = 0; i < nds2.GetNPoints(); i++)
-   //    {
+   //       std::cout << "node cell1 = " << ip.x << " " << ip.y << std::endl;
+   //   }
+   //   for (int i = 0; i < nds2.GetNPoints(); i++)
+   //   {
    //       const IntegrationPoint &ip = nds2.IntPoint(i);
-   //       cout << "node cell2 = " << ip.x << " " << ip.y << endl;
-   //    }
+   //       std::cout << "node cell2 = " << ip.x << " " << ip.y << std::endl;
+   //   }
    // }
 
    //std::cout << "Tr.FaceGeom = " << Tr.FaceGeom << ", intorder = " << intorder << std::endl;
@@ -100,9 +100,9 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
 
       // for (int ii = 0; ii < shape1.Size(); ++ii)
       // {
-      //    if (fabs(shape1(ii)) < 1e-16)
+      //   if (fabs(shape1(ii)) < 1e-16)
       //       shape1(ii) = 0.0;
-      //    if (fabs(shape2(ii)) < 1e-16)
+      //   if (fabs(shape2(ii)) < 1e-16)
       //       shape2(ii) = 0.0;
       // }
 
@@ -112,23 +112,23 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
 
 
       // for (int iii = 0; iii < funval1.Size(); ++iii)
-      //    if (funval1[iii] != funval1[iii])
-      //    {
+      //   if (funval1[iii] != funval1[iii])
+      //   {
       //       std::cout << "Find NaN for funval1[" << iii << "], processor " << myRank << std::endl;
-      //       cout << "; tr elem 1 no = "<< Tr.Elem1No << "; tr elem 2 no =" << Tr.Elem2No << endl;
-      //    }
+      //       std::cout << "; tr elem 1 no = "<< Tr.Elem1No << "; tr elem 2 no =" << Tr.Elem2No << std::endl;
+      //   }
 
       // if ((Tr.Elem1No == 0 || Tr.Elem2No == 0) && myRank == 3) 
       // {
-      //    std::cout << "funval1 = "; funval1.Print(std::cout);
-      //    std::cout << "funval2 = "; funval2.Print(std::cout);
+      //   std::cout << "funval1 = "; funval1.Print(std::cout);
+      //   std::cout << "funval2 = "; funval2.Print(std::cout);
       // }
 
       // Tr.Face->SetIntPoint(&ip);
 
       // Get the normal vector and the flux on the face
       CalcOrtho(Tr.Face->Jacobian(), nor);
-     
+    
       double normag = 0;
       for (int i = 0; i < nor.Size(); i++)
       {
@@ -139,94 +139,94 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
       nor *= 1.0/nor.Norml2();
 
       // for (int iii = 0; iii < nor.Size(); ++iii)
-      //    if (nor[iii] != nor[iii])
-      //    {
+      //   if (nor[iii] != nor[iii])
+      //   {
       //       std::cout << "Find NaN for nor[" << iii << "], processor " << myRank << std::endl;
-      //       cout << "; tr elem 1 no = "<< Tr.Elem1No << "; tr elem 2 no =" << Tr.Elem2No << endl;
-      //    }
+      //       std::cout << "; tr elem 1 no = "<< Tr.Elem1No << "; tr elem 2 no =" << Tr.Elem2No << std::endl;
+      //   }
 
       // for (int iii = 0; iii < funval1.Size(); ++iii)
-      //    if (funval1[iii] != funval1[iii])
-      //    {
+      //   if (funval1[iii] != funval1[iii])
+      //   {
       //       std::cout << "Find NaN for funval1[" << iii << "], processor " << myRank << std::endl;
-      //       cout << "; tr elem 1 no = "<< Tr.Elem1No << "; tr elem 2 no =" << Tr.Elem2No << endl;
-      //    }
+      //       std::cout << "; tr elem 1 no = "<< Tr.Elem1No << "; tr elem 2 no =" << Tr.Elem2No << std::endl;
+      //   }
       // for (int iii = 0; iii < funval2.Size(); ++iii)
-      //    if (funval2[iii] != funval2[iii])
-      //    {
+      //   if (funval2[iii] != funval2[iii])
+      //   {
       //       std::cout << "Find NaN for funval2[" << iii << "], processor " << myRank << std::endl;
-      //       cout << "; tr elem 1 no = "<< Tr.Elem1No << "; tr elem 2 no =" << Tr.Elem2No << endl;
-      //    }
+      //       std::cout << "; tr elem 1 no = "<< Tr.Elem1No << "; tr elem 2 no =" << Tr.Elem2No << std::endl;
+      //   }
       // if (Tr.Elem1No == 1789 && myRank == 17)
       // {
-      //    cout << "BEFORE FLUX" << endl;
-      //    cout << "nor = ";
-      //    nor.Print(cout);
-      //    cout << "funval1 = ";
-      //    funval1.Print(cout);
-      //    cout << "funval2 = ";
-      //    funval2.Print(cout);
+      //   std::cout << "BEFORE FLUX" << std::endl;
+      //   std::cout << "nor = ";
+      //   nor.Print(std::cout);
+      //   std::cout << "funval1 = ";
+      //   funval1.Print(std::cout);
+      //   std::cout << "funval2 = ";
+      //   funval2.Print(std::cout);
       // }
       bool debug = false;
       // if (
-      //    (Tr.Elem1No == 50 ) || (Tr.Elem2No == 50) ||
-      //    (Tr.Elem1No == 1562) || (Tr.Elem2No == 1562)
+      //   (Tr.Elem1No == 50 ) || (Tr.Elem2No == 50) ||
+      //   (Tr.Elem1No == 1562) || (Tr.Elem2No == 1562)
       // )
       // {
-      //    debug = true;
-      //    cout << "===============" << endl;
-      //    cout << "cell nums = " << Tr.Elem1No << ' ' << Tr.Elem2No << endl;
-      //    shape1.Print(std::cout << std::setprecision(30) << "shape1 = ");
-      //    shape2.Print(std::cout << std::setprecision(30) << "shape2 = ");
-      //    // elfun1_mat.Print(std::cout << std::setprecision(30) << "elfun1_mat = ");
-      //    // elfun2_mat.Print(std::cout << std::setprecision(30) << "elfun2_mat = ");
-      //    cout << "---------------" << endl;
+      //   debug = true;
+      //   std::cout << "===============" << std::endl;
+      //   std::cout << "cell nums = " << Tr.Elem1No << ' ' << Tr.Elem2No << std::endl;
+      //   shape1.Print(std::cout << std::std::setprecision(30) << "shape1 = ");
+      //   shape2.Print(std::cout << std::std::setprecision(30) << "shape2 = ");
+      //   // elfun1_mat.Print(std::cout << std::std::setprecision(30) << "elfun1_mat = ");
+      //   // elfun2_mat.Print(std::cout << std::std::setprecision(30) << "elfun2_mat = ");
+      //   std::cout << "---------------" << std::endl;
       // }
 
       const double mcs = rsolver.Eval(funval1, funval2, nor, fluxN, debug);
 
       if (mcs < 0)
       {
-         cout << "mcs = " << mcs << endl;
-         cout << "\tmyRank = " << myRank << endl;
-         // funval1.Print(cout << "\tfunval1: ");
-         // funval2.Print(cout << "\tfunval2: ");
-         // elfun1_mat.Print(cout << "\telfun1_mat: ");
-         // elfun2_mat.Print(cout << "\telfun2_mat: ");
-         elfun.Print(cout << "\telfun: ");
-         cout << "Number of neighbours: " << Tr.Elem1No << ' ' << Tr.Elem2No << endl;
+         std::cout << "mcs = " << mcs << std::endl;
+         std::cout << "\tmyRank = " << myRank << std::endl;
+         // funval1.Print(std::cout << "\tfunval1: ");
+         // funval2.Print(std::cout << "\tfunval2: ");
+         // elfun1_mat.Print(std::cout << "\telfun1_mat: ");
+         // elfun2_mat.Print(std::cout << "\telfun2_mat: ");
+         elfun.Print(std::cout << "\telfun: ");
+         std::cout << "Number of neighbours: " << Tr.Elem1No << ' ' << Tr.Elem2No << std::endl;
          // exit(1);
       }
 
 
       // for (int iii = 0; iii < fluxN.Size(); ++iii)
-      //    if (fluxN[iii] != fluxN[iii])
-      //    {
-      //       cout << "mcs = " << mcs;
+      //   if (fluxN[iii] != fluxN[iii])
+      //   {
+      //       std::cout << "mcs = " << mcs;
       //       std::cout << " Find NaN for fluxN[" << iii << "], processor " << myRank << std::endl;
-      //       cout << "; tr elem 1 no = "<< Tr.Elem1No << "; tr elem 2 no =" << Tr.Elem2No << endl;
-      //       nor.Print(cout);
-      //       funval1.Print(cout);
-      //       funval2.Print(cout);
-      //    }
+      //       std::cout << "; tr elem 1 no = "<< Tr.Elem1No << "; tr elem 2 no =" << Tr.Elem2No << std::endl;
+      //       nor.Print(std::cout);
+      //       funval1.Print(std::cout);
+      //       funval2.Print(std::cout);
+      //   }
 
       // if (
-      //    (Tr.Elem1No == 2550 && Tr.Elem2No == 2450) || (Tr.Elem1No == 7450 && Tr.Elem2No == 7550) ||
-      //    (Tr.Elem2No == 2550 && Tr.Elem1No == 2450) || (Tr.Elem2No == 7450 && Tr.Elem1No == 7550)
+      //   (Tr.Elem1No == 2550 && Tr.Elem2No == 2450) || (Tr.Elem1No == 7450 && Tr.Elem2No == 7550) ||
+      //   (Tr.Elem2No == 2550 && Tr.Elem1No == 2450) || (Tr.Elem2No == 7450 && Tr.Elem1No == 7550)
       // )
 
       // if (
-      //    (Tr.Elem1No == 50 ) || (Tr.Elem2No == 50) ||
-      //    (Tr.Elem1No == 1562) || (Tr.Elem2No == 1562)
+      //   (Tr.Elem1No == 50 ) || (Tr.Elem2No == 50) ||
+      //   (Tr.Elem1No == 1562) || (Tr.Elem2No == 1562)
       // )
       // {
-      //    cout << "---------------" << endl;
-      //    cout << "Tr.Elem1No = " << Tr.Elem1No << "; Tr.Elem2No = " << Tr.Elem2No << endl;
-      //    std::cout << "ipoint = " << ip.index << " " << ip.x << " " << ip.y << " " << ip.z << std::endl;
-      //    funval1.Print(cout << "\tfunval1: ");
-      //    funval2.Print(cout << "\tfunval2: ");
-      //    cout << "\tmcs = " << mcs << endl;
-      //    fluxN.Print(std::cout << "\tfluxN = ");
+      //   std::cout << "---------------" << std::endl;
+      //   std::cout << "Tr.Elem1No = " << Tr.Elem1No << "; Tr.Elem2No = " << Tr.Elem2No << std::endl;
+      //   std::cout << "ipoint = " << ip.index << " " << ip.x << " " << ip.y << " " << ip.z << std::endl;
+      //   funval1.Print(std::cout << "\tfunval1: ");
+      //   funval2.Print(std::cout << "\tfunval2: ");
+      //   std::cout << "\tmcs = " << mcs << std::endl;
+      //   fluxN.Print(std::cout << "\tfluxN = ");
       // }
 
       
@@ -236,9 +236,9 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
       if (mcs > max_char_speed) { max_char_speed = mcs; }
 
       fluxN *= ip.weight;
-      // cout << "nor = ";
-      // nor.Print(cout);
-      // cout << "ip weight = " << ip.weight << endl;
+      // std::cout << "nor = ";
+      // nor.Print(std::cout);
+      // std::cout << "ip weight = " << ip.weight << std::endl;
       for (int k = 0; k < num_equation; k++)
       {
          for (int s = 0; s < dof1; s++)

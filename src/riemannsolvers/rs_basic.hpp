@@ -3,7 +3,7 @@
 
 #include "mfem.hpp"
 
-using namespace std;
+
 using namespace mfem;
 
 /// Number of equations
@@ -20,40 +20,40 @@ class RiemannSolver
 
 protected:
 
-    /// Set of eigenvalues
-    Vector lambdaF;
+   /// Set of eigenvalues
+   Vector lambdaF;
 
 public:
-    
-    /// Physical flux F, left side
-    Vector flux1;
+   
+   /// Physical flux F, left side
+   Vector flux1;
 
-    /// Physical flux F, right side
-    Vector flux2;
+   /// Physical flux F, right side
+   Vector flux2;
 
-    /// Primitive variables, left side
-    Vector primState1;
+   /// Primitive variables, left side
+   Vector primState1;
 
-    /// Primitive variables, right side
-    Vector primState2;
+   /// Primitive variables, right side
+   Vector primState2;
 
-    /// Get normal and tangential components by normal to the cell boundary
-    void Rotate(Vector& state, const Vector& nor, int dim);
+   /// Get normal and tangential components by normal to the cell boundary
+   void Rotate(Vector& state, const Vector& nor, int dim);
 
-    /// Get initial components by normal to the cell boundary
-    void InverseRotate(Vector& state, const Vector& nor, int dim);
+   /// Get initial components by normal to the cell boundary
+   void InverseRotate(Vector& state, const Vector& nor, int dim);
 
 public:
 
-    /// Constructor
-    RiemannSolver();
+   /// Constructor
+   RiemannSolver();
 
-    /// Destructor
-    virtual ~RiemannSolver() {};
+   /// Destructor
+   virtual ~RiemannSolver() {};
 
-    /// Compute numerical flux
-    virtual double Eval(const Vector &state1, const Vector &state2,
-               const Vector &nor, Vector &flux, bool debug = false) = 0;
+   /// Compute numerical flux
+   virtual double Eval(const Vector &state1, const Vector &state2,
+                const Vector &nor, Vector &flux, bool debug = false) = 0;
 };
 
 #endif // RIEMANN_SOLVER_H

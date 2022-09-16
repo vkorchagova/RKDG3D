@@ -1,6 +1,6 @@
 #include "mfem.hpp"
 
-using namespace std;
+
 using namespace mfem;
 
 /// Physics parameters (updated by case)
@@ -38,10 +38,10 @@ void ComputeFlux(const Vector &state, int dim, DenseMatrix &flux);
 
 // Compute the scalar F(u).n
 void ComputeFluxDotN(const Vector &state, const Vector &nor,
-                     Vector &fluxN);
+                      Vector &fluxN);
 
 void ComputeFluxF(const Vector &state, const Vector &primState, const int dim,
-                     Vector &flux);
+                      Vector &flux);
 
 // Compute the maximum characteristic speed.
 double ComputeMaxCharSpeed(const Vector &state, const int dim);

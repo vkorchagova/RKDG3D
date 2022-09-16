@@ -4,7 +4,7 @@
 #include "mfem.hpp"
 #include "limiter.hpp"
 
-using namespace std;
+
 using namespace mfem;
 
 /// Proc rank 
@@ -13,14 +13,14 @@ extern int myRank;
 /// 
 /// An explicit Runge-Kutta method corresponding to a general Butcher tableau
 /// with the DG limitation
-///    +--------+----------------------+
-    // | c[0]   | a[0]                 |
-    // | c[1]   | a[1] a[2]            |
-    // | ...    |    ...               |
-    // | c[s-2] | ...   a[s(s-1)/2-1]  |
-    // +--------+----------------------+
-    // |        | b[0] b[1] ... b[s-1] |
-    // +--------+----------------------+
+///   +--------+----------------------+
+   // | c[0]   | a[0]                 |
+   // | c[1]   | a[1] a[2]            |
+   // | ...   |   ...                |
+   // | c[s-2] | ...   a[s(s-1)/2-1]  |
+   // +--------+----------------------+
+   // |       | b[0] b[1] ... b[s-1] |
+   // +--------+----------------------+
 class ExplicitRKLimitedSolver : public ODESolver
 {
 private:
@@ -44,7 +44,7 @@ public:
    
    // Constructor
    ExplicitRKLimitedSolver(int _s, const double *_a, const double *_b,
-                    const double *_c, Limiter& _l);
+                     const double *_c, Limiter& _l);
 
    /// Init memory
    virtual void Init(TimeDependentOperator &_f);

@@ -23,7 +23,7 @@ private:
    Vector yMin;
 
    /// Update limiter coefficient
-   void updateYMin(
+   void updateYmin(
       const IntegrationRule& ir, 
       IntegrationPointTransformation* curTrans, 
       const DenseMatrix& elfun1_mat,

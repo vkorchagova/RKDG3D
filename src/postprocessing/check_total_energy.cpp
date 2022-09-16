@@ -2,53 +2,53 @@
 
 double ComputeTotalEnergy(ParMesh* mesh, ParFiniteElementSpace* vfes, ParGridFunction& sol)
 {
-    double totalEnergy = 0.0;
-    double myTotalEnergy = 0.0;
-    double totalEnergy_el = 0.0;
+   double totalEnergy = 0.0;
+   double myTotalEnergy = 0.0;
+   double totalEnergy_el = 0.0;
 
-    const FiniteElement *fe;
-    Vector el_sol;
-    Array<int> vdofs;
-    ElementTransformation* el_trans;
-    Vector nor;
+   const FiniteElement *fe;
+   Vector el_sol;
+   Array<int> vdofs;
+   ElementTransformation* el_trans;
+   Vector nor;
 
-    for (int iCell = 0; iCell < vfes->GetNE(); ++iCell)
-    {
-        totalEnergy_el = 0.0;
-        fe = vfes->GetFE(iCell);
-        const int nDofs = fe->GetDof();
-        nor.SetSize(nDofs);
+   for (int iCell = 0; iCell < vfes->GetNE(); ++iCell)
+   {
+       totalEnergy_el = 0.0;
+       fe = vfes->GetFE(iCell);
+       const int nDofs = fe->GetDof();
+       nor.SetSize(nDofs);
 
-        vfes->GetElementVDofs(iCell, vdofs);
-        sol.GetSubVector(vdofs, el_sol);
+       vfes->GetElementVDofs(iCell, vdofs);
+       sol.GetSubVector(vdofs, el_sol);
 
-        el_trans = mesh->GetElementTransformation(iCell);
+       el_trans = mesh->GetElementTransformation(iCell);
 
 
-        // el_sol.Print(cout << "el_sol for cell #" << iCell << ": ");
+       // el_sol.Print(std::cout << "el_sol for cell #" << iCell << ": ");
 
-        const IntegrationRule *ir = &IntRules.Get(fe->GetGeomType(), fe->GetOrder() + 1);
+       const IntegrationRule *ir = &IntRules.Get(fe->GetGeomType(), fe->GetOrder() + 1);
 
-        for (int iDof = 0; iDof < nDofs; ++iDof)
-        {
+       for (int iDof = 0; iDof < nDofs; ++iDof)
+       {
             const IntegrationPoint ip = ir->IntPoint(iDof);
             // el_trans->SetIntPoint(&ip);
             // CalcOrtho(el_trans->Jacobian(), nor);
             
 
             totalEnergy_el += ip.weight * el_sol[(num_equation - 1)*nDofs + iDof];
-        }
+       }
 
-        // cout << el_trans->Jacobian().Det() << ' ' << totalEnergy_el << ' ' << totalEnergy_el * el_trans->Jacobian().Det() << endl;
+       // std::cout << el_trans->Jacobian().Det() << ' ' << totalEnergy_el << ' ' << totalEnergy_el * el_trans->Jacobian().Det() << std::endl;
 
-        // el_trans->Jacobian().Print(cout << "Jacobian for cell #" << iCell << "= ");
+       // el_trans->Jacobian().Print(std::cout << "Jacobian for cell #" << iCell << "= ");
 
-        myTotalEnergy += totalEnergy_el * el_trans->Jacobian().Det();
+       myTotalEnergy += totalEnergy_el * el_trans->Jacobian().Det();
 
 
-    }
+   }
 
-    MPI_Reduce(
+   MPI_Reduce(
                 &myTotalEnergy,
                 &totalEnergy,
                 1,
@@ -59,14 +59,14 @@ double ComputeTotalEnergy(ParMesh* mesh, ParFiniteElementSpace* vfes, ParGridFun
             );
 
 
-    return totalEnergy;
+   return totalEnergy;
 }
 
 // void ComputeU(ParGridFunction& sol, ParFiniteElementSpace* vfes, ParGridFunction& U, ParFiniteElementSpace* dfes)
 // {
-    
-//     for (int i = 0; i < dfes.GetNE(); i++)
-//     {
-        
-//     }
+   
+//    for (int i = 0; i < dfes.GetNE(); i++)
+//    {
+       
+//    }
 // }

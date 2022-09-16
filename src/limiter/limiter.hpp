@@ -5,7 +5,7 @@
 #include "indicator.hpp"
 #include "averager.hpp"
 
-using namespace std;
+
 using namespace mfem;
 
 /// Number of equations

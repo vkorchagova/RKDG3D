@@ -294,7 +294,7 @@ DataType read(const ryml::Tree* tree, const std::vector<ryml::csubstr>& keys)
 {
    if (keys.empty())
    {
-      cout << "Empty list of arguments" << endl;
+      std::cout << "Empty list of arguments" << std::endl;
       exit(1);
    }
 
@@ -306,10 +306,10 @@ DataType read(const ryml::Tree* tree, const std::vector<ryml::csubstr>& keys)
          treeNode = treeNode[keys[i]];
       else
       {
-         cout << "Value ";
+         std::cout << "Value ";
          for (int iCorr = 0; iCorr <= i; ++iCorr)
-            cout << '[' << keys[iCorr] << ']';
-         cout << " is not found in the tree" << endl;
+            std::cout << '[' << keys[iCorr] << ']';
+         std::cout << " is not found in the tree" << std::endl;
          exit(1);
       }
    }
@@ -325,7 +325,7 @@ DataType readVectorComponent(const ryml::Tree* tree, const std::vector<ryml::csu
 {
    if (keys.empty())
    {
-      cout << "Empty list of arguments" << endl;
+      std::cout << "Empty list of arguments" << std::endl;
       exit(1);
    }
 
@@ -337,10 +337,10 @@ DataType readVectorComponent(const ryml::Tree* tree, const std::vector<ryml::csu
          treeNode = treeNode[keys[i]];
       else
       {
-         cout << "Value ";
+         std::cout << "Value ";
          for (int iCorr = 0; iCorr <= i; ++iCorr)
-            cout << '[' << keys[iCorr] << ']';
-         cout << " is not found in the tree" << endl;
+            std::cout << '[' << keys[iCorr] << ']';
+         std::cout << " is not found in the tree" << std::endl;
          exit(1);
       }
    }
@@ -356,7 +356,7 @@ DataType readOrDefault(const ryml::Tree* tree, const std::vector<ryml::csubstr>&
 {
    if (keys.empty())
    {
-      cout << "Empty list of arguments" << endl;
+      std::cout << "Empty list of arguments" << std::endl;
       exit(1);
    }
 
@@ -368,10 +368,10 @@ DataType readOrDefault(const ryml::Tree* tree, const std::vector<ryml::csubstr>&
          treeNode = treeNode[keys[i]];
       else
       {
-         cout << "Value ";
+         std::cout << "Value ";
          for (int iCorr = 0; iCorr <= i; ++iCorr)
-            cout << '[' << keys[iCorr] << ']';
-         cout << " is not found in the tree, use default value..." << endl;
+            std::cout << '[' << keys[iCorr] << ']';
+         std::cout << " is not found in the tree, use default value..." << std::endl;
          return defValue;
       }
    }

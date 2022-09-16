@@ -1,129 +1,129 @@
 #include "amr.hpp"
 
 void UpdateAndRebalance(
-    ParMesh &pmesh, 
-    ParFiniteElementSpace &fes,
-    ParFiniteElementSpace &dfes, 
-    ParFiniteElementSpace &vfes, 
-    ParFiniteElementSpace &fes_const,
-    ParGridFunction &x, 
-    ParGridFunction &x_old, 
-    MixedBilinearForm &a, /* Aflux */
-    ParNonlinearForm &b,  /* A */
-    ParGridFunction &rhok,
-    ParGridFunction &mom,
-    ParGridFunction &energy,
-    BlockVector &u_block,
-    BlockVector &u_block_old,
-    ParGridFunction &u_ind,
-    Array<int> &offsets,
-    Array<int> &offsets_const,
-    Averager& avgr,
-    ParGridFunction &U,
-    ParGridFunction &p,
-    ParGridFunction &T,
-    ParGridFunction &UMean,
-    ParGridFunction &pMean,
-    ParGridFunction &TMean,
-    ParGridFunction &rhoMean
+   ParMesh &pmesh, 
+   ParFiniteElementSpace &fes,
+   ParFiniteElementSpace &dfes, 
+   ParFiniteElementSpace &vfes, 
+   ParFiniteElementSpace &fes_const,
+   ParGridFunction &x, 
+   ParGridFunction &x_old, 
+   MixedBilinearForm &a, /* Aflux */
+   ParNonlinearForm &b,  /* A */
+   ParGridFunction &rhok,
+   ParGridFunction &mom,
+   ParGridFunction &energy,
+   BlockVector &u_block,
+   BlockVector &u_block_old,
+   ParGridFunction &u_ind,
+   Array<int> &offsets,
+   Array<int> &offsets_const,
+   Averager& avgr,
+   ParGridFunction &U,
+   ParGridFunction &p,
+   ParGridFunction &T,
+   ParGridFunction &UMean,
+   ParGridFunction &pMean,
+   ParGridFunction &TMean,
+   ParGridFunction &rhoMean
 )
 {
-    // Update the space: recalculate the number of DOFs and construct a matrix
-    // that will adjust any GridFunctions to the new mesh state.
-    
-    fes.Update(); //false in ()
-    dfes.Update();
-    vfes.Update();
-    fes_const.Update();
-    avgr.updateSpaces();
+   // Update the space: recalculate the number of DOFs and construct a matrix
+   // that will adjust any GridFunctions to the new mesh state.
+   
+   fes.Update(); //false in ()
+   dfes.Update();
+   vfes.Update();
+   fes_const.Update();
+   avgr.updateSpaces();
 
-    // Interpolate the solution on the new mesh by applying the transformation
-    // matrix computed in the finite element space. Multiple GridFunctions could
-    // be updated here.
-    x.Update();
-    x_old.Update();
+   // Interpolate the solution on the new mesh by applying the transformation
+   // matrix computed in the finite element space. Multiple GridFunctions could
+   // be updated here.
+   x.Update();
+   x_old.Update();
 
-    // Compute new offsets
-    for (int k = 0; k <= num_equation; k++) 
-        offsets[k] = k * vfes.GetNDofs();
-    for (int k = 0; k <= num_equation; k++) 
-        offsets_const[k] = k * fes_const.GetNDofs();
+   // Compute new offsets
+   for (int k = 0; k <= num_equation; k++) 
+       offsets[k] = k * vfes.GetNDofs();
+   for (int k = 0; k <= num_equation; k++) 
+       offsets_const[k] = k * fes_const.GetNDofs();
 
-    u_block.Update(x,offsets);
-    u_ind.Update();
+   u_block.Update(x,offsets);
+   u_ind.Update();
 
-    rhok.MakeRef(&fes,x,offsets[0]);
-    mom.MakeRef(&dfes,x,offsets[1]);
-    energy.MakeRef(&fes,x,offsets[num_equation-1]);
+   rhok.MakeRef(&fes,x,offsets[0]);
+   mom.MakeRef(&dfes,x,offsets[1]);
+   energy.MakeRef(&fes,x,offsets[num_equation-1]);
 
-    U.Update();
-    p.Update();
-    T.Update();
-    UMean.Update();
-    pMean.Update();
-    TMean.Update();
-    rhoMean.Update();
+   U.Update();
+   p.Update();
+   T.Update();
+   UMean.Update();
+   pMean.Update();
+   TMean.Update();
+   rhoMean.Update();
 
-    avgr.updateSolutions();
+   avgr.updateSolutions();
 
-    if (pmesh.Nonconforming())
-    {
-        // cout << "if (pmesh.Nonconforming())" << endl;
-        // Load balance the mesh.
-        pmesh.Rebalance();
-        pmesh.ExchangeFaceNbrData(); 
+   if (pmesh.Nonconforming())
+   {
+       // std::cout << "if (pmesh.Nonconforming())" << std::endl;
+       // Load balance the mesh.
+       pmesh.Rebalance();
+       pmesh.ExchangeFaceNbrData(); 
 
-        // Update the space again, this time a GridFunction redistribution matrix
-        // is created. Apply it to the solution.
-        fes.Update();
-        dfes.Update();
-        vfes.Update();
-        fes_const.Update();
-        avgr.updateSpaces();
+       // Update the space again, this time a GridFunction redistribution matrix
+       // is created. Apply it to the solution.
+       fes.Update();
+       dfes.Update();
+       vfes.Update();
+       fes_const.Update();
+       avgr.updateSpaces();
 
-        x.Update();
-        x_old.Update();
-        x.ExchangeFaceNbrData();
-        x_old.ExchangeFaceNbrData();
+       x.Update();
+       x_old.Update();
+       x.ExchangeFaceNbrData();
+       x_old.ExchangeFaceNbrData();
 
-        // Compute new offsets
-        for (int k = 0; k <= num_equation; k++) 
+       // Compute new offsets
+       for (int k = 0; k <= num_equation; k++) 
             offsets[k] = k * vfes.GetNDofs();
-        for (int k = 0; k <= num_equation; k++) 
+       for (int k = 0; k <= num_equation; k++) 
             offsets_const[k] = k * fes_const.GetNDofs();
 
-        u_block.Update(x,offsets);
-        u_ind.Update();
+       u_block.Update(x,offsets);
+       u_ind.Update();
 
-        rhok.MakeRef(&fes,x,offsets[0]);
-        mom.MakeRef(&dfes,x,offsets[1]);
-        energy.MakeRef(&fes,x,offsets[num_equation-1]);
+       rhok.MakeRef(&fes,x,offsets[0]);
+       mom.MakeRef(&dfes,x,offsets[1]);
+       energy.MakeRef(&fes,x,offsets[num_equation-1]);
 
-        U.Update();
-        p.Update();
-        T.Update();
-        UMean.Update();
-        pMean.Update();
-        TMean.Update();
-        rhoMean.Update();
+       U.Update();
+       p.Update();
+       T.Update();
+       UMean.Update();
+       pMean.Update();
+       TMean.Update();
+       rhoMean.Update();
 
-        avgr.updateSolutions();
+       avgr.updateSolutions();
 
 
-        // cout << " end Nonconforming()" << endl;
-    } 
+       // std::cout << " end Nonconforming()" << std::endl;
+   } 
 
-    // Inform the nonlinear and bilinear forms that the space has changed.
-    a.Update();
-    b.Update();
-    a.Assemble();
+   // Inform the nonlinear and bilinear forms that the space has changed.
+   a.Update();
+   b.Update();
+   a.Assemble();
 
-    // Free any transformation matrices to save memory.
-    fes.UpdatesFinished();
-    dfes.UpdatesFinished();
-    vfes.UpdatesFinished();
-    fes_const.UpdatesFinished();
-    avgr.updateFinished();
+   // Free any transformation matrices to save memory.
+   fes.UpdatesFinished();
+   dfes.UpdatesFinished();
+   vfes.UpdatesFinished();
+   fes_const.UpdatesFinished();
+   avgr.updateFinished();
 
-    // cout << "UpdateAndRebalance OK" << endl;
+   // std::cout << "UpdateAndRebalance OK" << std::endl;
 }

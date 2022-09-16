@@ -7,13 +7,13 @@ BoundaryIntegratorSubsonicInlet::BoundaryIntegratorSubsonicInlet(RiemannSolver &
 
 void BoundaryIntegratorSubsonicInlet::computeRightState(const Vector& state1, Vector& state2, const Vector& nor) 
 {
-    state2 = state1;
-    rsolver.Rotate(state2, nor, dim); 
-    
-    for (int i = 0; i < dim+2; ++i)
-        state2[i] = 2.0*fixedState[i] - state2[i];
+   state2 = state1;
+   rsolver.Rotate(state2, nor, dim); 
+   
+   for (int i = 0; i < dim+2; ++i)
+       state2[i] = 2.0*fixedState[i] - state2[i];
 
 
-    rsolver.InverseRotate(state2, nor, dim);
+   rsolver.InverseRotate(state2, nor, dim);
 
 };

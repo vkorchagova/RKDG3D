@@ -3,7 +3,7 @@
 
 #include "boundary_integrator.hpp"
 
-using namespace std;
+
 using namespace mfem;
 
 /// Maximum characteristic speed (updated by integrators)
@@ -25,17 +25,17 @@ extern int myRank;
 class BoundaryIntegratorOpenFixedPressure : public BoundaryIntegrator
 {
 private:
-    
-    /// Constant value of static pressure
-    double pFix;
+   
+   /// Constant value of static pressure
+   double pFix;
 
 public:
 
-    /// Constructor
-    BoundaryIntegratorOpenFixedPressure(RiemannSolver &rsolver_, const int dim, double _pres = 101325);
+   /// Constructor
+   BoundaryIntegratorOpenFixedPressure(RiemannSolver &rsolver_, const int dim, double _pres = 101325);
 
-    /// Compute state outside the boundary for Riemann solver
-    virtual void computeRightState(const Vector& state1, Vector& state2, const Vector& nor) override;
+   /// Compute state outside the boundary for Riemann solver
+   virtual void computeRightState(const Vector& state1, Vector& state2, const Vector& nor) override;
 };
 
 #endif // BND_INTEGRATOR_OPEN_FIXED_PRESSURE_H

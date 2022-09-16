@@ -4,7 +4,7 @@
 #include "mfem.hpp"
 #include "rs_basic.hpp"
 
-using namespace std;
+
 using namespace mfem;
 
 /// Number of equations
@@ -18,15 +18,15 @@ class RiemannSolverLLF : public RiemannSolver
 
 public:
 
-    /// Constructor
-    RiemannSolverLLF() : RiemannSolver() {};
+   /// Constructor
+   RiemannSolverLLF() : RiemannSolver() {};
 
-    /// Destructor
-    ~RiemannSolverLLF() {};
+   /// Destructor
+   ~RiemannSolverLLF() {};
 
-    /// Compute numerical flux
-    virtual double Eval(const Vector &state1, const Vector &state2,
-               const Vector &nor, Vector &flux, bool debug = false) override;
+   /// Compute numerical flux
+   virtual double Eval(const Vector &state1, const Vector &state2,
+                const Vector &nor, Vector &flux, bool debug = false) override;
 };
 
 #endif // RIEMANN_SOLVER_LLF_H

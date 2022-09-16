@@ -19,27 +19,27 @@ class DomainIntegrator : public DiffusionIntegrator
 {
 private:
 
-    /// Values of shape function at the given point
-    Vector shape;
+   /// Values of shape function at the given point
+   Vector shape;
 
-    /// NOT USED
-    // DenseMatrix flux;
+   /// NOT USED
+   // DenseMatrix flux;
 
-    /// Gradient of test function
-    DenseMatrix dshapedr;
+   /// Gradient of test function
+   DenseMatrix dshapedr;
 
-    /// Gradient of test function ?
-    DenseMatrix dshapedx;
+   /// Gradient of test function ?
+   DenseMatrix dshapedx;
 
 public:
-    /// Constructor
-    DomainIntegrator(const int dim);
+   /// Constructor
+   DomainIntegrator(const int dim);
 
-    /// Compute element term with gradients
-    virtual void AssembleElementMatrix2(const FiniteElement &trial_fe,
-                                       const FiniteElement &test_fe,
-                                       ElementTransformation &Tr,
-                                       DenseMatrix &elmat);
+   /// Compute element term with gradients
+   virtual void AssembleElementMatrix2(const FiniteElement &trial_fe,
+                                           const FiniteElement &test_fe,
+                                           ElementTransformation &Tr,
+                                           DenseMatrix &elmat);
 };
 
 #endif // DOMAIN_INTEGRATOR_H

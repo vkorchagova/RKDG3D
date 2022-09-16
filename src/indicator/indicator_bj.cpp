@@ -4,11 +4,11 @@
 
 IndicatorBJ::IndicatorBJ
 (
-    Averager& _avgr, 
-    ParFiniteElementSpace* _fes,
-    ParFiniteElementSpace* _fes_const, 
-    const Array<int>& _offsets, 
-    int _d
+   Averager& _avgr, 
+   ParFiniteElementSpace* _fes,
+   ParFiniteElementSpace* _fes_const, 
+   const Array<int>& _offsets, 
+   int _d
 ) : Indicator(_avgr, _fes, _fes_const, _offsets, _d) 
 {
    mI.SetSize(num_equation);
@@ -23,7 +23,7 @@ void IndicatorBJ::computeCorrectionFunction(const double& y, double& yMin)
    yMin = yMin > 1.0 ? 1.0 : yMin;
 }
 
-void IndicatorBJ::updateYMin(
+void IndicatorBJ::updateYmin(
    const IntegrationRule& ir, 
    IntegrationPointTransformation* curTrans, 
    const DenseMatrix& elfun1_mat, 
@@ -58,16 +58,16 @@ void IndicatorBJ::updateYMin(
       for (int i = 0; i < num_equation; ++i)
       // for (int i = 0; i < 1; ++i)
       {
-         if (diff[i] > 1e-3 * max(1.0, fabs(el_uMean[i])))
-              y[i] = (MI[i] - el_uMean[i]) / diff[i];
-          else if (diff[i] < - 1e-3 * max(1.0, fabs(el_uMean[i])))
-              y[i] = (mI[i] - el_uMean[i]) / diff[i];
+         if (diff[i] > 1e-3 * std::max(1.0, fabs(el_uMean[i])))
+               y[i] = (MI[i] - el_uMean[i]) / diff[i];
+          else if (diff[i] < - 1e-3 * std::max(1.0, fabs(el_uMean[i])))
+               y[i] = (mI[i] - el_uMean[i]) / diff[i];
           else
-              y[i] = 1.0;
+               y[i] = 1.0;
 
          // if (iCell == 1512 || iCell == 0)
          // {
-         //    cout  << setprecision(18)
+         //   std::cout  << std::setprecision(18)
          //         << " * iCell = " << iCell
          //         << " -- y[i] = " << y[i] 
          //         << "\n -- MI[i] = " << MI[i]
@@ -75,14 +75,14 @@ void IndicatorBJ::updateYMin(
          //         << "\n -- funval1[i] = " << funval1[i]
          //         << "\n -- el_uMean[i] = " << el_uMean[i]
          //         << "\n -- diff[i] = " << diff[i]
-         //          << setprecision(6)
-         //         << endl;
+         //          << std::setprecision(6)
+         //         << std::endl;
          // }
          computeCorrectionFunction(y[i],yMin[i]);
       
           
           if (yMin[i] < 0)
-              cout << " yMin = " << yMin[i] << " < 0 --- so strange! " << MI[i] << ' ' << mI[i] << ' ' << funval1[i] << ' ' << el_uMean[i] << ' ' << diff[i] << ' ' << mI[i] - el_uMean[i]  << ' ' << MI[i] - el_uMean[i] << "; iCell = " << iCell << "; i = " << i << endl;
+               std::cout << " yMin = " << yMin[i] << " < 0 --- so strange! " << MI[i] << ' ' << mI[i] << ' ' << funval1[i] << ' ' << el_uMean[i] << ' ' << diff[i] << ' ' << mI[i] - el_uMean[i]  << ' ' << MI[i] - el_uMean[i] << "; iCell = " << iCell << "; i = " << i << std::endl;
       }
    } // for iPoint
 }
@@ -105,13 +105,13 @@ double IndicatorBJ::checkDiscontinuity(
 
    // if (iCell == 1512 || iCell == 0)
    // { 
-   //    cout << "iCell = " << iCell << endl;
-   //    cout << "elfun1_mat = ";
-   //    elfun1_mat.Print(cout << setprecision(18) );
+   //   std::cout << "iCell = " << iCell << std::endl;
+   //   std::cout << "elfun1_mat = ";
+   //   elfun1_mat.Print(std::cout << std::setprecision(18) );
    // }
 
-   // cout << "stencil: ";
-   // stencil_num.Print(cout);
+   // std::cout << "stencil: ";
+   // stencil_num.Print(std::cout);
 
    // compute min|max values of solution for current stencil
    
@@ -120,7 +120,7 @@ double IndicatorBJ::checkDiscontinuity(
    {
       // if (iCell == 3160) 
       // {
-      //    el_uMean.Print(cout << "el_uMean for cell #" << k << ":");
+      //   el_uMean.Print(std::cout << "el_uMean for cell #" << k << ":");
       // }
 
       averager.readElementAverageByNumber(k, el_uMean);
@@ -134,10 +134,10 @@ double IndicatorBJ::checkDiscontinuity(
 
    // if (iCell == 1789 && myRank == 17) 
    // {
-   //    cout << "stencil = ";
-   //    stencil_num.Print(cout);
-   //    cout << "internal faces = ";
-   //    internal_face_numbers.Print(cout);
+   //   std::cout << "stencil = ";
+   //   stencil_num.Print(std::cout);
+   //   std::cout << "internal faces = ";
+   //   internal_face_numbers.Print(std::cout);
    // }
 
 
@@ -148,18 +148,18 @@ double IndicatorBJ::checkDiscontinuity(
       face_el_trans = mesh->GetFaceElementTransformations(iFace);
       IntegrationPointTransformation curTrans = face_el_trans->Elem1No == iCell ? face_el_trans->Loc1 : face_el_trans->Loc2;
 
-      int intorder = 2;//(min(face_el_trans->Elem1->OrderW(), face_el_trans->Elem2->OrderW()) +
-                     //2*max(fes->GetFE(face_el_trans->Elem1No)->GetOrder(), fes->GetFE(face_el_trans->Elem2No)->GetOrder()));
+      int intorder = 2;//(std::min(face_el_trans->Elem1->OrderW(), face_el_trans->Elem2->OrderW()) +
+                      //2*std::max(fes->GetFE(face_el_trans->Elem1No)->GetOrder(), fes->GetFE(face_el_trans->Elem2No)->GetOrder()));
 
       const IntegrationRule *ir = &IntRules.Get(face_el_trans->FaceGeom, intorder);
       // if (iCell == 3160) 
       // {
-      //    std::cout << "tr->FaceGeom = " << face_el_trans->FaceGeom << ", intorder = " << intorder << std::endl;
-      //    std::cout << "npoints = " << ir->GetNPoints() << std::endl;
-      //    cout << "numFace = " << iFace << ";\n";
+      //   std::cout << "tr->FaceGeom = " << face_el_trans->FaceGeom << ", intorder = " << intorder << std::endl;
+      //   std::cout << "npoints = " << ir->GetNPoints() << std::endl;
+      //   std::cout << "numFace = " << iFace << ";\n";
       // }
 
-      updateYMin(*ir, &curTrans, elfun1_mat, iCell);
+      updateYmin(*ir, &curTrans, elfun1_mat, iCell);
 
    } // for iFace
 
@@ -177,21 +177,21 @@ double IndicatorBJ::checkDiscontinuity(
 
       // if (iCell == 1789 && myRank == 17) 
       // {
-      //    std::cout << "tr->FaceGeom = " << face_el_trans->FaceGeom << ", intorder = " << intorder << std::endl;
-      //    std::cout << "npoints = " << ir->GetNPoints() << std::endl;
-      //    cout << "numFace = " << iFace << ";\n";
+      //   std::cout << "tr->FaceGeom = " << face_el_trans->FaceGeom << ", intorder = " << intorder << std::endl;
+      //   std::cout << "npoints = " << ir->GetNPoints() << std::endl;
+      //   std::cout << "numFace = " << iFace << ";\n";
       // }
-      updateYMin(*ir, &curTrans, elfun1_mat, iCell);
+      updateYmin(*ir, &curTrans, elfun1_mat, iCell);
    } // for iFace
 
    // if (iCell == 1512 || iCell == 0) 
    // {
-   //    yMin.Print(cout << "yMin = ");
+   //   yMin.Print(std::cout << "yMin = ");
    // }
 
    // double iVal = 1e+6;
    // for (double a : yMin)
-   //    if (iVal > a)
+   //   if (iVal > a)
    //       iVal = a;
 
 

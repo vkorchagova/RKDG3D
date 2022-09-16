@@ -3,11 +3,11 @@
 
 Indicator::Indicator
 (
-    Averager& _avgr, 
-    ParFiniteElementSpace* _fes,
-    ParFiniteElementSpace* _fes_const, 
-    const Array<int>& _offsets, 
-    int _d
+   Averager& _avgr, 
+   ParFiniteElementSpace* _fes,
+   ParFiniteElementSpace* _fes_const, 
+   const Array<int>& _offsets, 
+   int _d
 ) : 
    averager(_avgr),
    fes(_fes),
@@ -33,9 +33,9 @@ void Indicator::setValue(int iCell, double val)
 
 	values->GetSubVector(el_vdofs, el_x);
 
-    el_x[0] = val;
+   el_x[0] = val;
 
-    values->SetSubVector(el_vdofs, el_x);
+   values->SetSubVector(el_vdofs, el_x);
 }
 
 const double Indicator::getValue(int iCell)
@@ -47,5 +47,5 @@ const double Indicator::getValue(int iCell)
 
 	values->GetSubVector(el_vdofs, el_x);
 
-    return el_x[0];
+   return el_x[0];
 }

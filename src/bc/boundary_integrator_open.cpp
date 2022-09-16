@@ -8,5 +8,5 @@ BoundaryIntegratorOpen::BoundaryIntegratorOpen(RiemannSolver &rsolver_, const in
 
 void BoundaryIntegratorOpen::computeRightState(const Vector& state1, Vector& state2, const Vector& nor) 
 {
-    state2 = state1;
+   state2 = state1;
 };

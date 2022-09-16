@@ -4,7 +4,7 @@
 #include "mfem.hpp"
 #include "stencil.hpp"
 
-using namespace std;
+
 using namespace mfem;
 
 /// Number of equations
@@ -21,141 +21,141 @@ class Averager
 {
 protected:
 
-    /// Mesh
-    ParMesh* mesh;
+   /// Mesh
+   ParMesh* mesh;
 
-    /// FE finite element space (connection with mesh and dofs)
-    ParFiniteElementSpace *fes; 
+   /// FE finite element space (connection with mesh and dofs)
+   ParFiniteElementSpace *fes; 
 
-    /// Space dimension
-    int dim;
-
-
-    /// Offsets to deal with variables component-by-component
-    const Array<int>& offsets;
-
-    /// Actual solution data
-    Vector* x;
-
-    /// Actual solution data as a ParGridFunction
-    ParGridFunction* parGridX;
+   /// Space dimension
+   int dim;
 
 
-    /// Pointer to finite element
-    const FiniteElement *fe;
+   /// Offsets to deal with variables component-by-component
+   const Array<int>& offsets;
 
-    /// DOF indices for element
-    Array<int> el_vdofs;
+   /// Actual solution data
+   Vector* x;
 
-    /// Solution in element dofs 
-    Vector el_x;
-
-    /// Physical-to-reference and vice versa transformation rule for FE
-    ElementTransformation* el_trans;
-
-    /// Transformation rule from face space to element space
-    FaceElementTransformations* face_el_trans;
-    
-    /// Values of shape functions in defined point
-    Vector el_shape;
+   /// Actual solution data as a ParGridFunction
+   ParGridFunction* parGridX;
 
 
-    /// Finite element collection for average values of full solution
-    DG_FECollection* fec_avg;
+   /// Pointer to finite element
+   const FiniteElement *fe;
 
-    /// Finite element space for average values of full solution
-    ParFiniteElementSpace *fes_avg;
+   /// DOF indices for element
+   Array<int> el_vdofs;
 
-    /// Finite element space for average values of one component of solution
-    ParFiniteElementSpace* fes_avg_component;
-    
-    /// Block vector to store average values
-    BlockVector* u_block_avg;
+   /// Solution in element dofs 
+   Vector el_x;
 
-    /// Offsets for looping through average values
-    Array<int> offsets_avg;
+   /// Physical-to-reference and vice versa transformation rule for FE
+   ElementTransformation* el_trans;
 
-    /// ParGridFunction to deal with average values
-    ParGridFunction* avgs;
-
-
-    /// Finite element collection for average values of full extrapolated solution to neighbour
-    DG_FECollection* fec_avg_extrap;
-
-    /// Finite element space for average values of full extrapolated solution to neighbour
-    ParFiniteElementSpace *fes_avg_extrap;
-
-    /// Finite element space for average values of one component of extrapolated solution to neighbour
-    ParFiniteElementSpace* fes_avg_extrap_component;
-
-    /// BlockVector to store with average values of extrapolated solution to neighbour
-    BlockVector* u_block_avg_extrap;
-
-    /// Offsets for looping through average values of extrapolated solution to neighbour
-    Array<int> offsets_avg_extrap;
-
-    /// ParGridFunction to deal with average values of extrapolated solution to neighbour
-    ParGridFunction* avgs_extrap;
+   /// Transformation rule from face space to element space
+   FaceElementTransformations* face_el_trans;
+   
+   /// Values of shape functions in defined point
+   Vector el_shape;
 
 
-    /// Special function to compute shape function values on troubled cell via neighbour cell
-    void assembleShiftedElementMatrix(
-        const FiniteElement &trial_fe, 
-        const FiniteElement &troubled_fe,
-        const FiniteElement &test_fe,
-        ElementTransformation &Trans, 
-        ElementTransformation &TransTroubled,
-        DenseMatrix &elmat
-    ); 
+   /// Finite element collection for average values of full solution
+   DG_FECollection* fec_avg;
+
+   /// Finite element space for average values of full solution
+   ParFiniteElementSpace *fes_avg;
+
+   /// Finite element space for average values of one component of solution
+   ParFiniteElementSpace* fes_avg_component;
+   
+   /// Block vector to store average values
+   BlockVector* u_block_avg;
+
+   /// Offsets for looping through average values
+   Array<int> offsets_avg;
+
+   /// ParGridFunction to deal with average values
+   ParGridFunction* avgs;
+
+
+   /// Finite element collection for average values of full extrapolated solution to neighbour
+   DG_FECollection* fec_avg_extrap;
+
+   /// Finite element space for average values of full extrapolated solution to neighbour
+   ParFiniteElementSpace *fes_avg_extrap;
+
+   /// Finite element space for average values of one component of extrapolated solution to neighbour
+   ParFiniteElementSpace* fes_avg_extrap_component;
+
+   /// BlockVector to store with average values of extrapolated solution to neighbour
+   BlockVector* u_block_avg_extrap;
+
+   /// Offsets for looping through average values of extrapolated solution to neighbour
+   Array<int> offsets_avg_extrap;
+
+   /// ParGridFunction to deal with average values of extrapolated solution to neighbour
+   ParGridFunction* avgs_extrap;
+
+
+   /// Special function to compute shape function values on troubled cell via neighbour cell
+   void assembleShiftedElementMatrix(
+       const FiniteElement &trial_fe, 
+       const FiniteElement &troubled_fe,
+       const FiniteElement &test_fe,
+       ElementTransformation &Trans, 
+       ElementTransformation &TransTroubled,
+       DenseMatrix &elmat
+   ); 
 
 public:
 
-    /// Constructor
-    Averager(ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d); 
+   /// Constructor
+   Averager(ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d); 
 
-    /// Destructor
-    ~Averager();
+   /// Destructor
+   ~Averager();
 
-    /// Update actual solution values
-    void update( Vector* _x, ParGridFunction* _parGridX) { x = _x; parGridX = _parGridX; };
+   /// Update actual solution values
+   void update( Vector* _x, ParGridFunction* _parGridX) { x = _x; parGridX = _parGridX; };
 
-    /// Compute mean values in all cells in domain via honest GridFunction
-    void computeMeanValues();
+   /// Compute mean values in all cells in domain via honest GridFunction
+   void computeMeanValues();
 
-    /// Read element average: special function due to different mechanisms for internal and shared values
-    void readElementAverageByNumber(
-        const int iCell, 
-        Vector& el_uMean
-    );
-
-
-    /// Read element extrap average: special function due to different mechanisms for internal and shared values
-    void readElementExtrapAverageByNumber(
-        const int iCell, 
-        Vector& el_uMean
-    );
-
-    /// Compute average of extrapolated function values from neighbours on troubled cell
-    void computeStencilExtrapAveragesVector(
-        const Stencil* stencil
-    );
-
-    /// Compute one component of average of extrapolated function values from neighbours on troubled cell
-    void computeStencilExtrapAverages(
-        const ParGridFunction& x,
-        const Stencil* stencil,
-        ParGridFunction& avgs
-    );  
+   /// Read element average: special function due to different mechanisms for internal and shared values
+   void readElementAverageByNumber(
+       const int iCell, 
+       Vector& el_uMean
+   );
 
 
-    /// Update FESpaces when mesh is changed (for AMR)
-    void updateSpaces();
+   /// Read element extrap average: special function due to different mechanisms for internal and shared values
+   void readElementExtrapAverageByNumber(
+       const int iCell, 
+       Vector& el_uMean
+   );
 
-    /// Update all grid functions when mesh is changed (for AMR)
-    void updateSolutions();
+   /// Compute average of extrapolated function values from neighbours on troubled cell
+   void computeStencilExtrapAveragesVector(
+       const Stencil* stencil
+   );
 
-    /// Send finish of update when mesh is changed (for AMR)
-    void updateFinished();
+   /// Compute one component of average of extrapolated function values from neighbours on troubled cell
+   void computeStencilExtrapAverages(
+       const ParGridFunction& x,
+       const Stencil* stencil,
+       ParGridFunction& avgs
+   );  
+
+
+   /// Update FESpaces when mesh is changed (for AMR)
+   void updateSpaces();
+
+   /// Update all grid functions when mesh is changed (for AMR)
+   void updateSolutions();
+
+   /// Send finish of update when mesh is changed (for AMR)
+   void updateFinished();
 };
 
 

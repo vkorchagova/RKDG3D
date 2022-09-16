@@ -2,7 +2,7 @@
 
 
 ExplicitRKLimitedSolver::ExplicitRKLimitedSolver(int _s, const double *_a, const double *_b,
-                                   const double *_c, Limiter& _l) : 
+                                       const double *_c, Limiter& _l) : 
    s (_s),
    a (_a),
    b (_b),
@@ -19,7 +19,7 @@ void ExplicitRKLimitedSolver::Init(TimeDependentOperator &_f)
    int n = f->Width();
    y.SetSize(n, mem_type);
    for (int i = 0; i < y.Size(); ++i) y(i) = 0.0;
-   //if (myRank == 0) y.Print(cout);
+   //if (myRank == 0) y.Print(std::cout);
    for (int i = 0; i < s; i++)
    {
       k[i].SetSize(n, mem_type);
@@ -39,13 +39,13 @@ void ExplicitRKLimitedSolver::Step(Vector &x, double &t, double &dt)
 
    f->SetTime(t);
 
-   // cout << "ExplicitRKLimitedSolver::Step X = " << endl;
-   // x.Print(cout);
+   // std::cout << "ExplicitRKLimitedSolver::Step X = " << std::endl;
+   // x.Print(std::cout);
 
    f->Mult(x, k[0]);
 
-   // cout << " ----- k0 ----- " << endl;
-   // k[0].Print(cout);
+   // std::cout << " ----- k0 ----- " << std::endl;
+   // k[0].Print(std::cout);
    
    
    for (int l = 0, i = 1; i < s; i++)
@@ -56,8 +56,8 @@ void ExplicitRKLimitedSolver::Step(Vector &x, double &t, double &dt)
       {
          y.Add(a[l++]*dt, k[j]);
       }
-      // cout << "y before limit" << endl;
-      // y.Print(cout);
+      // std::cout << "y before limit" << std::endl;
+      // y.Print(std::cout);
       
       // limit y and compute rhs with good y
       limiter.update(y);
@@ -66,8 +66,8 @@ void ExplicitRKLimitedSolver::Step(Vector &x, double &t, double &dt)
       f->SetTime(t + c[i-1]*dt);
       f->Mult(y, k[i]);
 
-      // cout << " ----- k[" << i << "] ----- " << endl;
-      // k[i].Print(cout);
+      // std::cout << " ----- k[" << i << "] ----- " << std::endl;
+      // k[i].Print(std::cout);
    }
 
    for (int i = 0; i < s; i++)
@@ -75,8 +75,8 @@ void ExplicitRKLimitedSolver::Step(Vector &x, double &t, double &dt)
       x.Add(b[i]*dt, k[i]);
    }
 
-   // cout << "x before limit" << endl;
-   //    x.Print(cout);
+   // std::cout << "x before limit" << std::endl;
+   //   x.Print(std::cout);
    
    limiter.update(x);
 }

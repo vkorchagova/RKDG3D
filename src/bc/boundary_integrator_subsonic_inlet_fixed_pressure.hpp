@@ -3,7 +3,7 @@
 
 #include "boundary_integrator.hpp"
 
-using namespace std;
+
 using namespace mfem;
 
 // Maximum characteristic speed (updated by integrators)
@@ -26,19 +26,19 @@ class BoundaryIntegratorSubsonicInletFixedPressure : public BoundaryIntegrator
 {
 private:
 
-    /// Constant value of static pressure
-    double pFix;
+   /// Constant value of static pressure
+   double pFix;
 
-    /// Constant value of total temperature
-    double TTot;
+   /// Constant value of total temperature
+   double TTot;
 
 public:
 
-    /// Constructor
-    BoundaryIntegratorSubsonicInletFixedPressure(RiemannSolver &rsolver_, const int dim, double _pFix, double _TTot);
+   /// Constructor
+   BoundaryIntegratorSubsonicInletFixedPressure(RiemannSolver &rsolver_, const int dim, double _pFix, double _TTot);
 
-    /// Compute state outside the boundary for Riemann solver
-    virtual void computeRightState(const Vector& state1, Vector& state2, const Vector& nor) override;
+   /// Compute state outside the boundary for Riemann solver
+   virtual void computeRightState(const Vector& state1, Vector& state2, const Vector& nor) override;
 };
 
 #endif // BND_INTEGRATOR_SUBSONIC_INLET_FIXED_PRESSURE_H

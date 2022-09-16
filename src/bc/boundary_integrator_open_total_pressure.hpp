@@ -3,7 +3,7 @@
 
 #include "boundary_integrator.hpp"
 
-using namespace std;
+
 using namespace mfem;
 
 /// Maximum characteristic speed (updated by integrators)
@@ -27,19 +27,19 @@ class BoundaryIntegratorOpenTotalPressure : public BoundaryIntegrator
 {
 private:
 
-    /// Constant value of total pressure
-    double pTotal;
+   /// Constant value of total pressure
+   double pTotal;
 
-    /// Constant value of static temperature
-    double TFix;
+   /// Constant value of static temperature
+   double TFix;
 
 public:
 
-    /// Constructor
-    BoundaryIntegratorOpenTotalPressure(RiemannSolver &rsolver_, const int dim, double _pres = 101325, double _TFix = 293.15);
+   /// Constructor
+   BoundaryIntegratorOpenTotalPressure(RiemannSolver &rsolver_, const int dim, double _pres = 101325, double _TFix = 293.15);
 
-    /// Compute state outside the boundary for Riemann solver
-    virtual void computeRightState(const Vector& state1, Vector& state2, const Vector& nor) override;
+   /// Compute state outside the boundary for Riemann solver
+   virtual void computeRightState(const Vector& state1, Vector& state2, const Vector& nor) override;
 };
 
 #endif // BND_INTEGRATOR_OPEN_H
