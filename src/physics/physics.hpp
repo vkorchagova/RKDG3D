@@ -8,6 +8,9 @@ extern double specific_heat_ratio;
 extern double covolume_constant;
 extern double gas_constant;
 
+/// Proc rank 
+extern int myRank;
+
 /// Square
 template<class T>
 inline T sqr(T x) {return x*x;}
@@ -15,10 +18,11 @@ inline T sqr(T x) {return x*x;}
 // Physicality check (at end)
 // Check that the state is physical - enabled in debug mode
 bool StateIsPhysical(const Vector &state, const int dim);
-bool StateIsPhysicalSay(const Vector &state, const int dim);
+bool StateIsPhysicalSay(const Vector &state, const Vector &primState, const int dim);
 
 // Pressure (EOS) computation
 double ComputePressure(const Vector &state, int dim);
+double ComputeSoundSpeed(double rho, double p);
 
 // Temperature computation
 double ComputeTemperature(const Vector &state, int dim);
@@ -36,7 +40,7 @@ void ComputeFlux(const Vector &state, int dim, DenseMatrix &flux);
 void ComputeFluxDotN(const Vector &state, const Vector &nor,
                      Vector &fluxN);
 
-void ComputeFluxF(const Vector &state, const int dim,
+void ComputeFluxF(const Vector &state, const Vector &primState, const int dim,
                      Vector &flux);
 
 // Compute the maximum characteristic speed.
@@ -50,14 +54,14 @@ double ComputeM(const Vector &state, const int dim);
 // void ComputeCharSpeedsByState(const Vector &state, Vector& lambdaF, const int dim);
 
 // Compute Einfeldt averaged char speeds via two states
-void ComputeEinfeldtCharSpeeds(const Vector &state1, const Vector &state2, Vector& lambdaF, const int dim);
+void ComputeEinfeldtCharSpeeds(const Vector &state1, const Vector &state2, const Vector &primState1, const Vector &primState2, Vector& lambdaF, const int dim);
 
 // Compute Toro averaged char speeds via two states
-void ComputeToroCharSpeeds(const Vector &state1, const Vector &state2, Vector& lambdaF, const int dim);
+void ComputeToroCharSpeeds(const Vector &state1, const Vector &state2, const Vector &primState1, const Vector &primState2, Vector& lambdaF, const int dim);
 
 
 // Compute primitive variables (rho, u, v, w, p)
-void TransformConservativeToPrimitive(Vector& state);
+void GetPrimitiveFromConservative(const Vector& state, Vector& primState);
 
 // void ComputeU(const GridFunction& sol, const FiniteElementSpace& vfes, GridFunction& U);
 // void ComputeP(const GridFunction& sol, GridFunction& p);

@@ -2,6 +2,7 @@
 #define CASE_MANAGER_H
 
 #include "mfem.hpp"
+#include "local_refiner.hpp"
 #include "ic.hpp"
 #include "rk_explicit_limited.hpp"
 
@@ -19,11 +20,14 @@
 #include "boundary_integrator_subsonic_inlet_fixed_pressure.hpp"
 #include "boundary_integrator_supersonic_inlet.hpp"
 
+#include "limiter_none.hpp" 
 #include "limiter_findiff.hpp"
 #include "limiter_multiplier.hpp"
 #include "indicator_nowhere.hpp"
 #include "indicator_everywhere.hpp"
 #include "indicator_bj.hpp"
+#include "indicator_venkatakrishnan.hpp"
+#include "indicator_michalak.hpp"
 #include "indicator_shu.hpp"
 #include "averager.hpp"
 
@@ -32,6 +36,7 @@
 #include <map>
 #include <ryml_std.hpp>
 #include <ryml.hpp>
+#include <c4/format.hpp>
 
 using namespace mfem;
 
@@ -53,7 +58,7 @@ extern int myRank;
 class CaseManager
 {
    /// Pointer to full content of YAML file
-   std::string* contents;
+   std::string contents;
 
    /// True if needed restart from non-zero time
    bool restart;
@@ -77,14 +82,32 @@ class CaseManager
    /// Stream for formation of file names
    std::ostringstream restart_name_stream;
 
+   /// Filename for mesh
+   const char* meshFile;
+
    /// Serial refinement mesh levels
    int serRefLevels;
 
    /// Parallel refinement mesh levels (on each processor locally)
    int parRefLevels;
 
+   /// Level of details for visu (refine only in VTK)
+   int paraviewLevelOfDetails;
+
    /// True if adaptively refinement mesh
    bool adaptive_mesh;
+
+   /// True for local non-conforming mesh refinement
+   bool local_refinement;
+
+   /// Local refinement mesh levels
+   int localRefLevels;
+
+   /// True if local refinement inside domain
+   bool localRefInside;
+
+   /// Local refinement type
+   ryml::csubstr localRefType;
 
    /// Spatial polynomial order
    int spatialOrder;
@@ -105,10 +128,10 @@ class CaseManager
    bool prefer_conforming_refinement;
 
    /// Type of initial condition
-   std::string icType;
+   ryml::csubstr icType;
 
    /// Type of Riemann solver
-   std::string rsolverType;
+   ryml::csubstr rsolverType;
 
    /// Pointer to initial conditions interface
    IC* ICInterface;
@@ -127,6 +150,14 @@ class CaseManager
    /// Normal for IC types
    Vector normal; //(num_equation-2)
 
+   /// Cube 1 for special IC type
+   Vector c1min; //(num_equation-2);
+   Vector c1max; //(num_equation-2);
+
+   /// Cube 2 for special IC type
+   Vector c2min; //(num_equation-2)
+   Vector c2max; //(num_equation-2);
+
    /// Runge -- Kutta Butcher coefficients
    double* a;
    double* b;
@@ -144,6 +175,12 @@ class CaseManager
    /// True if need to cut slopes if find non-physical values in vertices (limiters)
    bool haveLastHope;
 
+   /// Group attrigute for cells where slopes must be suppressed (limiters)
+   int fdGroupAttr;
+
+   /// Space dimension
+   int spaceDim;
+
    /// Project initial condition functions to finite elements
    static void setIC(const Vector&x, Vector& y);
 
@@ -154,6 +191,9 @@ class CaseManager
 
    /// Additional reading for physical groups for possibility to write boundary names in setttings instead of boundary tags directly
    void readPhysicalNames(ParMesh*& mesh);
+
+   /// Get mesh attribute for defined group to cut slopes
+   int getFinDiffGroupAttribute(ryml::csubstr fdGroupName);
 
 public:
 
@@ -172,19 +212,19 @@ public:
    CaseManager(std::string& caseFileName, VisItDataCollection& rdc); 
 
    /// Destructor
-   ~CaseManager() 
-   {
-      delete[] c;
-      delete[] b;
-      delete[] a;
-      delete ICInterface;
-      delete settings;
-      delete contents;
-      origin.SetSize(1);
-      origin[0] = 0;
-      normal.SetSize(1);
-      normal[0] = 0;
-   };
+   ~CaseManager();
+
+   /// Load restart settings
+   void loadRestartSettings();
+
+   /// Load physics
+   void loadPhysics();
+
+   void loadSpatialAccuracyOrder();
+
+   void loadPostprocessSettings();
+
+   void loadInitialConditions();
 
    /// Load mesh from file or from previous saved data
    void loadMesh(ParMesh*& pmesh);
@@ -208,7 +248,7 @@ public:
    void loadRiemannSolver(RiemannSolver*& rsolver);
 
    /// Load indicator and limiter
-   void loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, const Array<int>& offsets, const int dim, BlockVector& indicatorData, ParFiniteElementSpace& vfes);
+   void loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, const Array<int>& offsets, const int dim, ParFiniteElementSpace& fes_const, ParFiniteElementSpace& vfes);
 
    /// Load RK time solver
    void loadTimeSolver(ODESolver*& ode_solver, Limiter* l);
@@ -242,7 +282,105 @@ public:
 
    /// Check step for VTK output of solution
    void getVisSteps(int& vis_steps);
+
+   /// Check level of details
+   double getParaviewLevelOfDetails() {return paraviewLevelOfDetails;};
 };
+
+// template functions
+
+template<class DataType> 
+DataType read(const ryml::Tree* tree, const std::vector<ryml::csubstr>& keys)
+{
+   if (keys.empty())
+   {
+      cout << "Empty list of arguments" << endl;
+      exit(1);
+   }
+
+   ryml::ConstNodeRef treeNode = (*tree)[keys[0]];
+
+   for (int i = 1; i < keys.size(); ++i)
+   {
+      if (treeNode.has_child(keys[i]))
+         treeNode = treeNode[keys[i]];
+      else
+      {
+         cout << "Value ";
+         for (int iCorr = 0; iCorr <= i; ++iCorr)
+            cout << '[' << keys[iCorr] << ']';
+         cout << " is not found in the tree" << endl;
+         exit(1);
+      }
+   }
+
+   DataType value;
+   treeNode >> value;
+
+   return value;
+}
+
+template<class DataType> 
+DataType readVectorComponent(const ryml::Tree* tree, const std::vector<ryml::csubstr>& keys, const int num)
+{
+   if (keys.empty())
+   {
+      cout << "Empty list of arguments" << endl;
+      exit(1);
+   }
+
+   ryml::ConstNodeRef treeNode = (*tree)[keys[0]];
+
+   for (int i = 1; i < keys.size(); ++i)
+   {
+      if (treeNode.has_child(keys[i]))
+         treeNode = treeNode[keys[i]];
+      else
+      {
+         cout << "Value ";
+         for (int iCorr = 0; iCorr <= i; ++iCorr)
+            cout << '[' << keys[iCorr] << ']';
+         cout << " is not found in the tree" << endl;
+         exit(1);
+      }
+   }
+
+   DataType value;
+   treeNode[num] >> value;
+
+   return value;
+}
+
+template<class DataType> 
+DataType readOrDefault(const ryml::Tree* tree, const std::vector<ryml::csubstr>& keys, const DataType&& defValue)
+{
+   if (keys.empty())
+   {
+      cout << "Empty list of arguments" << endl;
+      exit(1);
+   }
+
+   ryml::ConstNodeRef treeNode = (*tree)[keys[0]];
+
+   for (int i = 1; i < keys.size(); ++i)
+   {
+      if (treeNode.has_child(keys[i]))
+         treeNode = treeNode[keys[i]];
+      else
+      {
+         cout << "Value ";
+         for (int iCorr = 0; iCorr <= i; ++iCorr)
+            cout << '[' << keys[iCorr] << ']';
+         cout << " is not found in the tree, use default value..." << endl;
+         return defValue;
+      }
+   }
+
+   DataType value;
+   treeNode >> value;
+
+   return value;
+}
 
 #endif // CASE_MANAGER_H
 

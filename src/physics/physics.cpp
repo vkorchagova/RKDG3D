@@ -1,96 +1,49 @@
 
 #include "physics.hpp"
+#include <cmath>
 
 
 // Check that the state is physical
 bool StateIsPhysical(const Vector &state, const int dim)
 {
-   const double den = state(0);
-   const Vector den_vel(state.GetData() + 1, dim);
-   const double den_energy = state(1 + dim);
-
-   if (den < 0 || den != den)
+   if (state(0) < 0 || !std::isfinite(state(0)))
    {
-      // cout << "Negative density: ";
-      // for (int i = 0; i < state.Size(); i++)
-      // {
-      //    cout << state(i) << " ";
-      // }
-      // cout << endl;
+      state.Print(cout << "Rank #" << myRank << ": " << "Negative density in state ");
       return false;
    }
-   if (den_energy <= 0 || den_energy != den_energy)
+   if (state(1 + dim) <= 0 || !std::isfinite(state(1 + dim)))
    {
-      // cout << "Negative energy: ";
-      // for (int i = 0; i < state.Size(); i++)
-      // {
-      //    cout << state(i) << " ";
-      // }
-      // cout << endl;
+      state.Print(cout << "Rank #" << myRank << ": " << "Negative energy in state ");
       return false;
    }
-
-   double den_vel2 = 0;
-   for (int i = 0; i < dim; i++) { den_vel2 += den_vel(i) * den_vel(i); }
-   den_vel2 /= den;
 
    const double pres = ComputePressure(state, dim);
 
-   if (pres <= 0 || pres != pres)
+   if (pres <= 0 || !std::isfinite(pres))
    {
-      // cout << "Negative pressure: " << pres << ", state: ";
-      // for (int i = 0; i < state.Size(); i++)
-      // {
-      //    cout << state(i) << " ";
-      // }
-      // cout << endl;
+      state.Print(cout << "Rank #" << myRank << ": " << "Negative pressure in state ");
       return false;
    }
    return true;
 }
 
 // Check that the state is physical
-bool StateIsPhysicalSay(const Vector &state, const int dim)
+bool StateIsPhysicalSay(const Vector &state, const Vector &primState, const int dim)
 {
-   const double den = state(0);
-   const Vector den_vel(state.GetData() + 1, dim);
-   const double den_energy = state(1 + dim);
-
-   if (den < 0 || den != den)
+   if (state(0) < 0 || !std::isfinite(state(0)))
    {
-      cout << "Negative density: ";
-      for (int i = 0; i < state.Size(); i++)
-      {
-         cout << state(i) << " ";
-      }
-      cout << endl;
+      state.Print(cout << "Rank #" << myRank << ": " << "Negative density in state ");
       return false;
    }
-   if (den_energy <= 0 || den_energy != den_energy)
+   if (state(1 + dim) <= 0 || !std::isfinite(state(1 + dim)))
    {
-      cout << "Negative energy: ";
-      for (int i = 0; i < state.Size(); i++)
-      {
-         cout << state(i) << " ";
-      }
-      cout << endl;
+      state.Print(cout << "Rank #" << myRank << ": " << "Negative energy in state ");
       return false;
    }
 
-   double den_vel2 = 0;
-   for (int i = 0; i < dim; i++) { den_vel2 += den_vel(i) * den_vel(i); }
-   den_vel2 /= den;
-
-   const double pres = (specific_heat_ratio - 1.0) * (den_energy - 0.5 * den_vel2);
-
-   if (pres <= 0 || pres != pres)
+   if (primState(1 + dim) <= 0 || !std::isfinite(primState(1 + dim)))
    {
-      cout << "Negative pressure: " << pres << ", state: ";
-      for (int i = 0; i < state.Size(); i++)
-      {
-         cout << state(i) << " ";
-      }
-      cout << endl;
+      state.Print(cout << "Rank #" << myRank << ": " << "Negative pressure in prim state ");
       return false;
    }
    return true;
@@ -137,6 +90,12 @@ double ComputeSoundSpeed(const Vector &state, int dim)
    const double p = ComputePressure(state, dim);
 
    return sqrt( specific_heat_ratio * p / den / (1.0 - den * covolume_constant));
+}
+
+// Sound speed (EOS) computation
+double ComputeSoundSpeed(double rho, double p)
+{
+   return sqrt( specific_heat_ratio * p / rho / (1.0 - rho * covolume_constant));
 }
 
 // Compute the vector flux F(u)
@@ -195,15 +154,15 @@ void ComputeFluxDotN(const Vector &state, const Vector &nor,
 }
 
 // Compute the scalar F(u).n
-void ComputeFluxF(const Vector &state, const int dim,
+void ComputeFluxF(const Vector &state, const Vector &primState, const int dim,
                      Vector &flux)
 {
-   const double pres = ComputePressure(state, dim);
+   const double pres = primState(dim+1);
 
    flux(0) = state(1); //rho u
-   flux(1) = state(1) * state(1) / state(0) + pres; // rho u^2 + p
+   flux(1) = state(1) * primState(1) + pres; // rho u^2 + p
    for (int d = 1; d < dim; d++)
-      flux(d+1) = state(1) * state(d+1) / state(0); // rho u v, rho u w
+      flux(d+1) = state(1) * primState(d+1); // rho u v, rho u w
 
    const double H = (state(1 + dim) + pres) / state(0);
    flux(1 + dim) = state(1) * H;
@@ -255,7 +214,8 @@ double ComputeMaxCharSpeed(const Vector &state, const int dim)
    const Vector den_vel(state.GetData() + 1, dim);
 
    double den_vel2 = 0;
-   for (int d = 0; d < dim; d++) { den_vel2 += den_vel(d) * den_vel(d); }
+   for (int d = 0; 
+      d < dim; d++) { den_vel2 += den_vel(d) * den_vel(d); }
    den_vel2 /= den;
 
    // const double pres = ComputePressure(state, dim);
@@ -266,16 +226,19 @@ double ComputeMaxCharSpeed(const Vector &state, const int dim)
 }
 
 // Compute Einfeldt averaged char speeds via two states
-void ComputeEinfeldtCharSpeeds(const Vector &state1, const Vector &state2, Vector& lambdaF, const int dim)
+void ComputeEinfeldtCharSpeeds(const Vector &state1, const Vector &state2, const Vector &primState1, const Vector &primState2, Vector& lambdaF, const int dim)
 {
-   double cLeft = ComputeSoundSpeed(state1, dim);
-   double cRight = ComputeSoundSpeed(state2, dim);
-
    double rhouLeft = state1[1];
    double rhouRight = state2[1];
 
-   double uLeft = rhouLeft / state1[0];
-   double uRight = rhouRight / state2[0];
+   double uLeft = primState1[1];
+   double uRight = primState2[1];
+
+   double pLeft = primState1[dim+1]; //ComputePressure(state1, dim);
+   double pRight = primState2[dim+1]; //ComputePressure(state2, dim);
+
+   double cLeft = ComputeSoundSpeed(state1[0], pLeft);
+   double cRight = ComputeSoundSpeed(state2[0], pRight);
 
    double sqrtRhoLeft = sqrt(state1[0]);
    double sqrtRhoRight = sqrt(state2[0]);
@@ -295,72 +258,70 @@ void ComputeEinfeldtCharSpeeds(const Vector &state1, const Vector &state2, Vecto
 
 }
 
-void TransformConservativeToPrimitive(Vector& state)
+void GetPrimitiveFromConservative(const Vector& state, Vector& primState)
 {
    const int dim = state.Size() - 2;
 
-   for (int i = 1; i < dim+1; ++i)
-      state[i] /= state[0];
+   primState[0] = state[0];
 
-   state[dim+1] = ComputePressure(state, dim);
+   for (int i = 1; i < dim+1; ++i)
+      primState[i] = state[i]/state[0];
+
+   primState[dim+1] = ComputePressure(state, dim);
 }
 
 // Compute Toro averaged char speeds via two states
-void ComputeToroCharSpeeds(const Vector &state1, const Vector &state2, Vector& lambdaF, const int dim)
+void ComputeToroCharSpeeds(const Vector &state1, const Vector &state2, const Vector &primState1, const Vector &primState2, Vector& lambdaF, const int dim)
 {
-   double cLeft = ComputeSoundSpeed(state1, dim);
-   double cRight = ComputeSoundSpeed(state2, dim);
+   //double rhouLeft = state1[1];
+   //double rhouRight = state2[1];
 
-   double rhouLeft = state1[1];
-   double rhouRight = state2[1];
+   double uLeft = primState1[1]; //rhouLeft / state1[0];
+   double uRight = primState2[1]; //rhouRight / state2[0];
 
-   double uLeft = rhouLeft / state1[0];
-   double uRight = rhouRight / state2[0];
+   double pLeft = primState1[dim+1]; //ComputePressure(state1, dim);
+   double pRight = primState2[dim+1]; //ComputePressure(state2, dim);
 
-   double pLeft = ComputePressure(state1, dim);
-   double pRight = ComputePressure(state2, dim);
+   double cLeft = ComputeSoundSpeed(state1[0], pLeft);
+   double cRight = ComputeSoundSpeed(state2[0], pRight);
 
    //  double pvrs = 0.5 * (pLeft + pRight) + \
    //    0.125 * (uLeft - uRight) * (state1[0] + state2[0]) * (cLeft + cRight);
 
    // double pStar = max(0.0, pvrs);
 
-   double z = 0.5 * (specific_heat_ratio - 1.0) / specific_heat_ratio;
+   double gm1 = 0.5 * (specific_heat_ratio - 1.0);
+   double gp1 = 0.5 * (specific_heat_ratio + 1.0);
+   double z = gm1 / specific_heat_ratio;
+   double z2 = gp1 / specific_heat_ratio;
 
    double pStar = pow( 
-      (cLeft + cRight - 0.5 * (specific_heat_ratio - 1.0) * (uRight - uLeft)) / \
-      (cLeft / pow(pLeft, z) + cRight / pow(pRight, z)),
+      (cLeft + cRight - gm1 * (uRight - uLeft)) / (cLeft / pow(pLeft, z) + cRight / pow(pRight, z)),
       1.0 / z);
 
    double qLeft = pStar > pLeft ? \
-      sqrt(1.0 + 0.5 * (specific_heat_ratio + 1.0) * (pStar / pLeft - 1.0) / specific_heat_ratio) : \
+      sqrt(1.0 + z2 * (pStar / pLeft - 1.0)) : \
       1.0;
 
    double qRight = pStar > pRight ? \
-      sqrt(1.0 + 0.5 * (specific_heat_ratio + 1.0) * (pStar / pRight - 1.0) / specific_heat_ratio) : \
+      sqrt(1.0 + z2 * (pStar / pRight - 1.0)) : \
       1.0;
 
    // Vector res(dim+2);
    lambdaF[0] = uLeft - qLeft * cLeft;
-   lambdaF[dim+1] = uRight + qRight * cRight;
-
    for (int i = 1; i < dim + 1; ++i)
       lambdaF[i] = uLeft;
+   lambdaF[dim+1] = uRight + qRight * cRight;
 
+   for(int i = 0; i <= dim+1; ++i)
+      if (!std::isfinite(lambdaF[i]))
+      {
+         cout << "Infinite lambda!" << endl;
+         state1.Print(cout << "\tstate 1 = ");
+         state2.Print(cout << "\tstate 2 = ");
+         lambdaF.Print(cout << "\tlambdaF = ");
+
+         lambdaF = -1;
+         return;
+      }
 }
-
-
-// void ComputeU(const GridFunction& sol, const FiniteElementSpace& vfes, GridFunction& U)
-// {
-//     for (int i = 0; i < vfes.GetNE(); i++)
-//     {
-//         Vector zval;
-//         Array<int> vdofs;
-//         vfes.GetElementVDofs(i, vdofs);
-//         z.GetSubVector(vdofs, zval);
-//         // if (i == 50 || i == 1562)
-//         // {
-//         //     zval.Print(std::cout << "zval[" << i << "] after fluxes = " << endl);
-//         // }
-//     }
-// }

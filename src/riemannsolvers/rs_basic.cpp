@@ -3,10 +3,14 @@
 
 
 // Implementation of class RiemannSolver
-RiemannSolver::RiemannSolver() :
-   flux1(num_equation),
-   flux2(num_equation) { }
-
+RiemannSolver::RiemannSolver()
+{ 
+   flux1.SetSize(num_equation);
+   flux2.SetSize(num_equation);
+   lambdaF.SetSize(num_equation);
+   primState1.SetSize(num_equation);
+   primState2.SetSize(num_equation);
+}
 
 void RiemannSolver::Rotate(Vector& state, const Vector& nor, int dim)
 {

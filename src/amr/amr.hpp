@@ -1,7 +1,6 @@
 #include "mfem.hpp"
 #include "averager.hpp"
 
-using namespace std;
 using namespace mfem;
 
 /// Number of equations
@@ -21,14 +20,9 @@ void UpdateAndRebalance(
     ParGridFunction &rhok,
     ParGridFunction &mom,
     ParGridFunction &energy,
-    ParGridFunction &rhoInd,
-    ParGridFunction &rhoUInd,
-    ParGridFunction &rhoVInd,
-    ParGridFunction &rhoWInd,
-    ParGridFunction &EInd,
     BlockVector &u_block,
     BlockVector &u_block_old,
-    BlockVector &u_ind,
+    ParGridFunction &u_ind,
     Array<int> &offsets,
     Array<int> &offsets_const,
     Averager& avgr,

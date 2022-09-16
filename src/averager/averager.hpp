@@ -114,23 +114,7 @@ public:
     Averager(ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d); 
 
     /// Destructor
-    virtual ~Averager()
-    {
-        cout << "~Averager()" << endl;
-        delete avgs_extrap; 
-        delete u_block_avg_extrap; 
-        delete fes_avg_extrap_component;
-        delete fes_avg_extrap; 
-        delete fec_avg_extrap;
-
-        delete avgs; 
-        delete u_block_avg; 
-        delete fes_avg; 
-        delete fec_avg;
-
-        cout << "OK" << endl;
-    };
-
+    ~Averager();
 
     /// Update actual solution values
     void update( Vector* _x, ParGridFunction* _parGridX) { x = _x; parGridX = _parGridX; };

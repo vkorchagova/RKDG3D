@@ -4,7 +4,6 @@
 #include "mfem.hpp"
 #include "averager.hpp"
 
-using namespace std;
 using namespace mfem;
 
 /// Number of equations
@@ -30,12 +29,14 @@ protected:
    /// FE finite element space (connection with mesh and dofs)
    ParFiniteElementSpace *fes;
 
+   /// FE finite element space for constant-piecewise elements
+   ParFiniteElementSpace *fes_const;
+
    /// Space dimension
    int dim;
 
    /// Vector to store limited values
    Vector xNew;
-
 
    /// Pointer to finite element
    const FiniteElement *fe;
@@ -60,27 +61,40 @@ protected:
 
    /// Offsets to deal with variables component-by-component
    const Array<int>& offsets;
-   
-public:
 
    /// Values of indicator field associated with ParaView external writer
-   BlockVector& values;
-
-   /// Keep minimal indicator value 
-   Vector minValues;
+   ParGridFunction* values;
+   
+public:
+   
+   ParGridFunction* getValues() { return values; };
 
    /// Constructor
-   Indicator(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, BlockVector& _idata);
+   Indicator(
+      Averager& _avgr, 
+      ParFiniteElementSpace* _fes,
+      ParFiniteElementSpace* _fes_const, 
+      const Array<int>& _offsets, 
+      int _d
+   );
 
    /// Destructor
-   virtual ~Indicator() {};
+   virtual ~Indicator();
 
-   /// Find troubled cells
-   virtual void checkDiscontinuity(
+   /// Check if defined cell is troubled and set indicator value
+   virtual double checkDiscontinuity(
       const int iCell, 
       const Stencil* stencil, 
       const DenseMatrix& elfun1_mat
    ) = 0;
+
+   /// Set indicator value for defined cell
+   void setValue(int iCell, double val);
+
+   /// Read indicator value for defined cell
+   const double getValue(int iCell);
+
+
 };
 
 #endif // INDICATOR_H

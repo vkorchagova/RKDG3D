@@ -21,19 +21,27 @@ class IndicatorEverywhere : public Indicator
 public:
 
    /// Constructor
-   IndicatorEverywhere(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, BlockVector& _idata)
-      : Indicator(_avgr, _fes,_offsets,_d, _idata) {};
+   IndicatorEverywhere
+   (
+      Averager& _avgr, 
+      ParFiniteElementSpace* _fes,
+      ParFiniteElementSpace* _fes_const, 
+      const Array<int>& _offsets, 
+      int _d
+   ) : Indicator(_avgr, _fes, _fes_const, _offsets, _d) {};
 
    /// Destructor
    ~IndicatorEverywhere() {};
 
    /// Find troubled cells
-   virtual void checkDiscontinuity(
+   virtual double checkDiscontinuity(
       const int iCell, 
       const Stencil* stencil, 
       const DenseMatrix& elfun1_mat
    ) 
-   { for (int iEq = 0; iEq < num_equation; ++iEq) {values.GetBlock(iEq)[iCell] = 0.0; minValues[iCell] = 0.0;} };
+   { 
+      setValue(iCell, 0.0); return 0.0;
+   };
 };
 
 #endif // INDICATOR_EVERYWHERE_H

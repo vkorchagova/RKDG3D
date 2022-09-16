@@ -38,6 +38,21 @@ Averager::Averager(ParFiniteElementSpace* _fes, const Array<int>& _offsets, int 
    u_block_avg_extrap = new BlockVector(*avgs_extrap, offsets_avg_extrap);
 };
 
+Averager::~Averager()
+{
+   delete avgs_extrap; 
+   delete u_block_avg_extrap; 
+   delete fes_avg_extrap_component;
+   delete fes_avg_extrap; 
+   delete fec_avg_extrap;
+   delete avgs; 
+   delete u_block_avg; 
+   delete fes_avg_component;
+   delete fes_avg; 
+   delete fec_avg;
+};
+
+
 void Averager::updateSpaces()
 {
    // cout << "before fes_avg->Update();" << endl;

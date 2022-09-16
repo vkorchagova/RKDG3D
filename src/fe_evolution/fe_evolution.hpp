@@ -3,7 +3,6 @@
 
 #include "mfem.hpp"
 
-using namespace std;
 using namespace mfem;
 
 ///  Maximum characteristic speed (updated by integrators)

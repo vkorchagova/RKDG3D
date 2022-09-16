@@ -19,7 +19,7 @@ class RiemannSolverHLL : public RiemannSolver
 public:
 
     /// Constructor
-    RiemannSolverHLL() : RiemannSolver() {lambdaF.SetSize(num_equation);};
+    RiemannSolverHLL() : RiemannSolver() {};
 
     /// Destructor
     ~RiemannSolverHLL() {};

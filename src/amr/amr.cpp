@@ -13,14 +13,9 @@ void UpdateAndRebalance(
     ParGridFunction &rhok,
     ParGridFunction &mom,
     ParGridFunction &energy,
-    ParGridFunction &rhoInd,
-    ParGridFunction &rhoUInd,
-    ParGridFunction &rhoVInd,
-    ParGridFunction &rhoWInd,
-    ParGridFunction &EInd,
     BlockVector &u_block,
     BlockVector &u_block_old,
-    BlockVector &u_ind,
+    ParGridFunction &u_ind,
     Array<int> &offsets,
     Array<int> &offsets_const,
     Averager& avgr,
@@ -55,7 +50,7 @@ void UpdateAndRebalance(
         offsets_const[k] = k * fes_const.GetNDofs();
 
     u_block.Update(x,offsets);
-    u_ind.Update(offsets_const);
+    u_ind.Update();
 
     rhok.MakeRef(&fes,x,offsets[0]);
     mom.MakeRef(&dfes,x,offsets[1]);
@@ -98,7 +93,7 @@ void UpdateAndRebalance(
             offsets_const[k] = k * fes_const.GetNDofs();
 
         u_block.Update(x,offsets);
-        u_ind.Update(offsets_const);
+        u_ind.Update();
 
         rhok.MakeRef(&fes,x,offsets[0]);
         mom.MakeRef(&dfes,x,offsets[1]);

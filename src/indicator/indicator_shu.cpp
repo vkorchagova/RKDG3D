@@ -2,15 +2,21 @@
 
 // bool pleaseWriteMe = false;
 
-IndicatorShu::IndicatorShu(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, BlockVector& _idata) 
-    : Indicator(_avgr, _fes, _offsets, _d, _idata) 
+IndicatorShu::IndicatorShu
+(
+    Averager& _avgr, 
+    ParFiniteElementSpace* _fes,
+    ParFiniteElementSpace* _fes_const, 
+    const Array<int>& _offsets, 
+    int _d
+) : Indicator(_avgr, _fes, _fes_const, _offsets, _d)  
 {
    maxFabsPj.SetSize(num_equation);
    sumFabsDiffExtrap.SetSize(num_equation);
 };
 
 
-void IndicatorShu::checkDiscontinuity(
+double IndicatorShu::checkDiscontinuity(
    const int iCell, 
    const Stencil* stencil,
    const DenseMatrix& elfun1_mat
@@ -59,13 +65,16 @@ void IndicatorShu::checkDiscontinuity(
 
    // set indicator values to the external field
 
-   for (int iEq = 0; iEq < num_equation; ++iEq)
-      values.GetBlock(iEq)[iCell] = 
-         (fabs(maxFabsPj[iEq]) < eps && fabs(sumFabsDiffExtrap[iEq]) < eps) 
+   double indVal = (fabs(maxFabsPj[0]) < eps && fabs(sumFabsDiffExtrap[0]) < eps) 
          ? 
          1.0 
          : 
-         min(1.0, Ck * maxFabsPj[iEq] / (sumFabsDiffExtrap[iEq] + eps));
+         min(1.0, Ck * maxFabsPj[0] / (sumFabsDiffExtrap[0] + eps));
+
+   setValue(iCell, indVal);
+
+   return indVal;
+
 
    // for (int iEq = 0; iEq < num_equation; ++iEq)
    //    values.GetBlock(iEq)[iCell] = (sumFabsDiffExtrap[iEq] / (maxFabsPj[iEq] + eps) > Ck) ? 0.0 : 1.0;

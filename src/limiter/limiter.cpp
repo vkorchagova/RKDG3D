@@ -1,7 +1,7 @@
 #include "limiter.hpp"
+  
 
-
-Limiter::Limiter(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, bool _linearize, bool _haveLastHope, int _d) : 
+Limiter::Limiter(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, bool _linearize, bool _haveLastHope, int _fdGroupAttribute, int _d) : 
    indicator(_ind),
    averager(_avgr),
    fes(_fes), 
@@ -16,6 +16,22 @@ Limiter::Limiter(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace* _fes, 
    el_uMean.SetSize(num_equation);
 
    stencil = new Stencil();
+
+   fdGroupCells.SetSize(mesh->GetNE());
+   fdGroupCells = 0;
+
+   if (_fdGroupAttribute > 0)
+   {
+      for (int iCell = 0; iCell < mesh->GetNE(); ++iCell)
+      {
+         int curAttr = mesh->GetAttribute(iCell);mesh->GetAttribute(iCell);
+
+         if (curAttr == _fdGroupAttribute)
+         {
+            fdGroupCells[iCell] = 1;
+         }
+      }
+   }
 };
 
 
@@ -35,14 +51,8 @@ void Limiter::update(Vector &x)
    averager.update(&x, &parGridX);
    averager.computeMeanValues();
 
-
-   Vector el_ind(num_equation);
-
    for (int iCell = 0; iCell < mesh->GetNE(); ++iCell)
    {
-      // compute stencil
-      getStencil(iCell);
-
       // get FE
       fe = fes->GetFE(iCell);
 
@@ -75,17 +85,53 @@ void Limiter::update(Vector &x)
       // make matrix from values data
       DenseMatrix elfun1_mat(el_x.GetData(), nDofs, num_equation);
 
-      indicator.checkDiscontinuity(iCell, stencil, elfun1_mat);
+      /// Suppress slopes in defined group
+      if (fdGroupCells[iCell])
+      {
+         averager.readElementAverageByNumber(iCell, el_uMean);
+         for (int iEq = 0; iEq < num_equation; ++iEq)
+            for (int iDof = 0; iDof < nDofs; ++iDof)
+            {
+               // if (myRank == 0 && iCell == 0 && iEq == 0) {cout << "   funval before lim = " << elfun1_mat(iDof, iEq) << endl;}
+               elfun1_mat(iDof, iEq) = el_uMean(iEq);
+               // if (myRank == 0 && iCell == 0 && iEq == 0) {cout << "   funval after lim = " << elfun1_mat(iDof, iEq) << endl;}
+            }
 
-      for (int iEq = 0; iEq < num_equation; ++iEq)
-         el_ind[iEq] = indicator.values.GetBlock(iEq)[iCell];
+         indicator.setValue(iCell, 0.0);
+      }
+      else // if not defined group - general limiting algorithm
+      {
+         // compute stencil
+         getStencil(iCell);
 
-      limit(iCell, el_ind, elfun1_mat);
+         // check solution in cell for some troubles
+         double iVal = indicator.checkDiscontinuity(iCell, stencil, elfun1_mat);
 
+         // if ((iCell == 50 || iCell == 54) && (myRank == 0 || myRank == 3))
+         // {
+         //    stencil->Print(*mesh, iCell, myRank); 
+         //    cout << "cell #" << iCell << ": iVal = "<< setprecision(18) << iVal << setprecision(6) << endl;
+         // } 
+
+         // if (iVal < 0.999999) iVal = 0.9; 
+
+         limit(iCell, iVal, nDofs, elfun1_mat);
+
+         // if (iCell == 50 || iCell == 1562)
+         //    elfun1_mat.Print(cout << "cell #" << iCell << "; ivalue = " << iVal << "; el_fun1 = ");
+      }
+ 
       xNew.SetSubVector(el_vdofs, el_x);
 
       stencil->clean();
    }
+
+   // for (int iCell = 0; iCell < mesh->GetNE(); ++iCell)
+   //    if (indicator.values[iCell] < 1e-6 && myRank == 39)
+   //          {
+   //             cout << "Negative indicator value: " << indicator.values[iCell]
+   //              << "; iCell = " << iCell << " in rank = " << myRank << endl;
+   //          }
 
    // replace solution values to the new one
    x = xNew;
@@ -146,8 +192,8 @@ void Limiter::getStencil(const int iCell)
 
       if (is_interior)
       {
-         face_el_trans = mesh->GetInteriorFaceTransformations(iFace);
-         int neib_cell_num = face_el_trans->Elem1No == iCell ? face_el_trans->Elem2No : face_el_trans->Elem1No;
+         // face_el_trans = mesh->GetInteriorFaceTransformations(iFace);
+         // int neib_cell_num = face_el_trans->Elem1No == iCell ? face_el_trans->Elem2No : face_el_trans->Elem1No;
          // if (iCell == 5369) cout << "my_num = " <<  (face_el_trans->Elem1No == iCell ? 1 : 2) << endl;
 
          // stencil->cell_num.Append(neib_cell_num);

@@ -19,7 +19,7 @@ class RiemannSolverLLF : public RiemannSolver
 public:
 
     /// Constructor
-    RiemannSolverLLF() : RiemannSolver() {lambdaF.SetSize(num_equation);};
+    RiemannSolverLLF() : RiemannSolver() {};
 
     /// Destructor
     ~RiemannSolverLLF() {};

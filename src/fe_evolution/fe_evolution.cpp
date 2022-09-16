@@ -37,7 +37,6 @@ FE_Evolution::FE_Evolution(FiniteElementSpace &_vfes,
     //     }
     // }
     // }
-    cout << "-------" << endl;
     
     for (int i = 0; i < vfes.GetNE(); i++)
     {
@@ -62,6 +61,13 @@ FE_Evolution::FE_Evolution(FiniteElementSpace &_vfes,
         // inv.TestInversion();
         Me_inv[i].SetSize(dof,dof);
         inv.GetInverseMatrix(Me_inv[i]);
+
+        // for (int ii = 0; ii < dof; ++ii)
+        //     for (int jj = 0; jj < dof; ++jj)
+        //     {
+        //         if (fabs(Me_inv[i].Elem(ii,jj)) < 1e-16)
+        //             Me_inv[i].Elem(ii,jj) = 0.0;
+        //     }
         // if (i == 50 || i == 1562)
         // {
         //     Me_inv[i].Print(std::cout  << std::setprecision(30) << "Constr ME_INV_" << i << std::endl);
@@ -120,19 +126,19 @@ void FE_Evolution::Mult(const Vector &x, Vector &y) const
     // }
     Vector zval;
     Array<int> vdofs;
-    for (int i = 0; i < vfes.GetNE(); i++)
-    {
-        vfes.GetElementVDofs(i, vdofs);
-        z.GetSubVector(vdofs, zval);
-        // if (i == 50 || i == 1562)
-        // {
-        //     zval.Print(std::cout << "zval[" << i << "] after fluxes = " << endl);
-        // }
-    }
+    // for (int i = 0; i < vfes.GetNE(); i++)
+    // {
+    //     vfes.GetElementVDofs(i, vdofs);
+    //     z.GetSubVector(vdofs, zval);
+    //     if (i == 0 || i == 1512)
+    //     { 
+    //         zval.Print(std::cout << std::setprecision(18) << "zval[" << i << "] after fluxes = " << endl);
+    //     }
+    // }
 
     // 2. Add the element terms.
     // i.  computing the flux approximately as a grid function by interpolating
-    //      at the solution nodes.
+    //          at the solution nodes.
     // ii. multiplying this grid function by a (constant) mixed bilinear form for
     //      each of the num_equation, computing (F(u), grad(w)) for each equation.
 
@@ -182,13 +188,13 @@ void FE_Evolution::Mult(const Vector &x, Vector &y) const
         z.GetSubVector(vdofs, zval);
         dof = vfes.GetFE(i)->GetDof();
 
-        zmat.SetSize(dof, num_equation);
+        // zmat.SetSize(dof, num_equation);
         ymat.SetSize(dof, num_equation);
 
-        zmat.UseExternalData(zval.GetData(), dof, num_equation);
-        // if (i == 50 || i == 1562)
+        zmat.Reset(zval.GetData(), dof, num_equation);
+        // if (i == 0 || i == 1512)
         // {
-        //     zval.Print(std::cout << std::setprecision(30) << "zval[" << i << ']' << endl);
+        //     zval.Print(std::cout << std::setprecision(18) << "zval[" << i << ']' << endl);
         // }
         mfem::Mult(Me_inv[i], zmat, ymat);
 
@@ -200,10 +206,10 @@ void FE_Evolution::Mult(const Vector &x, Vector &y) const
         
         y.SetSubVector(vdofs, ymat.GetData());
 
-        // if (i == 50 || i == 1562)
+        // if (i == 0 || i == 1512)
         // {
-        //     zmat.Print(std::cout << std::setprecision(30) << "zmat[" << i << "]  = ");
-        //     ymat.Print(std::cout << std::setprecision(30) << "ymat[" << i << "]  = ");
+        //     zmat.Print(std::cout << std::setprecision(18) << "zmat[" << i << "]  = ");
+        //     ymat.Print(std::cout << std::setprecision(18) << "ymat[" << i << "]  = ");
         // }
     }
     // cout << "IN FE_Evolution::end " << endl;
@@ -238,8 +244,8 @@ void FE_Evolution::GetFlux(const DenseMatrix &x, DenseTensor &flux) const
             }
         }
 
-        // Update max char speed
-        const double mcs = ComputeMaxCharSpeed(state, dim);
-        if (mcs > max_char_speed) { max_char_speed = mcs; }
+        // // Update max char speed
+        // const double mcs = ComputeMaxCharSpeed(state, dim);
+        // if (mcs > max_char_speed) { max_char_speed = mcs; }
     }
 }

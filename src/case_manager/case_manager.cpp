@@ -1,10 +1,48 @@
 #include <case_manager.hpp>
-
+ 
 using namespace std;
+
+// unions for supported settings
+
+typedef std::vector<ryml::csubstr> rymlKeys;
+
+
+
+// helper functions from ryml library
+
+C4_SUPPRESS_WARNING_MSVC_WITH_PUSH(4996) // fopen: this function or variable may be unsafe
+/** load a file from disk and return a newly created CharContainer */
+template<class CharContainer>
+size_t file_get_contents(const char *filename, CharContainer *v)
+{
+    ::FILE *fp = ::fopen(filename, "rb");
+    C4_CHECK_MSG(fp != nullptr, "could not open file");
+    ::fseek(fp, 0, SEEK_END);
+    long sz = ::ftell(fp);
+    v->resize(static_cast<typename CharContainer::size_type>(sz));
+    if(sz)
+    {
+        ::rewind(fp);
+        size_t ret = ::fread(&(*v)[0], 1, v->size(), fp);
+        C4_CHECK(ret == (size_t)sz);
+    }
+    ::fclose(fp);
+    return v->size();
+}
+
+/** load a file from disk into an existing CharContainer */
+template<class CharContainer>
+CharContainer file_get_contents(const char *filename)
+{
+    CharContainer cc;
+    file_get_contents(filename, &cc);
+    return cc;
+}
+
 
 CaseManager::CaseManager(std::string& caseFileName, VisItDataCollection& rdc)
 :
-    contents(NULL),
+    contents(""),
     restart(false),
     restartCycle(0),
     nSavedFrames(0),
@@ -25,6 +63,10 @@ CaseManager::CaseManager(std::string& caseFileName, VisItDataCollection& rdc)
     ICInterface(NULL),
     origin(3),
     normal(3),
+    c1min(3),
+    c1max(3),
+    c2min(3),
+    c2max(3),
     a(NULL),
     b(NULL),
     c(NULL),
@@ -35,100 +77,84 @@ CaseManager::CaseManager(std::string& caseFileName, VisItDataCollection& rdc)
 
 {
     caseDir = std::filesystem::current_path().string();
-
     caseFileName = caseDir + "/" + caseFileName;
-
-    // parse case file
-    parse(caseFileName);
-
-    // restart_queue
-    // restart_name_stream
+    std::string contents = file_get_contents<std::string>(caseFileName.c_str());
+    settings = new ryml::Tree(ryml::parse_in_arena(ryml::to_csubstr(contents))); 
 }
 
-void CaseManager::parse(std::string& caseFileName)
+CaseManager::~CaseManager()
 {
-    // read file
-    ifstream reader;
-    reader.open(caseFileName.c_str());
-     
-    if (!reader.is_open())
-    {
-        if (myRank == 0) cout << "Case file " << caseFileName << " is not found\n";
-        exit(0);
-    }
-    else
-    {
-        if (myRank == 0)
-        {
-            cout << "===============================================" << endl;
-            cout << "Reading case file " << caseFileName << "..." << endl;
-            cout << "-----------------------------------------------" << endl;
-        }
-    };
+    delete[] c;
+    delete[] b;
+    delete[] a;
+    delete ICInterface;
+    delete settings;
+    // delete contents;
+    origin.SetSize(1);
+    origin[0] = 0;
+    normal.SetSize(1);
+    normal[0] = 0;
+};
 
-    //parse result by ryml
-    contents = new std::string((std::istreambuf_iterator<char>(reader)), 
-        std::istreambuf_iterator<char>());
+void CaseManager::loadRestartSettings()
+{
+    restart = readOrDefault<bool>(settings,rymlKeys({"time","restart"}), 0);
+    if (myRank == 0) cout << "Case is restarted: " << restart << endl;
 
-    reader.close();
+    restartCycle = read<int>(settings,rymlKeys({"time","restartCycle"}));
+    nSavedFrames = read<int>(settings,rymlKeys({"time","nSavedFrames"}));
+    
+}
 
-    settings = new ryml::Tree(ryml::parse(c4::to_substr(*contents)));    
+void CaseManager::loadPhysics()
+{
+    ryml::csubstr phType = read<ryml::csubstr>(settings,rymlKeys({"physics","type"}));
+    if (myRank == 0) cout << "Gas EoS type: " << phType << endl;
 
-    // read restart settings
-    c4::from_chars((*settings)["time"]["restart"].val(), &restart);
-    c4::from_chars((*settings)["time"]["restartCycle"].val(), &restartCycle);
-    c4::from_chars((*settings)["time"]["nSavedFrames"].val(), &nSavedFrames);
-    if (myRank == 0) cout << "Restart of the case: " << restart << endl;
-
-    // read physics
-    std::string phType = ryml::preprocess_json<std::string>((*settings)["physics"]["type"].val());
-    if (myRank == 0) cout << "Gas type: " << phType << endl;
-    c4::from_chars((*settings)["physics"]["gamma"].val(), &specific_heat_ratio);
+    specific_heat_ratio = readOrDefault<double>(settings,rymlKeys({"physics","gamma"}),1.4);
     if (myRank == 0) cout << "* Specific heat ratio: " << specific_heat_ratio << endl;
+    
+    gas_constant = readOrDefault<double>(settings,rymlKeys({"physics","R"}),1.0);
+    if (myRank == 0) cout << "* Gas constant: " << gas_constant << endl;
+    
     if (phType == "covolume")
     {
-        c4::from_chars((*settings)["physics"]["covolume"].val(), &covolume_constant);
+        covolume_constant = read<double>(settings,rymlKeys({"physics","covolume"})   );
         if (myRank == 0) cout << "* Covolume constant: " << covolume_constant << endl;
     }
     else
         covolume_constant = 0.0;
+}
 
-    
-    if ((*settings)["physics"]["R"].val().size() != 0)
-        c4::from_chars((*settings)["physics"]["R"].val(), &gas_constant);
-    else
-        gas_constant = 1.0;
-    if (myRank == 0) cout << "* Gas constant: " << gas_constant << endl;
-    
-    // read dg settings
-    c4::from_chars((*settings)["spatial"]["polyOrder"].val(), &spatialOrder);
+void CaseManager::loadSpatialAccuracyOrder()
+{
+    spatialOrder = read<int>(settings,rymlKeys({"spatial","polyOrder"}));
     if (myRank == 0) cout << "Order of polynoms: " << spatialOrder << endl;
+}
 
-    //postprocess features
-    
-    if ((*settings)["postProcess"]["checkTotalEnergy"].val().size() != 0)
-        c4::from_chars((*settings)["postProcess"]["checkTotalEnergy"].val(), &checkTotalEnergy);
-    else
-        checkTotalEnergy = 0;
+void CaseManager::loadPostprocessSettings()
+{
+    checkTotalEnergy = readOrDefault<bool>(settings,rymlKeys({"postProcess","checkTotalEnergy"}), 0);
+    if (myRank == 0) cout << "Check total energy: " << checkTotalEnergy << endl;
 
-    if ((*settings)["postProcess"]["writeIndicators"].val().size() != 0)
-        c4::from_chars((*settings)["postProcess"]["writeIndicators"].val(), &writeIndicators);
-    else
-        writeIndicators = 0;
+    writeIndicators = readOrDefault<bool>(settings,rymlKeys({"postProcess","writeIndicators"}), 0);
+    if (myRank == 0) cout << "Write indicators field: " << writeIndicators << endl;
+}
 
-
-    //read initial conditions
-    icType = ryml::preprocess_json<std::string>((*settings)["internalField"]["type"].val());
+void CaseManager::loadInitialConditions()
+{
+    icType = read<ryml::csubstr>(settings,rymlKeys({"internalField","type"}));
     if (myRank == 0) cout << "Type of problem: " << icType << endl;
 
     if (icType == "constant")
     {
         Vector sol(num_equation);
-        c4::from_chars((*settings)["internalField"]["rho"].val(), &sol[0]);
-        c4::from_chars((*settings)["internalField"]["U"][0].val(), &sol[1]);
-        c4::from_chars((*settings)["internalField"]["U"][1].val(), &sol[2]);
-        c4::from_chars((*settings)["internalField"]["U"][2].val(), &sol[3]);
-        c4::from_chars((*settings)["internalField"]["p"].val(), &sol[num_equation-1]);
+
+        sol[0] = read<double>(settings,rymlKeys({"internalField","rho"}));
+        sol[1] = readVectorComponent<double>(settings,rymlKeys({"internalField","U"}),0);
+        sol[2] = readVectorComponent<double>(settings,rymlKeys({"internalField","U"}),1);
+        sol[3] = readVectorComponent<double>(settings,rymlKeys({"internalField","U"}),2);
+        sol[num_equation-1] = read<double>(settings,rymlKeys({"internalField","p"}));
 
         ICInterface = new ICConstant(sol);
     }
@@ -136,27 +162,27 @@ void CaseManager::parse(std::string& caseFileName)
     {
         Vector sol1(num_equation);
         Vector sol2(num_equation);
+
+        origin[0] = readVectorComponent<double>(settings,rymlKeys({"internalField","origin"}),0);
+        origin[1] = readVectorComponent<double>(settings,rymlKeys({"internalField","origin"}),1);
+        origin[2] = readVectorComponent<double>(settings,rymlKeys({"internalField","origin"}),2);
+
+        normal[0] = readVectorComponent<double>(settings,rymlKeys({"internalField","normal"}),0);
+        normal[1] = readVectorComponent<double>(settings,rymlKeys({"internalField","normal"}),1);
+        normal[2] = readVectorComponent<double>(settings,rymlKeys({"internalField","normal"}),2);
+
+        sol1[0] = read<double>(settings,rymlKeys({"internalField","left","rho"}));
+        sol1[1] = readVectorComponent<double>(settings,rymlKeys({"internalField","left","U"}),0);
+        sol1[2] = readVectorComponent<double>(settings,rymlKeys({"internalField","left","U"}),1);
+        sol1[3] = readVectorComponent<double>(settings,rymlKeys({"internalField","left","U"}),2);
+        sol1[num_equation-1] = read<double>(settings,rymlKeys({"internalField","left","p"}));
         
-
-        c4::from_chars((*settings)["internalField"]["origin"][0].val(), &origin[0]);
-        c4::from_chars((*settings)["internalField"]["origin"][1].val(), &origin[1]);
-        c4::from_chars((*settings)["internalField"]["origin"][2].val(), &origin[2]);
-        c4::from_chars((*settings)["internalField"]["normal"][0].val(), &normal[0]);
-        c4::from_chars((*settings)["internalField"]["normal"][1].val(), &normal[1]);
-        c4::from_chars((*settings)["internalField"]["normal"][2].val(), &normal[2]);
-
-        c4::from_chars((*settings)["internalField"]["left"]["rho"].val(), &sol1[0]);
-        c4::from_chars((*settings)["internalField"]["left"]["U"][0].val(), &sol1[1]);
-        c4::from_chars((*settings)["internalField"]["left"]["U"][1].val(), &sol1[2]);
-        c4::from_chars((*settings)["internalField"]["left"]["U"][2].val(), &sol1[3]);
-        c4::from_chars((*settings)["internalField"]["left"]["p"].val(), &sol1[num_equation-1]);
-
-        c4::from_chars((*settings)["internalField"]["right"]["rho"].val(), &sol2[0]);
-        c4::from_chars((*settings)["internalField"]["right"]["U"][0].val(), &sol2[1]);
-        c4::from_chars((*settings)["internalField"]["right"]["U"][1].val(), &sol2[2]);
-        c4::from_chars((*settings)["internalField"]["right"]["U"][2].val(), &sol2[3]);
-        c4::from_chars((*settings)["internalField"]["right"]["p"].val(), &sol2[num_equation-1]);
-
+        sol2[0] = read<double>(settings,rymlKeys({"internalField","right","rho"}));
+        sol2[1] = readVectorComponent<double>(settings,rymlKeys({"internalField","right","U"}),0);
+        sol2[2] = readVectorComponent<double>(settings,rymlKeys({"internalField","right","U"}),1);
+        sol2[3] = readVectorComponent<double>(settings,rymlKeys({"internalField","right","U"}),2);
+        sol2[num_equation-1] = read<double>(settings,rymlKeys({"internalField","right","p"}));
+        
         ICInterface = new ICPlaneBreakup(sol1, sol2, origin, normal);
     }
     else if (icType == "sphericalBreakup")
@@ -165,49 +191,88 @@ void CaseManager::parse(std::string& caseFileName)
         Vector sol2(num_equation);
         double radius = 0.0;
 
-        c4::from_chars((*settings)["internalField"]["origin"][0].val(), &origin[0]);
-        c4::from_chars((*settings)["internalField"]["origin"][1].val(), &origin[1]);
-        c4::from_chars((*settings)["internalField"]["origin"][2].val(), &origin[2]);
-        c4::from_chars((*settings)["internalField"]["radius"].val(), &radius);
+        origin[0] = readVectorComponent<double>(settings,rymlKeys({"internalField","origin"}),0);
+        origin[1] = readVectorComponent<double>(settings,rymlKeys({"internalField","origin"}),1);
+        origin[2] = readVectorComponent<double>(settings,rymlKeys({"internalField","origin"}),2);
 
-        c4::from_chars((*settings)["internalField"]["left"]["rho"].val(), &sol1[0]);
-        c4::from_chars((*settings)["internalField"]["left"]["U"][0].val(), &sol1[1]);
-        c4::from_chars((*settings)["internalField"]["left"]["U"][1].val(), &sol1[2]);
-        c4::from_chars((*settings)["internalField"]["left"]["U"][2].val(), &sol1[3]);
-        c4::from_chars((*settings)["internalField"]["left"]["p"].val(), &sol1[num_equation-1]);
+        radius = read<double>(settings,rymlKeys({"internalField","radius"}));
 
-        c4::from_chars((*settings)["internalField"]["right"]["rho"].val(), &sol2[0]);
-        c4::from_chars((*settings)["internalField"]["right"]["U"][0].val(), &sol2[1]);
-        c4::from_chars((*settings)["internalField"]["right"]["U"][1].val(), &sol2[2]);
-        c4::from_chars((*settings)["internalField"]["right"]["U"][2].val(), &sol2[3]);
-        c4::from_chars((*settings)["internalField"]["right"]["p"].val(), &sol2[num_equation-1]);
-
+        sol1[0] = read<double>(settings,rymlKeys({"internalField","left","rho"}));
+        sol1[1] = readVectorComponent<double>(settings,rymlKeys({"internalField","left","U"}),0);
+        sol1[2] = readVectorComponent<double>(settings,rymlKeys({"internalField","left","U"}),1);
+        sol1[3] = readVectorComponent<double>(settings,rymlKeys({"internalField","left","U"}),2);
+        sol1[num_equation-1] = read<double>(settings,rymlKeys({"internalField","left","p"}));
+        
+        sol2[0] = read<double>(settings,rymlKeys({"internalField","right","rho"}));
+        sol2[1] = readVectorComponent<double>(settings,rymlKeys({"internalField","right","U"}),0);
+        sol2[2] = readVectorComponent<double>(settings,rymlKeys({"internalField","right","U"}),1);
+        sol2[3] = readVectorComponent<double>(settings,rymlKeys({"internalField","right","U"}),2);
+        sol2[num_equation-1] = read<double>(settings,rymlKeys({"internalField","right","p"}));
+        
         ICInterface = new ICSphericalBreakup(sol1, sol2, origin, radius);
     }
     else if (icType == "densityPulse")
     {
         Vector sol(num_equation);
         double epsilon = 0.0;
+        
+        origin[0] = readVectorComponent<double>(settings,rymlKeys({"internalField","origin"}),0);
+        origin[1] = readVectorComponent<double>(settings,rymlKeys({"internalField","origin"}),1);
+        origin[2] = readVectorComponent<double>(settings,rymlKeys({"internalField","origin"}),2);
 
-        c4::from_chars((*settings)["internalField"]["origin"][0].val(), &origin[0]);
-        c4::from_chars((*settings)["internalField"]["origin"][1].val(), &origin[1]);
-        c4::from_chars((*settings)["internalField"]["origin"][2].val(), &origin[2]);
-        c4::from_chars((*settings)["internalField"]["epsilon"].val(), &epsilon);
+        epsilon = read<double>(settings,rymlKeys({"internalField","epsilon"}));
 
-        c4::from_chars((*settings)["internalField"]["U"][0].val(), &sol[1]);
-        c4::from_chars((*settings)["internalField"]["U"][1].val(), &sol[2]);
-        c4::from_chars((*settings)["internalField"]["U"][2].val(), &sol[3]);
-        c4::from_chars((*settings)["internalField"]["p"].val(), &sol[num_equation-1]);
+        sol[0] = 0.0;
+        sol[1] = readVectorComponent<double>(settings,rymlKeys({"internalField","U"}),0);
+        sol[2] = readVectorComponent<double>(settings,rymlKeys({"internalField","U"}),1);
+        sol[3] = readVectorComponent<double>(settings,rymlKeys({"internalField","U"}),2);
+        sol[num_equation-1] = read<double>(settings,rymlKeys({"internalField","p"}));
 
         ICInterface = new ICDensityPulse(sol, origin, epsilon);
     }
+    else if (icType == "twoHexahedronsBreakup")
+    {
+        Vector sol1(num_equation);
+        Vector sol2(num_equation);
+
+        c1min[0] = readVectorComponent<double>(settings,rymlKeys({"internalField","min1"}),0);
+        c1min[1] = readVectorComponent<double>(settings,rymlKeys({"internalField","min1"}),1);
+        c1min[2] = readVectorComponent<double>(settings,rymlKeys({"internalField","min1"}),2);
+
+        c1max[0] = readVectorComponent<double>(settings,rymlKeys({"internalField","max1"}),0);
+        c1max[1] = readVectorComponent<double>(settings,rymlKeys({"internalField","max1"}),1);
+        c1max[2] = readVectorComponent<double>(settings,rymlKeys({"internalField","max1"}),2);
+
+        c2min[0] = readVectorComponent<double>(settings,rymlKeys({"internalField","min2"}),0);
+        c2min[1] = readVectorComponent<double>(settings,rymlKeys({"internalField","min2"}),1);
+        c2min[2] = readVectorComponent<double>(settings,rymlKeys({"internalField","min2"}),2);
+
+        c2max[0] = readVectorComponent<double>(settings,rymlKeys({"internalField","max2"}),0);
+        c2max[1] = readVectorComponent<double>(settings,rymlKeys({"internalField","max2"}),1);
+        c2max[2] = readVectorComponent<double>(settings,rymlKeys({"internalField","max2"}),2);
+
+        sol1[0] = read<double>(settings,rymlKeys({"internalField","left","rho"}));
+        sol1[1] = readVectorComponent<double>(settings,rymlKeys({"internalField","left","U"}),0);
+        sol1[2] = readVectorComponent<double>(settings,rymlKeys({"internalField","left","U"}),1);
+        sol1[3] = readVectorComponent<double>(settings,rymlKeys({"internalField","left","U"}),2);
+        sol1[num_equation-1] = read<double>(settings,rymlKeys({"internalField","left","p"}));
+        
+        sol2[0] = read<double>(settings,rymlKeys({"internalField","right","rho"}));
+        sol2[1] = readVectorComponent<double>(settings,rymlKeys({"internalField","right","U"}),0);
+        sol2[2] = readVectorComponent<double>(settings,rymlKeys({"internalField","right","U"}),1);
+        sol2[3] = readVectorComponent<double>(settings,rymlKeys({"internalField","right","U"}),2);
+        sol2[num_equation-1] = read<double>(settings,rymlKeys({"internalField","right","p"}));
+        
+        ICInterface = new ICTwoHexahedronsBreakup(sol1, sol2, c1min, c1max, c2min, c2max);
+    }
+
     else
     {
         if (myRank == 0)
         {
-            cout << "Wrong type if initial condition" << endl
+            cout << "Wrong type of initial condition" << endl
              << "Available types: "
-             << "constant, planeBreakup, sphericalBreakup" << endl;
+             << "constant, planeBreakup, sphericalBreakup, twoHexahedronsBreakup" << endl;
         }
     }
 
@@ -216,23 +281,29 @@ void CaseManager::parse(std::string& caseFileName)
 
 void CaseManager::loadMesh(ParMesh*& pmesh)
 {
-    const char* meshFile = ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()).c_str();
+    // resh mesh filename and convert it to char* 
+
+    ryml::csubstr meshFileRaw = read<ryml::csubstr>(settings,rymlKeys({"mesh","file"}));
+    std:string meshFileStr(meshFileRaw.str, meshFileRaw.len);
+    meshFile = meshFileStr.c_str();
     
     // read mesh settings
-    // strcpy(meshFile, mf);
-    c4::from_chars((*settings)["mesh"]["serialRefLevels"].val(), &serRefLevels);
-    c4::from_chars((*settings)["mesh"]["parallelRefLevels"].val(), &parRefLevels);
-    c4::from_chars((*settings)["mesh"]["adaptive"].val(), &adaptive_mesh);
+
+    serRefLevels = readOrDefault<int>(settings,rymlKeys({"mesh","serialRefLevels"}), 0);
+    parRefLevels = readOrDefault<int>(settings,rymlKeys({"mesh","parallelRefLevels"}), 0);
+    adaptive_mesh = readOrDefault<bool>(settings,rymlKeys({"mesh","adaptive"}), 0);
+    local_refinement = readOrDefault<bool>(settings,rymlKeys({"mesh","localRefinement"}), 0);
 
     if (myRank == 0)
     {
-        cout << "Reading mesh from " << ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()).c_str() << "..." << endl;
+        cout << "Reading mesh from " << meshFile << "..." << endl;
         cout << "* Serial refinement levels = " << serRefLevels << endl;
         cout << "* Parallel refinement levels = " << parRefLevels << endl;
         cout << "* Adaptive: " << (adaptive_mesh ? "true" : "false") << endl;
+        cout << "* Local refinement: " << (local_refinement ? "true" : "false") << endl;
     }
     // read adaptive mesh settings
-
+//?//
 
     if (restart) // load par mesh in case of restart
     {
@@ -263,7 +334,8 @@ void CaseManager::loadMesh(ParMesh*& pmesh)
         // 2.1. Read the serial mesh on all processors, refine it in serial, then
         //     partition it across all processors and refine it in parallel.
 
-        std::ifstream meshStream(ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()).c_str());
+        std::ifstream meshStream;
+        meshStream.open(meshFile);
 
         Mesh *mesh = new Mesh(meshStream, 1, 1);
         mesh->EnsureNCMesh(true);
@@ -273,7 +345,66 @@ void CaseManager::loadMesh(ParMesh*& pmesh)
             mesh->UniformRefinement();
         }
 
-        //if (myRank == 0) { cout << "Number of cells: " << mesh->GetNE() << endl; }
+        if (local_refinement)
+        {
+            localRefLevels = readOrDefault<int>(settings,rymlKeys({"mesh","localRefinement","refLevels"}), 0);
+            localRefInside = readOrDefault<bool>(settings,rymlKeys({"mesh","localRefinement","inside"}), 0);
+            localRefType = read<ryml::csubstr>(settings,rymlKeys({"mesh","localRefinement","type"}));
+
+            if (localRefType == "sphere")
+            {
+                double radius = 0.0;
+                
+                origin[0] = readVectorComponent<double>(settings,rymlKeys({"mesh","localRefinement","origin"}),0);
+                origin[1] = readVectorComponent<double>(settings,rymlKeys({"mesh","localRefinement","origin"}),1);
+                origin[2] = readVectorComponent<double>(settings,rymlKeys({"mesh","localRefinement","origin"}),2);
+
+                radius = read<double>(settings,rymlKeys({"mesh","localRefinement","radius"}));
+                
+                SphericalLocalRefiner locref(origin,radius,mesh,localRefLevels,localRefInside);
+                locref.Refine();
+            }
+            else if (localRefType == "hex")
+            {
+                c1min[0] = readVectorComponent<double>(settings,rymlKeys({"mesh","localRefinement","min1"}),0);
+                c1min[1] = readVectorComponent<double>(settings,rymlKeys({"mesh","localRefinement","min1"}),1);
+                c1min[2] = readVectorComponent<double>(settings,rymlKeys({"mesh","localRefinement","min1"}),2);
+
+                c1max[0] = readVectorComponent<double>(settings,rymlKeys({"mesh","localRefinement","max1"}),0);
+                c1max[1] = readVectorComponent<double>(settings,rymlKeys({"mesh","localRefinement","max1"}),1);
+                c1max[2] = readVectorComponent<double>(settings,rymlKeys({"mesh","localRefinement","max1"}),2);
+
+                HexahedronLocalRefiner locref(c1min,c1max,mesh,localRefLevels,localRefInside);
+                locref.Refine();
+            }
+            else if (localRefType == "cylinder")
+            {
+                double radius = 0.0;
+                
+                c1min[0] = readVectorComponent<double>(settings,rymlKeys({"mesh","localRefinement","p1"}),0);
+                c1min[1] = readVectorComponent<double>(settings,rymlKeys({"mesh","localRefinement","p1"}),1);
+                c1min[2] = readVectorComponent<double>(settings,rymlKeys({"mesh","localRefinement","p1"}),2);
+
+                c1max[0] = readVectorComponent<double>(settings,rymlKeys({"mesh","localRefinement","p2"}),0);
+                c1max[1] = readVectorComponent<double>(settings,rymlKeys({"mesh","localRefinement","p2"}),1);
+                c1max[2] = readVectorComponent<double>(settings,rymlKeys({"mesh","localRefinement","p2"}),2);
+                
+                radius = read<double>(settings,rymlKeys({"mesh","localRefinement","radius"}));
+                
+                CylindricalLocalRefiner locref(c1min,c1max,radius,mesh,localRefLevels,localRefInside);
+                locref.Refine();
+            }
+            else
+            {
+                if (myRank == 0) 
+                    cout << "Unknown local refiner type: " << localRefType << '\n';
+                exit(1);
+            }
+        }
+
+
+
+        if (myRank == 0) { cout << "Number of cells: " << mesh->GetNE() << endl; }
 
         // 2.2. Define a parallel mesh by a partitioning of the serial mesh. Refine
         //     this mesh further in parallel to increase the resolution. Once the
@@ -286,14 +417,14 @@ void CaseManager::loadMesh(ParMesh*& pmesh)
             pmesh->UniformRefinement();
         }
         restart_data_c.SetFormat(1);
-        restart_data_c.SetMesh(pmesh); 
-        if (myRank == 0) cout << "Number of cells: " << pmesh->GetNE() << endl; 
+        restart_data_c.SetMesh(pmesh);  
     } 
 
-    if (myRank == 0) cout << pmesh->Dimension() << endl;
+    if (myRank == 0) cout << "Dimension = " << pmesh->Dimension() << endl;
 
+    spaceDim = pmesh->SpaceDimension();
     readPhysicalNames(pmesh);
-    minimizeAttributes(pmesh);
+    // minimizeAttributes(pmesh);
 }
 
 void CaseManager::readPhysicalNames(ParMesh*& mesh)
@@ -307,11 +438,11 @@ void CaseManager::readPhysicalNames(ParMesh*& mesh)
     std::map<std::string,int>& map_phys_names_tag = (mesh->SpaceDimension() == 2) ? map_phys_names_tag_2D : map_phys_names_tag_3D;
     std::map<std::string,int>& map_bdr_names_tag  = (mesh->SpaceDimension() == 2) ? map_phys_names_tag_1D : map_phys_names_tag_2D;
 
-    std::ifstream input (ryml::preprocess_json<std::string>((*settings)["mesh"]["file"].val()).c_str());
+    std::ifstream input(meshFile);
 
     while (input >> buff)
     {
-        if (buff == "$PhysicalNames") // reading mesh vertices
+        if (buff == "$PhysicalNames") 
         {
             input >> number_of_physical_groups;
             getline(input, buff);
@@ -320,10 +451,13 @@ void CaseManager::readPhysicalNames(ParMesh*& mesh)
             {
                 input >> dim_r >> tag_r >> phys_group_name_r;
 
-                if ( phys_group_name_r.front() == '"' ) {
+                if ( phys_group_name_r.front() == '"' ) 
+                {
                     phys_group_name_r.erase( 0, 1 ); // erase the first character
                     phys_group_name_r.erase( phys_group_name_r.size() - 1 ); // erase the last character
                 }
+
+                cout << phys_group_name_r << endl;
 
                 if ( (dim_r == 1 && mesh->SpaceDimension() == 2) || (dim_r == 2 && mesh->SpaceDimension() == 3) )
                 {
@@ -412,7 +546,7 @@ void CaseManager::minimizeAttributes(ParMesh*& mesh)
             // }
             if (curAttr == mesh->bdr_attributes[iAttr])
             {
-                mesh->SetBdrAttribute(iCell, iAttr + 1 + mesh->attributes.Size());
+                mesh->SetBdrAttribute(iCell, iAttr + 1);
                 break;
             }
         }
@@ -429,7 +563,7 @@ void CaseManager::minimizeAttributes(ParMesh*& mesh)
         {
             if (it->second == mesh->bdr_attributes[iAttr])
             {
-                it->second = iAttr + 1 + mesh->attributes.Size();
+                it->second = iAttr + 1;
                 break;
             }
         }
@@ -440,7 +574,9 @@ void CaseManager::minimizeAttributes(ParMesh*& mesh)
     //     mesh->bdr_attributes[i + hasUnitBdrAttribute] = i + 1 + mesh->attributes.Size();
     
     for (int i = 0; i < mesh->bdr_attributes.Size(); ++i)
-        mesh->bdr_attributes[i] = i + 1 + mesh->attributes.Size();
+    {
+        mesh->bdr_attributes[i] = i + 1;
+    }
 
     // if (hasUnitBdrAttribute)
     //     mesh->bdr_attributes[0] = 1;
@@ -449,29 +585,33 @@ void CaseManager::minimizeAttributes(ParMesh*& mesh)
 
 void CaseManager::loadAdaptiveMeshSettings(ThresholdRefiner& refiner,ThresholdDerefiner& derefiner)
 {
-    c4::from_chars((*settings)["mesh"]["totalErrorFraction"].val(), &total_error_fraction);
-    c4::from_chars((*settings)["mesh"]["maxElemError"].val(), &max_elem_error);
-    c4::from_chars((*settings)["mesh"]["hysteresis"].val(), &hysteresis);
-    c4::from_chars((*settings)["mesh"]["preferConformingRefinement"].val(), &prefer_conforming_refinement);
-    c4::from_chars((*settings)["mesh"]["nonConformingLimit"].val(), &nc_limit);
+    // c4::from_chars(settings["mesh"]["totalErrorFraction"].val(), &total_error_fraction);
+    // c4::from_chars(settings["mesh"]["maxElemError"].val(), &max_elem_error);
+    // c4::from_chars(settings["mesh"]["hysteresis"].val(), &hysteresis);
+    // c4::from_chars(settings["mesh"]["preferConformingRefinement"].val(), &prefer_conforming_refinement);
+    // c4::from_chars(settings["mesh"]["nonConformingLimit"].val(), &nc_limit);
 
-    refiner.SetTotalErrorFraction(total_error_fraction); // use purely local threshold
+    // refiner.SetTotalErrorFraction(total_error_fraction); // use purely local threshold
 
-    refiner.SetLocalErrorGoal(max_elem_error);
-    if (prefer_conforming_refinement)
-        refiner.PreferConformingRefinement();
-    refiner.SetNCLimit(nc_limit);
+    // refiner.SetLocalErrorGoal(max_elem_error);
+    // if (prefer_conforming_refinement)
+    //     refiner.PreferConformingRefinement();
+    // refiner.SetNCLimit(nc_limit);
 
-    derefiner.SetThreshold(hysteresis * max_elem_error);
-    derefiner.SetNCLimit(nc_limit);
+    // derefiner.SetThreshold(hysteresis * max_elem_error);
+    // derefiner.SetNCLimit(nc_limit);
 }
 
 void CaseManager::checkNumEqn(int dim)
 {
     if (dim == 2)
+    {
         num_equation = 4;
+    }
     else if (dim == 3)
+    {
         num_equation = 5;
+    }
     else
     {
         if (myRank == 0)
@@ -511,9 +651,9 @@ void CaseManager::loadInitialSolution( ParFiniteElementSpace& vfes, const Array<
     else
     {
         // Initialize the state.
-        Vector solConst(num_equation);
         VectorFunctionCoefficient u0(num_equation, ICInterface->setIC());
         sol.ProjectCoefficient(u0);
+        
         // Save the state to the VisIt
         restart_data_c.RegisterField("restart_conservative_vars",&sol);
         restart_data_c.Save();
@@ -523,18 +663,25 @@ void CaseManager::loadInitialSolution( ParFiniteElementSpace& vfes, const Array<
 void CaseManager::loadRiemannSolver(RiemannSolver*& rsolver)
 {
     //read riemann solver
-    rsolverType = ryml::preprocess_json<std::string>((*settings)["spatial"]["riemannSolver"].val());
-
+    rsolverType = read<ryml::csubstr>(settings,rymlKeys({"spatial","riemannSolver"}));
     if (myRank == 0) cout << "Riemann solver type: " << rsolverType << endl;
 
     if (rsolverType == "Rusanov")
+    {
         rsolver = new RiemannSolverRusanov();
+    }
     else if (rsolverType == "LLF")
+    {
         rsolver = new RiemannSolverLLF();
+    }
     else if (rsolverType == "HLL")
+    {
         rsolver = new RiemannSolverHLL();
+    }
     else if (rsolverType == "HLLC")
+    {
         rsolver = new RiemannSolverHLLC();
+    }
     else 
     {
         if (myRank == 0) cout << "Unknown Riemann solver type: " << rsolverType << '\n';
@@ -542,49 +689,70 @@ void CaseManager::loadRiemannSolver(RiemannSolver*& rsolver)
     }
 }
 
-void CaseManager::loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, const Array<int>& offsets, const int dim, BlockVector& indicatorData, ParFiniteElementSpace& vfes)
+int CaseManager::getFinDiffGroupAttribute(ryml::csubstr fdGroupName)
 {
-    std::string limiterType = ryml::preprocess_json<std::string>((*settings)["spatial"]["limiter"]["type"].val());
+    std::map<std::string,int>& map_phys_names_tag = (spaceDim == 2) ? map_phys_names_tag_2D : map_phys_names_tag_3D;
 
-    std::string indicatorType = "notype";
+    for(std::map<std::string,int>::iterator it = map_phys_names_tag.begin(); it != map_phys_names_tag.end(); it++)
+    {
+        if (it->first == fdGroupName)
+        {
+            return it->second;
+        }
+    }
 
-    if ((*settings)["spatial"]["limiter"]["linearize"].val().size() != 0)
-        c4::from_chars((*settings)["spatial"]["limiter"]["linearize"].val(), &linearize);
+    return -1;
+}
+
+void CaseManager::loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, const Array<int>& offsets, const int dim, ParFiniteElementSpace& fes_const, ParFiniteElementSpace& vfes)
+{
+    ryml::csubstr limiterType = read<ryml::csubstr>(settings,rymlKeys({"spatial","limiter","type"}));
+    if (myRank == 0) cout << limiterType << endl;
+
+    linearize = readOrDefault<bool>(settings,rymlKeys({"spatial","limiter","linearize"}), 0);
+    haveLastHope = readOrDefault<bool>(settings,rymlKeys({"spatial","limiter","haveLastHope"}), 1);
+    if (myRank == 0) cout << "Additional linearization: " << linearize << endl;
+    if (myRank == 0) cout << "Last hope limiter (cut slopes in cell in case of nonphysical values in vertices after limiting): " << haveLastHope << endl;
+    
+    ryml::csubstr fdGroupName = readOrDefault<ryml::csubstr>(settings,rymlKeys({"spatial","limiter","cutSlopeGroup"}), "");
+
+    if (fdGroupName != "")
+    {
+        fdGroupAttr = getFinDiffGroupAttribute(fdGroupName);
+        if (myRank == 0) cout << "Cut slopes in the following group of cells: " << fdGroupName << endl;
+    }
     else
-        linearize = 0;
+    {
+        fdGroupAttr = -1;
+    }
+    
+    ryml::csubstr indicatorType = read<ryml::csubstr>(settings,rymlKeys({"spatial","limiter","indicator"}));
 
-    if ((*settings)["spatial"]["limiter"]["haveLastHope"].val().size() != 0)
-        c4::from_chars((*settings)["spatial"]["limiter"]["haveLastHope"].val(), &haveLastHope);
-    else
-        haveLastHope = 1;
-
-    cout << "Additional linearization: " << linearize << endl;
-    cout << "Cut slopes in case of nonphysical values in vertices: " << haveLastHope << endl;
-    // if (limiterType == "BJ") 
-    // {
-    //     indicatorType = "BJ";
-    //     limiterType = "Multi";
-    // }
-    // else
-    // {
-        indicatorType = ryml::preprocess_json<std::string>((*settings)["spatial"]["limiter"]["indicator"].val());
-    // }
+    // Define indicator object
 
     if (indicatorType == "Nowhere")
     {
-       ind = new IndicatorNowhere(avgr, &vfes, offsets, dim, indicatorData);
+        ind = new IndicatorNowhere(avgr, &vfes, &fes_const, offsets, dim);
     }
     else if (indicatorType == "Everywhere")
     {
-        ind = new IndicatorEverywhere(avgr, &vfes, offsets, dim, indicatorData); 
+        ind = new IndicatorEverywhere(avgr, &vfes, &fes_const, offsets, dim); 
     }
     else if (indicatorType == "BJ")
     {
-        ind = new IndicatorBJ(avgr, &vfes, offsets, dim, indicatorData); 
+        ind = new IndicatorBJ(avgr, &vfes, &fes_const, offsets, dim); 
+    }
+    else if (indicatorType == "Venkatakrishnan" || indicatorType == "Venkata")
+    {
+        ind = new IndicatorVenkatakrishnan(avgr, &vfes, &fes_const, offsets, dim); 
+    }
+    else if (indicatorType == "Michalak")
+    {
+        ind = new IndicatorMichalak(avgr, &vfes, &fes_const, offsets, dim); 
     }
     else if (indicatorType == "Shu")
     {
-        ind = new IndicatorShu(avgr, &vfes, offsets, dim, indicatorData);    
+        ind = new IndicatorShu(avgr, &vfes, &fes_const, offsets, dim);    
     }
     else
     {
@@ -596,11 +764,15 @@ void CaseManager::loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, cons
     
     if (limiterType == "FinDiff")
     {
-        l = new LimiterFinDiff(*ind, avgr, &vfes, offsets, linearize, haveLastHope, dim);
+        l = new LimiterFinDiff(*ind, avgr, &vfes, offsets, linearize, haveLastHope, fdGroupAttr, dim);
     }
     else if (limiterType == "Multi")
     {
-        l = new LimiterMultiplier(*ind, avgr, &vfes, offsets, linearize, haveLastHope, dim);
+        l = new LimiterMultiplier(*ind, avgr, &vfes, offsets, linearize, haveLastHope, fdGroupAttr, dim);
+    }
+    else if (limiterType == "None")
+    {
+        l = new LimiterNone(*ind, avgr, &vfes, offsets, linearize, haveLastHope, fdGroupAttr, dim);
     }
     else
     {
@@ -614,8 +786,8 @@ void CaseManager::loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, cons
 void CaseManager::addBoundaryIntegrators(ParNonlinearForm& A, ParMesh& mesh, RiemannSolver& rsolver, int dim)
 {
     int tag = 0;
-    std::string name;
-    std::string type;
+    ryml::csubstr nameYaml;
+    ryml::csubstr type;
      
     // for fully periodic meshes
     if (mesh.bdr_attributes.Size() == 0) 
@@ -646,41 +818,42 @@ void CaseManager::addBoundaryIntegrators(ParNonlinearForm& A, ParMesh& mesh, Rie
     for (int i = 0; i < mesh.bdr_attributes.Max(); ++i)
         bdr_markers[i].SetSize(mesh.bdr_attributes.Max());
 
-    // if (myRank == 0) mesh.bdr_attributes.Print(cout << "Boundary attributes in mesh:\n");   
+    if (myRank == 0) mesh.bdr_attributes.Print(cout << "Boundary attributes in mesh:\n");   
 
     
-
-    // if ( ((*settings)["boundaryField"].num_children() != mesh.bdr_attributes.Size()) )
-    // {
-    //     if (myRank == 0)
-    //     {
-    //         cout << "=====\nPossible mismatch of boundary conditions and geometric boundary groups." << endl;
-    //         cout << "(*settings)[boundaryField].num_children() = " << (*settings)["boundaryField"].num_children() << endl;
-    //         cout << "mesh.bdr_attributes.Size() = " << mesh.bdr_attributes.Size() << endl;
-    //         cout << "Boundary names:" << endl;
-    //         for (ryml::NodeRef node : (*settings)["boundaryField"].children())
-    //         {
-    //             cout << " * " << node.key() << endl;
-    //         }
-    //         cout << "Geometric boundaries:\n";
-    //         for ( std::map<std::string,int>::iterator it = map_bdr_names_tag.begin(); it != map_bdr_names_tag.end(); it++)
-    //         {
-    //             cout << " * " << it->first << endl;
-    //         }
-    //     }
+    if ( ((*settings)["boundaryField"].num_children() != mesh.bdr_attributes.Size()) )
+    {
+        if (myRank == 0)
+        {
+            cout << "=====\nPossible mismatch of boundary conditions and geometric boundary groups." << endl;
+            cout << "settings[boundaryField].num_children() = " << (*settings)["boundaryField"].num_children() << endl;
+            cout << "mesh.bdr_attributes.Size() = " << mesh.bdr_attributes.Size() << endl;
+            cout << "Boundary names:" << endl;
+            for (ryml::NodeRef node : (*settings)["boundaryField"].children())
+            {
+                cout << " * " << node.key() << endl;
+            }
+            cout << "Geometric boundaries:\n";
+            for ( std::map<std::string,int>::iterator it = map_bdr_names_tag.begin(); it != map_bdr_names_tag.end(); it++)
+            {
+                cout << " * " << it->first << endl;
+            }
+        }
         
-    //     exit(1);
-    // }
+        exit(1);
+    }
 
     if (myRank == 0) cout << "Boundary conditions:" << endl;
 
     // read patch names and tags from mesh file $PhysicalNames
     int patchNumber = 0;
-    for (ryml::NodeRef node : (*settings)["boundaryField"].children())
+    for (auto node : (*settings)["boundaryField"].children())
     {
         // find tag for the name
         tag = -1;
-        name = ryml::preprocess_json<std::string>(node.key());
+        cout << node.key() << endl;
+        nameYaml = node.key();
+        std::string name (nameYaml.str, nameYaml.len);
         for ( std::map<std::string,int>::iterator it = map_bdr_names_tag.begin(); it != map_bdr_names_tag.end(); it++)
         {
             if (name == it->first)
@@ -695,8 +868,8 @@ void CaseManager::addBoundaryIntegrators(ParNonlinearForm& A, ParMesh& mesh, Rie
             if (myRank == 0) cout << "No geometric group for boundary " << name << endl;
             continue;
         }
-        // read names, tags and sth like this
-        c4::from_chars((*settings)["boundaryField"][node.key()]["type"].val(), &type);
+
+        type = read<ryml::csubstr>(settings,rymlKeys({"boundaryField",node.key(),"type"}));
 
         if (myRank == 0) cout << node.key() << "\t| " << tag << "\t| " << type << "; ";
 
@@ -708,37 +881,25 @@ void CaseManager::addBoundaryIntegrators(ParNonlinearForm& A, ParMesh& mesh, Rie
         // read additional type values
         if (type == "subsonicInletTotalPressure")
         {
-            double inletT;
-            double inletP;
-
-            c4::from_chars((*settings)["boundaryField"][node.key()]["pTot"].val(), &inletP);
-            c4::from_chars((*settings)["boundaryField"][node.key()]["TTot"].val(), &inletT);
+            double inletP = read<double>(settings,rymlKeys({"boundaryField",node.key(),"pTot"}));
+            double inletT = read<double>(settings,rymlKeys({"boundaryField",node.key(),"TTot"}));
 
             A.AddBdrFaceIntegrator(new BoundaryIntegratorSubsonicInletTotalPressure(rsolver, dim, inletP, inletT), bdr_markers[patchNumber] );
         }
         else if (type == "subsonicInletFixedPressure")
         {
-            double inletT;
-            double inletP;
-
-            c4::from_chars((*settings)["boundaryField"][node.key()]["pFix"].val(), &inletP);
-            c4::from_chars((*settings)["boundaryField"][node.key()]["TTot"].val(), &inletT);
+            double inletP = read<double>(settings,rymlKeys({"boundaryField",node.key(),"pFix"}));
+            double inletT = read<double>(settings,rymlKeys({"boundaryField",node.key(),"TTot"}));
 
             A.AddBdrFaceIntegrator(new BoundaryIntegratorSubsonicInletFixedPressure(rsolver, dim, inletP, inletT), bdr_markers[patchNumber] );
         }
         else if (type == "supersonicInlet")
         {
-            double inletRho;
-            double inletU;
-            double inletV;
-            double inletW;
-            double inletP;
-
-            c4::from_chars((*settings)["boundaryField"][node.key()]["rhoI"].val(), &inletRho);
-            c4::from_chars((*settings)["boundaryField"][node.key()]["UI"][0].val(), &inletU);
-            c4::from_chars((*settings)["boundaryField"][node.key()]["UI"][1].val(), &inletV);
-            c4::from_chars((*settings)["boundaryField"][node.key()]["UI"][2].val(), &inletW);
-            c4::from_chars((*settings)["boundaryField"][node.key()]["pI"].val(), &inletP);
+            double inletRho = read<double>(settings,rymlKeys({"boundaryField",node.key(),"rhoI"}));
+            double inletU = readVectorComponent<double>(settings,rymlKeys({"boundaryField",node.key(),"UI"}),0);
+            double inletV = readVectorComponent<double>(settings,rymlKeys({"boundaryField",node.key(),"UI"}),1);
+            double inletW = readVectorComponent<double>(settings,rymlKeys({"boundaryField",node.key(),"UI"}),2);
+            double inletP = read<double>(settings,rymlKeys({"boundaryField",node.key(),"pI"}));
 
             Vector inletVars(num_equation);
 
@@ -760,35 +921,24 @@ void CaseManager::addBoundaryIntegrators(ParNonlinearForm& A, ParMesh& mesh, Rie
         }
         else if (type == "totalPressureFixedTemperatureOutlet")
         {
-            double inletT;
-            double inletP;
-
-            c4::from_chars((*settings)["boundaryField"][node.key()]["pTot"].val(), &inletP);
-            c4::from_chars((*settings)["boundaryField"][node.key()]["TFix"].val(), &inletT);
+            double inletP = read<double>(settings,rymlKeys({"boundaryField",node.key(),"pTot"}));
+            double inletT = read<double>(settings,rymlKeys({"boundaryField",node.key(),"TFix"}));
 
             A.AddBdrFaceIntegrator(new BoundaryIntegratorOpenTotalPressure(rsolver, dim, inletP, inletT), bdr_markers[patchNumber] );
         }
         else if (type == "fixedPressureOutlet")
         {
-            double inletP;
-
-            c4::from_chars((*settings)["boundaryField"][node.key()]["pFix"].val(), &inletP);
+            double inletP = read<double>(settings,rymlKeys({"boundaryField",node.key(),"pFix"}));
 
             A.AddBdrFaceIntegrator(new BoundaryIntegratorOpenFixedPressure(rsolver, dim, inletP), bdr_markers[patchNumber] );
         }
         else if (type == "charOutlet")
         {
-            double inletRho;
-            double inletU;
-            double inletV;
-            double inletW;
-            double inletP;
-
-            c4::from_chars((*settings)["boundaryField"][node.key()]["rhoI"].val(), &inletRho);
-            c4::from_chars((*settings)["boundaryField"][node.key()]["UI"][0].val(), &inletU);
-            c4::from_chars((*settings)["boundaryField"][node.key()]["UI"][1].val(), &inletV);
-            c4::from_chars((*settings)["boundaryField"][node.key()]["UI"][2].val(), &inletW);
-            c4::from_chars((*settings)["boundaryField"][node.key()]["pI"].val(), &inletP);
+            double inletRho = read<double>(settings,rymlKeys({"boundaryField",node.key(),"rhoI"}));
+            double inletU = readVectorComponent<double>(settings,rymlKeys({"boundaryField",node.key(),"UI"}),0);
+            double inletV = readVectorComponent<double>(settings,rymlKeys({"boundaryField",node.key(),"UI"}),1);
+            double inletW = readVectorComponent<double>(settings,rymlKeys({"boundaryField",node.key(),"UI"}),2);
+            double inletP = read<double>(settings,rymlKeys({"boundaryField",node.key(),"pI"}));
 
             Vector inletVars(num_equation);
 
@@ -821,8 +971,7 @@ void CaseManager::addBoundaryIntegrators(ParNonlinearForm& A, ParMesh& mesh, Rie
 
 void CaseManager::loadTimeSolver(ODESolver*& ode_solver, Limiter* l)
 {
-    int order = 0;
-    c4::from_chars((*settings)["time"]["order"].val(), &order);
+    int order = readOrDefault<int>(settings,rymlKeys({"time","order"}),0);
 
     if (myRank == 0) cout << "Runge --- Kutta order: " << order << endl;
 
@@ -878,7 +1027,7 @@ void CaseManager::loadTimeSolver(ODESolver*& ode_solver, Limiter* l)
         b[0] = 0.1666666666666666;
         b[1] = 0.1666666666666666;
         b[2] = 0.6666666666666666;
-        c = new double [2];
+        c = new double [3];
         c[0] = 0.0;
         c[1] = 0.5;
         c[2] = 1.0;
@@ -942,10 +1091,10 @@ void CaseManager::initializeRestartQueue()
 
 void CaseManager::loadTimeSettings(double& t_final, double& dt, double& cfl)
 {
-    c4::from_chars((*settings)["time"]["tEnd"].val(), &t_final);
-    c4::from_chars((*settings)["time"]["dt"].val(), &dt);
+    t_final = read<double>(settings,rymlKeys({"time","tEnd"}));
+    dt = read<double>(settings,rymlKeys({"time","dt"}));
 
-    std::string type = ryml::preprocess_json<std::string>((*settings)["time"]["type"].val());
+    ryml::csubstr type = read<ryml::csubstr>(settings,rymlKeys({"time","type"}));
 
     if (type == "constant")
     {
@@ -953,7 +1102,7 @@ void CaseManager::loadTimeSettings(double& t_final, double& dt, double& cfl)
     }
     else
     {
-        c4::from_chars((*settings)["time"]["CoMax"].val(), &cfl);
+        cfl = read<double>(settings,rymlKeys({"time","CoMax"}));
     }
 }
 
@@ -969,24 +1118,26 @@ int CaseManager::setStartTimeCycle()
 
 void CaseManager::cleanPreviousRestartFrames(int& ti)
 {
-    // get current str name
-    restart_name_stream << std::setw(6) << std::setfill('0') << ti;
-    //cout << "restart_" + restart_name_stream.str() << endl;
+    // // get current str name
+    // restart_name_stream << std::setw(6) << std::setfill('0') << ti;
+    // //cout << "restart_" + restart_name_stream.str() << endl;
 
-    restart_queue.push("restart_" + restart_name_stream.str());
-    if (restart_queue.size() > nSavedFrames)
-    {
-        restart_deleted_cycle_name = restart_queue.top();
-        system(("rm -rf " + restart_deleted_cycle_name).c_str());
-        system(("rm -rf " + restart_deleted_cycle_name + ".mfem_root").c_str());
-        restart_queue.pop();
-    }
-    restart_name_stream.str(std::string());
+    // restart_queue.push("restart_" + restart_name_stream.str());
+    // if (restart_queue.size() > nSavedFrames)
+    // {
+    //     restart_deleted_cycle_name = restart_queue.top();
+    //     system(("rm -rf " + restart_deleted_cycle_name).c_str());
+    //     system(("rm -rf " + restart_deleted_cycle_name + ".mfem_root").c_str());
+    //     restart_queue.pop();
+    // }
+    // restart_name_stream.str(std::string());
 }
 
 void CaseManager::getVisSteps(int& vis_steps)
 {
-    c4::from_chars((*settings)["postProcess"]["visSteps"].val(), &vis_steps);
-
+    vis_steps = readOrDefault<int>(settings,rymlKeys({"postProcess","visSteps"}), 1);
     if (myRank == 0) cout << "vis_steps = " << vis_steps << endl;
+
+    paraviewLevelOfDetails = readOrDefault<int>(settings,rymlKeys({"postProcess","levelOfDetails"}), 1);
+    if (myRank == 0) cout << "level_of_details = " << paraviewLevelOfDetails << endl;
 }

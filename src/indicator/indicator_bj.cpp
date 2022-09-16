@@ -1,9 +1,15 @@
 #include "indicator_bj.hpp"
-
+ 
 // bool pleaseWriteMe = false;
 
-IndicatorBJ::IndicatorBJ(Averager& _avgr, ParFiniteElementSpace* _fes, const Array<int>& _offsets, int _d, BlockVector& _idata)
-    : Indicator(_avgr, _fes, _offsets, _d, _idata) 
+IndicatorBJ::IndicatorBJ
+(
+    Averager& _avgr, 
+    ParFiniteElementSpace* _fes,
+    ParFiniteElementSpace* _fes_const, 
+    const Array<int>& _offsets, 
+    int _d
+) : Indicator(_avgr, _fes, _fes_const, _offsets, _d) 
 {
    mI.SetSize(num_equation);
    MI.SetSize(num_equation);
@@ -11,6 +17,11 @@ IndicatorBJ::IndicatorBJ(Averager& _avgr, ParFiniteElementSpace* _fes, const Arr
    yMin.SetSize(num_equation);
 };
 
+void IndicatorBJ::computeCorrectionFunction(const double& y, double& yMin)
+{
+   yMin = y < yMin ? y : yMin;
+   yMin = yMin > 1.0 ? 1.0 : yMin;
+}
 
 void IndicatorBJ::updateYMin(
    const IntegrationRule& ir, 
@@ -45,39 +56,30 @@ void IndicatorBJ::updateYMin(
 
       // Compute different fractions
       for (int i = 0; i < num_equation; ++i)
+      // for (int i = 0; i < 1; ++i)
       {
-         if (diff[i] > 1e-3)// * max(1.0, fabs(el_uMean[i])))
+         if (diff[i] > 1e-3 * max(1.0, fabs(el_uMean[i])))
               y[i] = (MI[i] - el_uMean[i]) / diff[i];
-          else if (diff[i] < - 1e-3)// * max(1.0, fabs(el_uMean[i])))
+          else if (diff[i] < - 1e-3 * max(1.0, fabs(el_uMean[i])))
               y[i] = (mI[i] - el_uMean[i]) / diff[i];
           else
               y[i] = 1.0;
 
-         // if (iCell == 3160 && i == 0)
+         // if (iCell == 1512 || iCell == 0)
          // {
-         //    cout << " -- y[i] = " << y[i] 
+         //    cout  << setprecision(18)
+         //         << " * iCell = " << iCell
+         //         << " -- y[i] = " << y[i] 
          //         << "\n -- MI[i] = " << MI[i]
          //         << "\n -- mI[i] = " << mI[i]
+         //         << "\n -- funval1[i] = " << funval1[i]
          //         << "\n -- el_uMean[i] = " << el_uMean[i]
          //         << "\n -- diff[i] = " << diff[i]
+         //          << setprecision(6)
          //         << endl;
          // }
-         
-         // // classical BJ
-         // yMin[i] = y[i] < yMin[i] ? y[i] : yMin[i];
-         // yMin[i] = yMin[i] > 1.0 ? 1.0 : yMin[i];
-
-         // // venkatakrishnan
-         // double yCur = (y[i]*y[i] + 2.0 * y[i]) / (y[i] * y[i] + y[i] + 2.0);
-         // yMin[i] = yCur < yMin[i] ? yCur : yMin[i];
-
-
-         // michalak
-          double yStar = 1.5;
-          double yRel = y[i] / yStar;
-          double yCur = y[i] < 1.0 ? y[i] + (3.0 - 2.0 * yStar) * yRel * yRel + (yStar - 2.0) * yRel * yRel * yRel : 1.0;
-          yMin[i] = yCur < yMin[i] ? yCur : yMin[i];
-
+         computeCorrectionFunction(y[i],yMin[i]);
+      
           
           if (yMin[i] < 0)
               cout << " yMin = " << yMin[i] << " < 0 --- so strange! " << MI[i] << ' ' << mI[i] << ' ' << funval1[i] << ' ' << el_uMean[i] << ' ' << diff[i] << ' ' << mI[i] - el_uMean[i]  << ' ' << MI[i] - el_uMean[i] << "; iCell = " << iCell << "; i = " << i << endl;
@@ -85,13 +87,11 @@ void IndicatorBJ::updateYMin(
    } // for iPoint
 }
 
-void IndicatorBJ::checkDiscontinuity(
+double IndicatorBJ::checkDiscontinuity(
    const int iCell, 
    const Stencil* stencil, 
    const DenseMatrix& elfun1_mat)
 {
-   minValues.SetSize(mesh->GetNE());
-
    // loop through finite elements to compute indicator values
 
    mI = 1e9;
@@ -103,10 +103,11 @@ void IndicatorBJ::checkDiscontinuity(
    fes->GetElementVDofs(iCell, el_vdofs);
    const int nDofs = fe->GetDof();
 
-   // if (iCell == 1789 && myRank == 17) 
-   // {
+   // if (iCell == 1512 || iCell == 0)
+   // { 
+   //    cout << "iCell = " << iCell << endl;
    //    cout << "elfun1_mat = ";
-   //    elfun1_mat.Print(cout);
+   //    elfun1_mat.Print(cout << setprecision(18) );
    // }
 
    // cout << "stencil: ";
@@ -183,18 +184,22 @@ void IndicatorBJ::checkDiscontinuity(
       updateYMin(*ir, &curTrans, elfun1_mat, iCell);
    } // for iFace
 
-   // if (iCell == 3160) 
+   // if (iCell == 1512 || iCell == 0) 
    // {
    //    yMin.Print(cout << "yMin = ");
    // }
 
-   // set indicator values to the external field
+   // double iVal = 1e+6;
+   // for (double a : yMin)
+   //    if (iVal > a)
+   //       iVal = a;
 
-   minValues[iCell] = yMin[0];//1e+9;
 
-   for (int iEq = 0; iEq < num_equation; ++iEq)
-   {
-      values.GetBlock(iEq)[iCell] = yMin[iEq];
-      // minValues[iCell] = yMin[iEq] < minValues[iCell] ? yMin[iEq] : minValues[iCell];
-   }
+
+   // set indicator values to the external field 
+   double iVal = yMin[0];//int(yMin[0]*1e+8 + 0.5)/1e+8;//yMin[0];// > 0.999999 ? 1.0 : yMin[0];
+ 
+   setValue(iCell, iVal);
+
+   return iVal;
 };
