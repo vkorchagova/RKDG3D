@@ -352,7 +352,7 @@ DataType readVectorComponent(const ryml::Tree* tree, const std::vector<ryml::csu
 }
 
 template<class DataType> 
-DataType readOrDefault(const ryml::Tree* tree, const std::vector<ryml::csubstr>& keys, const DataType&& defValue)
+DataType readOrDefault(const ryml::Tree* tree, const std::vector<ryml::csubstr>& keys, const DataType& defValue)
 {
    if (keys.empty())
    {

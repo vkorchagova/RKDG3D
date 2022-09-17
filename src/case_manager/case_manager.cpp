@@ -1,12 +1,11 @@
-#include <case_manager.hpp>
+#include "case_manager.hpp"
+#include "dg_conf.hpp"
  
 using namespace std;
 
 // unions for supported settings
 
 typedef std::vector<ryml::csubstr> rymlKeys;
-
-
 
 // helper functions from ryml library
 
@@ -16,7 +15,7 @@ template<class CharContainer>
 size_t file_get_contents(const char *filename, CharContainer *v)
 {
    ::FILE *fp = ::fopen(filename, "rb");
-   C4_CHECK_MSG(fp != nullptr, "could not open file");
+   C4_CHECK_MSG(fp != nullptr, "could not open file with settings");
    ::fseek(fp, 0, SEEK_END);
    long sz = ::ftell(fp);
    v->resize(static_cast<typename CharContainer::size_type>(sz));
@@ -98,7 +97,7 @@ CaseManager::~CaseManager()
 
 void CaseManager::loadRestartSettings()
 {
-   restart = readOrDefault<bool>(settings,rymlKeys({"time","restart"}), 0);
+   restart = readOrDefault<bool>(settings,rymlKeys({"time","restart"}), DEFAULT_CHECK_FOR_RESTART);
    if (myRank == 0) std::cout << "Case is restarted: " << restart << std::endl;
 
    restartCycle = read<int>(settings,rymlKeys({"time","restartCycle"}));
@@ -111,15 +110,15 @@ void CaseManager::loadPhysics()
    ryml::csubstr phType = read<ryml::csubstr>(settings,rymlKeys({"physics","type"}));
    if (myRank == 0) std::cout << "Gas EoS type: " << phType << std::endl;
 
-   specific_heat_ratio = readOrDefault<double>(settings,rymlKeys({"physics","gamma"}),1.4);
+   specific_heat_ratio = readOrDefault<double>(settings,rymlKeys({"physics","gamma"}), DEFAULT_SPECIFIC_HEAT_RATIO);
    if (myRank == 0) std::cout << "* Specific heat ratio: " << specific_heat_ratio << std::endl;
    
-   gas_constant = readOrDefault<double>(settings,rymlKeys({"physics","R"}),1.0);
+   gas_constant = readOrDefault<double>(settings,rymlKeys({"physics","R"}), DEFAULT_GAS_CONSTANT);
    if (myRank == 0) std::cout << "* Gas constant: " << gas_constant << std::endl;
    
    if (phType == "covolume")
    {
-       covolume_constant = read<double>(settings,rymlKeys({"physics","covolume"})   );
+       covolume_constant = readOrDefault<double>(settings,rymlKeys({"physics","covolume"}), DEFAULT_COVOLUME_CONSTANT);
        if (myRank == 0) std::cout << "* Covolume constant: " << covolume_constant << std::endl;
    }
    else
@@ -134,10 +133,10 @@ void CaseManager::loadSpatialAccuracyOrder()
 
 void CaseManager::loadPostprocessSettings()
 {
-   checkTotalEnergy = readOrDefault<bool>(settings,rymlKeys({"postProcess","checkTotalEnergy"}), 0);
+   checkTotalEnergy = readOrDefault<bool>(settings,rymlKeys({"postProcess","checkTotalEnergy"}), DEFAULT_COMPUTE_TOTAL_ENERGY);
    if (myRank == 0) std::cout << "Check total energy: " << checkTotalEnergy << std::endl;
 
-   writeIndicators = readOrDefault<bool>(settings,rymlKeys({"postProcess","writeIndicators"}), 0);
+   writeIndicators = readOrDefault<bool>(settings,rymlKeys({"postProcess","writeIndicators"}), DEFAULT_WRITE_INDICATORS);
    if (myRank == 0) std::cout << "Write indicators field: " << writeIndicators << std::endl;
 }
 
@@ -289,10 +288,10 @@ void CaseManager::loadMesh(ParMesh*& pmesh)
    
    // read mesh settings
 
-   serRefLevels = readOrDefault<int>(settings,rymlKeys({"mesh","serialRefLevels"}), 0);
-   parRefLevels = readOrDefault<int>(settings,rymlKeys({"mesh","parallelRefLevels"}), 0);
-   adaptive_mesh = readOrDefault<bool>(settings,rymlKeys({"mesh","adaptive"}), 0);
-   local_refinement = readOrDefault<bool>(settings,rymlKeys({"mesh","localRefinement"}), 0);
+   serRefLevels = readOrDefault<int>(settings,rymlKeys({"mesh","serialRefLevels"}), DEFAULT_SERIAL_MESH_REF_LEVELS);
+   parRefLevels = readOrDefault<int>(settings,rymlKeys({"mesh","parallelRefLevels"}), DEFAULT_PARALLEL_MESH_REF_LEVELS);
+   adaptive_mesh = readOrDefault<bool>(settings,rymlKeys({"mesh","adaptive"}), DEFAULT_USE_ADAPTIVE_MESH_REFINIMENT);
+   local_refinement = readOrDefault<bool>(settings,rymlKeys({"mesh","localRefinement"}), DEFAULT_USE_LOCAL_MESH_REFINEMENT);
 
    if (myRank == 0)
    {
@@ -347,8 +346,8 @@ void CaseManager::loadMesh(ParMesh*& pmesh)
 
        if (local_refinement)
        {
-            localRefLevels = readOrDefault<int>(settings,rymlKeys({"mesh","localRefinement","refLevels"}), 0);
-            localRefInside = readOrDefault<bool>(settings,rymlKeys({"mesh","localRefinement","inside"}), 0);
+            localRefLevels = read<int>(settings,rymlKeys({"mesh","localRefinement","refLevels"}));
+            localRefInside = read<bool>(settings,rymlKeys({"mesh","localRefinement","inside"}));
             localRefType = read<ryml::csubstr>(settings,rymlKeys({"mesh","localRefinement","type"}));
 
             if (localRefType == "sphere")
@@ -709,14 +708,14 @@ void CaseManager::loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, cons
    ryml::csubstr limiterType = read<ryml::csubstr>(settings,rymlKeys({"spatial","limiter","type"}));
    if (myRank == 0) std::cout << limiterType << std::endl;
 
-   linearize = readOrDefault<bool>(settings,rymlKeys({"spatial","limiter","linearize"}), 0);
-   haveLastHope = readOrDefault<bool>(settings,rymlKeys({"spatial","limiter","haveLastHope"}), 1);
+   linearize = readOrDefault<bool>(settings,rymlKeys({"spatial","limiter","linearize"}), DEFAULT_LINEARIZE_SOLUTION);
+   haveLastHope = readOrDefault<bool>(settings,rymlKeys({"spatial","limiter","haveLastHope"}), DEFAULT_REMOVE_SLOPES_AFTER_LIMITING);
    if (myRank == 0) std::cout << "Additional linearization: " << linearize << std::endl;
    if (myRank == 0) std::cout << "Last hope limiter (cut slopes in cell in case of nonphysical values in vertices after limiting): " << haveLastHope << std::endl;
    
-   ryml::csubstr fdGroupName = readOrDefault<ryml::csubstr>(settings,rymlKeys({"spatial","limiter","cutSlopeGroup"}), "");
+   ryml::csubstr fdGroupName = readOrDefault<ryml::csubstr>(settings,rymlKeys({"spatial","limiter","cutSlopeGroup"}), DEFAULT_NAME_OF_EMPTY_GROUP_WITHOUT_SLOPES);
 
-   if (fdGroupName != "")
+   if (fdGroupName != DEFAULT_NAME_OF_EMPTY_GROUP_WITHOUT_SLOPES)
    {
        fdGroupAttr = getFinDiffGroupAttribute(fdGroupName);
        if (myRank == 0) std::cout << "Cut slopes in the following group of cells: " << fdGroupName << std::endl;
@@ -971,7 +970,7 @@ void CaseManager::addBoundaryIntegrators(ParNonlinearForm& A, ParMesh& mesh, Rie
 
 void CaseManager::loadTimeSolver(ODESolver*& ode_solver, Limiter* l)
 {
-   int order = readOrDefault<int>(settings,rymlKeys({"time","order"}),0);
+   int order = read<int>(settings,rymlKeys({"time","order"}));
 
    if (myRank == 0) std::cout << "Runge --- Kutta order: " << order << std::endl;
 
@@ -1135,9 +1134,9 @@ void CaseManager::cleanPreviousRestartFrames(int& ti)
 
 void CaseManager::getVisSteps(int& vis_steps)
 {
-   vis_steps = readOrDefault<int>(settings,rymlKeys({"postProcess","visSteps"}), 1);
+   vis_steps = readOrDefault<int>(settings,rymlKeys({"postProcess","visSteps"}), DEFAULT_NUMBER_OF_OUTPUT_STEPS);
    if (myRank == 0) std::cout << "vis_steps = " << vis_steps << std::endl;
 
-   paraviewLevelOfDetails = readOrDefault<int>(settings,rymlKeys({"postProcess","levelOfDetails"}), 1);
+   paraviewLevelOfDetails = readOrDefault<int>(settings,rymlKeys({"postProcess","levelOfDetails"}), DEFAULT_LEVEL_OF_PARAVIEW_DETAILS);
    if (myRank == 0) std::cout << "level_of_details = " << paraviewLevelOfDetails << std::endl;
 }

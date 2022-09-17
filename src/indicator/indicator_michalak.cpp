@@ -1,4 +1,5 @@
 #include "indicator_michalak.hpp"
+#include "dg_conf.hpp"
 
 IndicatorMichalak::IndicatorMichalak
 (
@@ -12,7 +13,7 @@ IndicatorMichalak::IndicatorMichalak
 
 void IndicatorMichalak::computeCorrectionFunction(const double& y, double& yMin)
 {
-   double yStar = 1.5;
+   double yStar = DEFAULT_YSTAR_MICHALAK;
    double yRel = y / yStar;
    double yCur = y < 1.0 ? y + (3.0 - 2.0 * yStar) * yRel * yRel + (yStar - 2.0) * yRel * yRel * yRel : 1.0;
    yMin = yCur < yMin ? yCur : yMin;
