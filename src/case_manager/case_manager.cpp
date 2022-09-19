@@ -1,7 +1,5 @@
 #include "case_manager.hpp"
 #include "dg_conf.hpp"
- 
-using namespace std;
 
 // unions for supported settings
 
@@ -283,7 +281,7 @@ void CaseManager::loadMesh(ParMesh*& pmesh)
    // resh mesh filename and convert it to char* 
 
    ryml::csubstr meshFileRaw = read<ryml::csubstr>(settings,rymlKeys({"mesh","file"}));
-   std:string meshFileStr(meshFileRaw.str, meshFileRaw.len);
+   std::string meshFileStr(meshFileRaw.str, meshFileRaw.len);
    meshFile = meshFileStr.c_str();
    
    // read mesh settings
@@ -428,7 +426,7 @@ void CaseManager::loadMesh(ParMesh*& pmesh)
 
 void CaseManager::readPhysicalNames(ParMesh*& mesh)
 {
-   string buff;
+   std::string buff;
    int number_of_physical_groups;
    int dim_r;
    std::string phys_group_name_r;

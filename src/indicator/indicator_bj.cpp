@@ -58,9 +58,9 @@ void IndicatorBJ::updateYmin(
       for (int i = 0; i < num_equation; ++i)
       // for (int i = 0; i < 1; ++i)
       {
-         if (diff[i] > 1e-3 * std::max(1.0, fabs(el_uMean[i])))
+         if (diff[i] > DEFAULT_BJ_DIFF_MAX_PERCENT * std::max(1.0, fabs(el_uMean[i])))
                y[i] = (MI[i] - el_uMean[i]) / diff[i];
-          else if (diff[i] < - 1e-3 * std::max(1.0, fabs(el_uMean[i])))
+          else if (diff[i] < - DEFAULT_BJ_DIFF_MAX_PERCENT * std::max(1.0, fabs(el_uMean[i])))
                y[i] = (mI[i] - el_uMean[i]) / diff[i];
           else
                y[i] = 1.0;
@@ -94,9 +94,9 @@ double IndicatorBJ::checkDiscontinuity(
 {
    // loop through finite elements to compute indicator values
 
-   mI = 1e9;
-   MI = -1e9;
-   yMin = 1e9;
+   mI = DEFAULT_LARGE_NUMBER;
+   MI = -DEFAULT_LARGE_NUMBER;
+   yMin = DEFAULT_LARGE_NUMBER;
 
    // get FE
    fe = fes->GetFE(iCell);

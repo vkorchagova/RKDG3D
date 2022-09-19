@@ -1,5 +1,8 @@
 /// Configuration file
 
+#ifndef DG_SOLVER_CONF_H
+#define DG_SOLVER_CONF_H
+
 #include <ryml.hpp>
 
 
@@ -49,9 +52,28 @@ const bool DEFAULT_REMOVE_SLOPES_AFTER_LIMITING = true;
 /// Name for the empty cell group when use ony piecewise-constant solution
 const ryml::csubstr DEFAULT_NAME_OF_EMPTY_GROUP_WITHOUT_SLOPES = "";
 
+/// Small number used in near-zero thresholds and prevent division by zero
+const double DEFAULT_SMALL_EPSILON = 1e-6;
+
+/// Large number used in min/max search
+const double DEFAULT_LARGE_NUMBER = 1e+9;
+
+/// Define stencil size for preliminar memory reservation
+const int DEFAULT_MAX_STENCIL_SIZE = 8;
+
+/// Threshold value for indicator: if less we should correct slopes
+const double DEFAULT_INDICATOR_CORRECTION_THRESHOLD_VALUE = 0.99999;
+
+/// Percentage of max solution value to check diff for large values (like energy)
+const double DEFAULT_BJ_DIFF_MAX_PERCENT = 1e-3;
+
 /// Y threshold used in Michalak limiter
 /// Do not used as user setting: value is chosen according to Michalak's paper.
-const double DEFAULT_YSTAR_MICHALAK = 1.5;
+const double DEFAULT_MICHALAK_YSTAR = 1.5;
+
+/// Numerical constant in Shu indicator
+/// Do not used as user setting: value is chosen according to Shu's paper.
+const double DEFAULT_SHU_CK = 0.03;
 
 
 /// --- Postprocessing options --- ///
@@ -69,3 +91,5 @@ const int DEFAULT_NUMBER_OF_OUTPUT_STEPS = 1;
 /// Level of details in ParaView
 /// (1 - use only cell center values, 2 - use node values ...)
 const int DEFAULT_LEVEL_OF_PARAVIEW_DETAILS = 2;
+
+#endif // DG_SOLVER_CONF_H

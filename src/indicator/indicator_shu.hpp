@@ -10,12 +10,6 @@ class IndicatorShu : public Indicator
 {
 private:
 
-   /// Indication constant
-   const double Ck = 0.03;
-
-   /// Unzero-denom
-   double eps = 1e-6;
-
    /// max | u_avg_j|, j \in stensil
    Vector maxFabsPj;
 

@@ -2,6 +2,7 @@
 #define STENCIL_H
 
 #include "mfem.hpp"
+#include "dg_conf.hpp"
 
 using namespace mfem;
 
@@ -23,7 +24,7 @@ public:
    Array<int> cell_num;
 
    /// Max stencil size (just for reserve)
-   const int max_size = 10;
+   const int max_size = DEFAULT_MAX_STENCIL_SIZE;
 
    /// Internal face numbers in stencil
    Array<int> internal_face_numbers;

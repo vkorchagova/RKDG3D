@@ -22,7 +22,7 @@ double IndicatorShu::checkDiscontinuity(
    const DenseMatrix& elfun1_mat
 )
 {
-   maxFabsPj = -1e9;
+   maxFabsPj = -DEFAULT_LARGE_NUMBER;
    sumFabsDiffExtrap = 0.0;
 
    Vector el_uMean(num_equation);
@@ -65,11 +65,11 @@ double IndicatorShu::checkDiscontinuity(
 
    // set indicator values to the external field
 
-   double indVal = (fabs(maxFabsPj[0]) < eps && fabs(sumFabsDiffExtrap[0]) < eps) 
+   double indVal = (fabs(maxFabsPj[0]) < DEFAULT_SMALL_EPSILON && fabs(sumFabsDiffExtrap[0]) < DEFAULT_SMALL_EPSILON) 
          ? 
          1.0 
          : 
-         std::min(1.0, Ck * maxFabsPj[0] / (sumFabsDiffExtrap[0] + eps));
+         std::min(1.0, DEFAULT_SHU_CK * maxFabsPj[0] / (sumFabsDiffExtrap[0] + DEFAULT_SMALL_EPSILON));
 
    setValue(iCell, indVal);
 

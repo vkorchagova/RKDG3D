@@ -243,9 +243,5 @@ void FE_Evolution::GetFlux(const DenseMatrix &x, DenseTensor &flux) const
                 flux(i, d, k) = f(k, d);
             }
        }
-
-       // // Update max char speed
-       // const double mcs = ComputeMaxCharSpeed(state, dim);
-       // if (mcs > max_char_speed) { max_char_speed = mcs; }
    }
 }

@@ -20,7 +20,7 @@ LimiterMultiplier::LimiterMultiplier
 
 void LimiterMultiplier::limit(const int iCell, const double ind_value, const double nDofs, DenseMatrix& elfun1_mat) 
 {
-   if (ind_value > 0.999999) return;
+   if (ind_value > DEFAULT_INDICATOR_CORRECTION_THRESHOLD_VALUE) return;
 
    averager.readElementAverageByNumber(iCell, el_uMean);
 
