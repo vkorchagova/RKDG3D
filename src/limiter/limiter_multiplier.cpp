@@ -20,31 +20,29 @@ LimiterMultiplier::LimiterMultiplier
 
 void LimiterMultiplier::limit(const int iCell, const double ind_value, const double nDofs, DenseMatrix& elfun1_mat) 
 {
-   if (ind_value > DEFAULT_INDICATOR_CORRECTION_THRESHOLD_VALUE) return;
+   if (ind_value > DEFAULT_INDICATOR_CORRECTION_THRESHOLD_VALUE) 
+   {
+      return;
+   }
 
    averager.readElementAverageByNumber(iCell, el_uMean);
 
-   // std::cout << needLinearize << std::endl;
-
-   // std::cout <<  indicator.minValues[iCell] << std::endl;
-
    // replace solution to mean values
    for (int iEq = 0; iEq < num_equation; ++iEq)
+   {
       for (int iDof = 0; iDof < nDofs; ++iDof)
       {
-         // if (myRank == 0 && iCell == 0 && iEq == 0) {std::cout << "   funval before lim = " << elfun1_mat(iDof, iEq) << std::endl;}
-         // if (needLinearize && el_ind[iEq] < 1.0 && fe->GetGeomType() != Geometry::TRIANGLE)
          if (needLinearize && fe->GetGeomType() != Geometry::TRIANGLE)
+         {
             linearize(iCell, el_uMean, elfun1_mat);
+         }
 
          for (int iDof = 0; iDof < nDofs; ++iDof)
          {
-            // elfun1_mat(iDof, iEq) = el_uMean[iEq] + el_ind[iEq] * (elfun1_mat(iDof, iEq) - el_uMean[iEq]);
             elfun1_mat(iDof, iEq) = ind_value * elfun1_mat(iDof, iEq) + (1.0 - ind_value) * el_uMean[iEq];
-            //elfun1_mat(iDof, iEq) = 0.75 * elfun1_mat(iDof, iEq) + 0.25 * el_uMean[iEq];
          }
-         // if (myRank == 0 && iCell == 0 && iEq == 0) {std::cout << "   funval after lim = " << elfun1_mat(iDof, iEq) << std::endl;}
       }
+   }
    
    // // Last hope limiter
    if (haveLastHope)
@@ -57,7 +55,6 @@ void LimiterMultiplier::limit(const int iCell, const double ind_value, const dou
 
          el_shape.SetSize(nDofs);
 
-
          // Calculate basis functions on elements at the face
          fe->CalcShape(ip, el_shape);
 
@@ -66,45 +63,20 @@ void LimiterMultiplier::limit(const int iCell, const double ind_value, const dou
          // Interpolate elfun at the point
          elfun1_mat.MultTranspose(el_shape, funval1Vert);
 
-         // double alpha = 1.0;
-         // const double minEps = 1e-10;
-
-         // if (!StateIsPhysical(funval1Vert,dim))
-         // {
-         //   // let's try to correct slope aсcording to positive internal energy
-            
-         //   alpha = std::min( alpha, 2.0 * funval1Vert[0] * (funval1Vert[dim+1] - minEps) / (funval1Vert[1]*funval1Vert[1] + funval1Vert[2]*funval1Vert[2]) );
-         //   // for (int iEq = 0; iEq < num_equation; ++iEq)
-         //   //   for (int iDof = 0; iDof < nDofs; ++iDof)  
-         //   //       elfun1_mat(iDof, iEq) = uMean(iEq,iCell);
-         // }
-
-         // if (alpha < 1)
-         // {
-         //   // std::cout << "find alpha = " << alpha << " in cell #" << iCell << std::endl;
-         //   for (int iEq = 1; iEq < num_equation - 1; ++iEq)
-         //       for (int iDof = 0; iDof < nDofs; ++iDof) 
-         //       {
-         //          // const double beta = (sqrt(alpha) - 1.0) * uMean(iEq,iCell) / (elfun1_mat(iDof, iEq) - uMean(iEq,iCell)) + sqrt(alpha);
-         //          // std::cout << " \tfind beta = " << beta << " for eqn #" << iEq << std::endl;
-
-         //          // elfun1_mat(iDof, iEq) = uMean(iEq,iCell) + beta * (elfun1_mat(iDof, iEq) - uMean(iEq,iCell));
-         //          elfun1_mat(iDof, iEq) = alpha * elfun1_mat(iDof, iEq);
-         //       }
-         // }
          if (!StateIsPhysical(funval1Vert,dim))
          {
             averager.readElementAverageByNumber(iCell, el_uMean);
 
             for (int iEq = 0; iEq < num_equation; ++iEq)
-                for (int iDof = 0; iDof < nDofs; ++iDof)  
-                   elfun1_mat(iDof, iEq) = el_uMean(iEq);
+            {
+               for (int iDof = 0; iDof < nDofs; ++iDof) 
+               { 
+                  elfun1_mat(iDof, iEq) = el_uMean(iEq);
+               }
+            }
          }
       }
    }
-
-   // save limited solution values to the other vector
-  // xNew.SetSubVector(el_vdofs, el_x);
 };
 
 void LimiterMultiplier::linearize(const int iCell, const Vector& el_uMean, DenseMatrix &elfun1_mat)
@@ -123,6 +95,7 @@ void LimiterMultiplier::linearize(const int iCell, const Vector& el_uMean, Dense
    // get FE dofs indices
    fes->GetElementVDofs(iCell, el_vdofs);
    const int nDofs = fe->GetDof();
+
    // get FE
    fe = fes->GetFE(iCell);
 
@@ -130,58 +103,36 @@ void LimiterMultiplier::linearize(const int iCell, const Vector& el_uMean, Dense
    dshapedr.SetSize(nDofs, dim);
    dF.SetSize(num_equation, dim);
 
-
    // get FE transformation
    el_trans = mesh->GetElementTransformation(iCell);
 
-   // std::cout << "elfun1_mat = ";
-   // elfun1_mat.Print(std::cout);
-
    // get center of finite element
    mesh->GetElementCenter(iCell, el_center_phys);
-   // if (iCell == 6950) el_center_phys.Print(std::cout);
 
    // move it to the element space
    el_trans->TransformBack(el_center_phys, el_center_ref);
-   // if (iCell == 6950) std::cout << "el_center_ref = " << el_center_ref.index << " " << el_center_ref.x << " " << el_center_ref.y << " " << el_center_ref.z << std::endl;
-
+   
    // compute gradient of el_shape functions in the center (OK for p = 1 because of 1,x,y,xy)
    fe->CalcDShape(el_center_ref, dshapedr);
    MultAtB(elfun1_mat, dshapedr, dF);
 
-   const IntegrationRule *ir = &IntRules.Get(fe->GetGeomType(), fe->GetOrder() + 1);
-
-   // if (iCell == 6950)
-   // {
-   //   std::cout << "etype = " << fe->GetGeomType() << "; order = " << fe->GetOrder() << std::endl;
-   // }
-   
+   const IntegrationRule *ir = &IntRules.Get(fe->GetGeomType(), fe->GetOrder() + 1); 
 
    for (int iDof = 0; iDof < nDofs; ++iDof)
    {
       const IntegrationPoint ip = ir->IntPoint(iDof);
       el_trans->Transform(ip,ip_phys);
 
-      // if (iCell == 6950)
-      // {
-      //   std::cout << "point = " << ip.x << ' ' << ip.y << "; phys = " << ip_phys[0] << ' ' << ip_phys[1] << std::endl;
-      // }
-   
       for (int iEq = 0; iEq < num_equation; ++iEq)
       {
-         // if (iCell == 6950) std::cout << "\t old val = " << elfun1_mat(iDof, iEq) << std::endl;
-         // if (iCell == 6950) std::cout << "\t dF = " << dF(iEq,0) << ' ' << dF(iEq,1) << std::endl;
-
          elfun1_mat(iDof, iEq) = el_uMean(iEq) - \
             dF(iEq,0) * (el_center_ref.x - ip.x) - \
             dF(iEq,1) * (el_center_ref.y - ip.y) ;
 
          if (dim == 3)
+         {
             elfun1_mat(iDof, iEq) -= dF(iEq,2) * (el_center_ref.z - ip.z) ;
-
-            // dF(iEq,0) * (el_center_phys[0] - ip_phys[0]) - \
-            dF(iEq,1) * (el_center_phys[1] - ip_phys[1]) ;
-         // if (iCell == 6950) std::cout << "\t new val = " << elfun1_mat(iDof, iEq) << std::endl;
+         }
       }
    }
 }

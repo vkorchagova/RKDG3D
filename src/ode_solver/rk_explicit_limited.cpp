@@ -16,10 +16,13 @@ ExplicitRKLimitedSolver::ExplicitRKLimitedSolver(int _s, const double *_a, const
 void ExplicitRKLimitedSolver::Init(TimeDependentOperator &_f)
 {
    ODESolver::Init(_f);
+
    int n = f->Width();
    y.SetSize(n, mem_type);
-   for (int i = 0; i < y.Size(); ++i) y(i) = 0.0;
-   //if (myRank == 0) y.Print(std::cout);
+   for (int i = 0; i < y.Size(); ++i) 
+   {
+      y(i) = 0.0;
+   }
    for (int i = 0; i < s; i++)
    {
       k[i].SetSize(n, mem_type);
@@ -35,18 +38,13 @@ void ExplicitRKLimitedSolver::Step(Vector &x, double &t, double &dt)
    }
 
    y.SetSize(x.Size(), mem_type);
-   for (int i = 0; i < y.Size(); ++i) y(i) = 0.0;
+   for (int i = 0; i < y.Size(); ++i) 
+   {
+      y(i) = 0.0;
+   }
 
    f->SetTime(t);
-
-   // std::cout << "ExplicitRKLimitedSolver::Step X = " << std::endl;
-   // x.Print(std::cout);
-
    f->Mult(x, k[0]);
-
-   // std::cout << " ----- k0 ----- " << std::endl;
-   // k[0].Print(std::cout);
-   
    
    for (int l = 0, i = 1; i < s; i++)
    {
@@ -56,27 +54,18 @@ void ExplicitRKLimitedSolver::Step(Vector &x, double &t, double &dt)
       {
          y.Add(a[l++]*dt, k[j]);
       }
-      // std::cout << "y before limit" << std::endl;
-      // y.Print(std::cout);
       
       // limit y and compute rhs with good y
       limiter.update(y);
-
       
       f->SetTime(t + c[i-1]*dt);
       f->Mult(y, k[i]);
-
-      // std::cout << " ----- k[" << i << "] ----- " << std::endl;
-      // k[i].Print(std::cout);
    }
 
    for (int i = 0; i < s; i++)
    {
       x.Add(b[i]*dt, k[i]);
    }
-
-   // std::cout << "x before limit" << std::endl;
-   //   x.Print(std::cout);
    
    limiter.update(x);
 }

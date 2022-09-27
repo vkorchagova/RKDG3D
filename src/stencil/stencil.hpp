@@ -66,9 +66,6 @@ public:
       
       for (int iCellNum : cell_num)
       {
-         // int iCellNumOk = iCellNum;
-         // if (iCellNum > mesh->GetNE())
-         //   iCellNumOk(avgs->FaceNbrData())[iEq  + (iCell - mesh->GetNE()) * num_equation];
          if (iCellNum > mesh.GetNE())
          {
             FaceElementTransformations* face_el_trans = mesh.GetSharedFaceTransformations(shared_face_numbers[0]);
