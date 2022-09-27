@@ -2,7 +2,6 @@
 #include "physics.hpp"
 #include <cmath>
 
-
 // Check that the state is physical
 bool StateIsPhysical(const Vector &state, const int dim)
 {
@@ -58,13 +57,16 @@ double ComputePressure(const Vector &state, int dim)
    const double den_energy = state(1 + dim);
 
    double den_vel2 = 0;
-   for (int d = 0; d < dim; d++) { den_vel2 += den_vel(d) * den_vel(d); }
+   for (int d = 0; d < dim; d++) 
+   { 
+      den_vel2 += den_vel(d) * den_vel(d); 
+   }
    den_vel2 /= den;
 
    return (specific_heat_ratio - 1.0) * (den_energy - 0.5 * den_vel2) / (1.0 - den * covolume_constant);
 }
 
-// Pressure (EOS) computation
+// Temperature (EOS) computation
 double ComputeTemperature(const Vector &state, int dim)
 {
    const double den = state(0);
@@ -72,7 +74,10 @@ double ComputeTemperature(const Vector &state, int dim)
    const double den_energy = state(1 + dim);
 
    double den_vel2 = 0;
-   for (int d = 0; d < dim; d++) { den_vel2 += den_vel(d) * den_vel(d); }
+   for (int d = 0; d < dim; d++) 
+   { 
+      den_vel2 += den_vel(d) * den_vel(d); 
+   }
    den_vel2 /= den;
 
    return (specific_heat_ratio - 1.0) * (den_energy - 0.5 * den_vel2) / den / gas_constant;
@@ -141,7 +146,10 @@ void ComputeFluxDotN(const Vector &state, const Vector &nor,
    const double pres = ComputePressure(state, dim);
 
    double den_velN = 0;
-   for (int d = 0; d < dim; d++) { den_velN += den_vel(d) * nor(d); }
+   for (int d = 0; d < dim; d++) 
+   { 
+      den_velN += den_vel(d) * nor(d); 
+   }
 
    fluxN(0) = den_velN;
    for (int d = 0; d < dim; d++)
@@ -162,31 +170,12 @@ void ComputeFluxF(const Vector &state, const Vector &primState, const int dim,
    flux(0) = state(1); //rho u
    flux(1) = state(1) * primState(1) + pres; // rho u^2 + p
    for (int d = 1; d < dim; d++)
+   {
       flux(d+1) = state(1) * primState(d+1); // rho u v, rho u w
+   }
 
    const double H = (state(1 + dim) + pres) / state(0);
-   flux(1 + dim) = state(1) * H;
-
-
-
-   // const double den = state(0);
-   // const Vector den_vel(state.GetData() + 1, dim);
-   // const double den_energy = state(1 + dim);
-
-   // MFEM_ASSERT(StateIsPhysical(state, dim), "");
-
-   
-
-   // double den_velN = 0;
-   // for (int d = 0; d < dim; d++) { den_velN += den_vel(d) * nor(d); }
-
-   // fluxN(0) = den_velN;
-   // for (int d = 0; d < dim; d++)
-   // {
-   //   fluxN(1+d) = den_velN * den_vel(d) / den + pres * nor(d);
-   // }
-
-   
+   flux(1 + dim) = state(1) * H; 
 }
 
 
@@ -197,7 +186,10 @@ double ComputeM(const Vector &state, const int dim)
    const Vector den_vel(state.GetData() + 1, dim);
 
    double den_vel2 = 0;
-   for (int d = 0; d < dim; d++) { den_vel2 += den_vel(d) * den_vel(d); }
+   for (int d = 0; d < dim; d++) 
+   { 
+      den_vel2 += den_vel(d) * den_vel(d); 
+   }
    den_vel2 /= den;
 
    // const double pres = ComputePressure(state, dim);
@@ -214,8 +206,10 @@ double ComputeMaxCharSpeed(const Vector &state, const int dim)
    const Vector den_vel(state.GetData() + 1, dim);
 
    double den_vel2 = 0;
-   for (int d = 0; 
-      d < dim; d++) { den_vel2 += den_vel(d) * den_vel(d); }
+   for (int d = 0; d < dim; d++) 
+   { 
+      den_vel2 += den_vel(d) * den_vel(d); 
+   }
    den_vel2 /= den;
 
    // const double pres = ComputePressure(state, dim);
@@ -265,7 +259,9 @@ void GetPrimitiveFromConservative(const Vector& state, Vector& primState)
    primState[0] = state[0];
 
    for (int i = 1; i < dim+1; ++i)
+   {
       primState[i] = state[i]/state[0];
+   }
 
    primState[dim+1] = ComputePressure(state, dim);
 }
@@ -273,22 +269,14 @@ void GetPrimitiveFromConservative(const Vector& state, Vector& primState)
 // Compute Toro averaged char speeds via two states
 void ComputeToroCharSpeeds(const Vector &state1, const Vector &state2, const Vector &primState1, const Vector &primState2, Vector& lambdaF, const int dim)
 {
-   //double rhouLeft = state1[1];
-   //double rhouRight = state2[1];
+   double uLeft = primState1[1]; // uLeft
+   double uRight = primState2[1]; // uRight
 
-   double uLeft = primState1[1]; //rhouLeft / state1[0];
-   double uRight = primState2[1]; //rhouRight / state2[0];
-
-   double pLeft = primState1[dim+1]; //ComputePressure(state1, dim);
-   double pRight = primState2[dim+1]; //ComputePressure(state2, dim);
+   double pLeft = primState1[dim+1]; // pressure
+   double pRight = primState2[dim+1]; // pressure
 
    double cLeft = ComputeSoundSpeed(state1[0], pLeft);
    double cRight = ComputeSoundSpeed(state2[0], pRight);
-
-   //  double pvrs = 0.5 * (pLeft + pRight) + \
-   //   0.125 * (uLeft - uRight) * (state1[0] + state2[0]) * (cLeft + cRight);
-
-   // double pStar = std::max(0.0, pvrs);
 
    double gm1 = 0.5 * (specific_heat_ratio - 1.0);
    double gp1 = 0.5 * (specific_heat_ratio + 1.0);
@@ -307,13 +295,15 @@ void ComputeToroCharSpeeds(const Vector &state1, const Vector &state2, const Vec
       sqrt(1.0 + z2 * (pStar / pRight - 1.0)) : \
       1.0;
 
-   // Vector res(dim+2);
    lambdaF[0] = uLeft - qLeft * cLeft;
    for (int i = 1; i < dim + 1; ++i)
+   {
       lambdaF[i] = uLeft;
+   }
    lambdaF[dim+1] = uRight + qRight * cRight;
 
    for(int i = 0; i <= dim+1; ++i)
+   {
       if (!std::isfinite(lambdaF[i]))
       {
          std::cout << "Infinite lambda!" << std::endl;
@@ -324,4 +314,5 @@ void ComputeToroCharSpeeds(const Vector &state1, const Vector &state2, const Vec
          lambdaF = -1;
          return;
       }
+   }
 }
