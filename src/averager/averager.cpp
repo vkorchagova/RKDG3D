@@ -133,6 +133,14 @@ void Averager::readElementAverageByNumber(const int iCell, Vector& el_uMean)
          el_uMean[iEq] = (avgs->FaceNbrData())[iEq  + (iCell - mesh->GetNE()) * num_equation];
 }
 
+void Averager::readElementAverageComponentByNumber(const int iCell, const int iEq, double value)
+{
+   if (iCell < mesh->GetNE())
+      value = (*avgs)[iEq * mesh->GetNE() + iCell];
+   else
+      value = (avgs->FaceNbrData())[iEq  + (iCell - mesh->GetNE()) * num_equation];
+}
+
 void Averager::readElementExtrapAverageByNumber(const int iCell, Vector& el_uMean)
 {
    if (iCell < mesh->GetNE())
@@ -260,7 +268,7 @@ void Averager::assembleShiftedElementMatrix(
    const IntegrationRule *ir = &IntRules.Get(troubled_fe.GetGeomType(), order);
 
    elmat = 0.0;
-   for (int i = 0; i < ir->GetNPoints(); i++)
+   for (int i = 0; i < ir->GetNPoints(); ++i)
    {
       const IntegrationPoint &ip = ir->IntPoint(i);
       TransTroubled.Transform(ir->IntPoint(i), ipPhys);

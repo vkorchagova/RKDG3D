@@ -27,7 +27,7 @@ void LimiterMultiplier::limit(const int iCell, const double ind_value, const dou
 
    averager.readElementAverageByNumber(iCell, el_uMean);
 
-   // replace solution to mean values
+   // replace solution to limited values
    for (int iEq = 0; iEq < num_equation; ++iEq)
    {
       for (int iDof = 0; iDof < nDofs; ++iDof)

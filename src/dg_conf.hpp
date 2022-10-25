@@ -67,6 +67,9 @@ const double DEFAULT_INDICATOR_CORRECTION_THRESHOLD_VALUE = 0.99999;
 /// Percentage of max solution value to check diff for large values (like energy)
 const double DEFAULT_BJ_DIFF_MAX_PERCENT = 1e-3;
 
+/// Index for root component of solution to compute BJ limiter value
+const int DEFAULT_BJ_ROOT_SOL_COMP_INDEX = 0;
+
 /// Y threshold used in Michalak limiter
 /// Do not used as user setting: value is chosen according to Michalak's paper.
 const double DEFAULT_MICHALAK_YSTAR = 1.5;

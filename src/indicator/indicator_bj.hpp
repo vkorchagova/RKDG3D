@@ -11,16 +11,19 @@ class IndicatorBJ : public Indicator
 private:
 
    /// Minimal averaged value in stencil
-   Vector mI;
+   double mI;
 
    /// Maximal averaged value in stencil
-   Vector MI;
+   double MI;
 
    /// Average values on one element
-   Vector el_uMean;
+   double el_uMean;
 
    /// Indicator value
-   Vector yMin;
+   double yMin;
+
+   /// Index of solution component to be chosen as "root" for computing correction function
+   const int iSolRoot = DEFAULT_BJ_ROOT_SOL_COMP_INDEX;
 
    /// Update limiter coefficient
    void updateYmin(

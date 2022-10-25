@@ -11,10 +11,6 @@ IndicatorBJ::IndicatorBJ
    int _d
 ) : Indicator(_avgr, _fes, _fes_const, _offsets, _d) 
 {
-   mI.SetSize(num_equation);
-   MI.SetSize(num_equation);
-   el_uMean.SetSize(num_equation);
-   yMin.SetSize(num_equation);
 };
 
 void IndicatorBJ::computeCorrectionFunction(const double& y, double& yMin)
@@ -31,8 +27,11 @@ void IndicatorBJ::updateYmin(
 {
    IntegrationPoint eip1;
    Vector funval1(num_equation);
-   Vector diff(num_equation);
-   Vector y(num_equation);
+   // Vector diff(num_equation);
+   // Vector y(num_equation);
+
+   double diff;
+   double y;
 
    for (int iPoint = 0; iPoint < ir.GetNPoints(); iPoint++)
    {
@@ -55,33 +54,24 @@ void IndicatorBJ::updateYmin(
       elfun1_mat.MultTranspose(el_shape, funval1);
 
       // Compute difference between average value and value in the gaussion boundary point
-      averager.readElementAverageByNumber(iCell, el_uMean);
-      subtract(funval1, el_uMean, diff);
-
-      // Compute different fractions
-      // for (int i = 0; i < num_equation; ++i)
-      for (int i = 0; i < 1; ++i)
+      averager.readElementAverageComponentByNumber(iCell, iSolRoot, el_uMean);
+      diff = funval1[iSolRoot] - el_uMean;
+      
+      if (diff > DEFAULT_BJ_DIFF_MAX_PERCENT * std::max(1.0, fabs(el_uMean)))
       {
-         if (diff[i] > DEFAULT_BJ_DIFF_MAX_PERCENT * std::max(1.0, fabs(el_uMean[i])))
-         {
-            y[i] = (MI[i] - el_uMean[i]) / diff[i];
-         }
-         else if (diff[i] < - DEFAULT_BJ_DIFF_MAX_PERCENT * std::max(1.0, fabs(el_uMean[i])))
-         {
-            y[i] = (mI[i] - el_uMean[i]) / diff[i];
-         }
-         else
-         {
-            y[i] = 1.0;
-         }
-
-         computeCorrectionFunction(y[i],yMin[i]);
-       
-         if (yMin[i] < 0)
-         {
-            std::cout << " yMin = " << yMin[i] << " < 0 --- so strange! " << MI[i] << ' ' << mI[i] << ' ' << funval1[i] << ' ' << el_uMean[i] << ' ' << diff[i] << ' ' << mI[i] - el_uMean[i]  << ' ' << MI[i] - el_uMean[i] << "; iCell = " << iCell << "; i = " << i << std::endl;
-         }
+         y = (MI - el_uMean ) / diff;
       }
+      else if (diff< - DEFAULT_BJ_DIFF_MAX_PERCENT * std::max(1.0, fabs(el_uMean )))
+      {
+         y = (mI - el_uMean ) / diff;
+      }
+      else
+      {
+         y = 1.0;
+      }
+
+      computeCorrectionFunction(y,yMin);
+      
    } // for iPoint
 }
 
@@ -104,13 +94,9 @@ double IndicatorBJ::checkDiscontinuity(
    // compute min|max values of solution for current stencil
    for (int k : stencil->cell_num)
    {
-      averager.readElementAverageByNumber(k, el_uMean);
-      for (int iSol = 0; iSol < num_equation; ++iSol)
-      {
-         
-         mI[iSol] = el_uMean[iSol] < mI[iSol] ? el_uMean[iSol] : mI[iSol];
-         MI[iSol] = el_uMean[iSol] > MI[iSol] ? el_uMean[iSol] : MI[iSol];
-      }
+      averager.readElementAverageComponentByNumber(k, iSolRoot, el_uMean);
+      mI = el_uMean < mI ? el_uMean : mI;
+      MI = el_uMean > MI ? el_uMean : MI;
    }
 
    // run through faces again to compute values in gauss points
@@ -136,8 +122,7 @@ double IndicatorBJ::checkDiscontinuity(
       face_el_trans = mesh->GetSharedFaceTransformations(iFace);
       IntegrationPointTransformation curTrans = face_el_trans->Loc1;
 
-      int intorder;
-         intorder = face_el_trans->Elem1->OrderW() + 2*fes->GetFE(face_el_trans->Elem1No)->GetOrder();
+      int intorder = face_el_trans->Elem1->OrderW() + 2*fes->GetFE(face_el_trans->Elem1No)->GetOrder();
 
       const IntegrationRule *ir = &IntRules.Get(face_el_trans->FaceGeom, intorder);
 
@@ -145,8 +130,8 @@ double IndicatorBJ::checkDiscontinuity(
    } // for iFace
 
    // set indicator values to the external field 
-   double iVal = yMin[0];
-   
+   double iVal = yMin;
+
    setValue(iCell, iVal);
 
    return iVal;
