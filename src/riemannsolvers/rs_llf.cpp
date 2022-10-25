@@ -38,7 +38,7 @@ double RiemannSolverLLF::Eval(const Vector &state1, const Vector &state2,
    {
       flux1.Print(std::cout << std::setprecision(18) << "flux1 = ");
       flux2.Print(std::cout << std::setprecision(18) << "flux2 = ");
-       lambdaF.Print(std::cout << std::setprecision(18) << "lambdaF = ");
+      lambdaF.Print(std::cout << std::setprecision(18) << "lambdaF = ");
       std::cout << "maxE = " << maxE << std::endl;
    }
 

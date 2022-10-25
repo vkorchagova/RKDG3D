@@ -27,13 +27,13 @@ double RiemannSolverRusanov::Eval(const Vector &state1, const Vector &state2,
    ComputeFluxDotN(state2, nor, flux2);
 
    double normag = 0;
-   for (int i = 0; i < dim; i++)
+   for (int i = 0; i < dim; ++i)
    {
       normag += nor(i) * nor(i);
    }
    normag = sqrt(normag);
 
-   for (int i = 0; i < num_equation; i++)
+   for (int i = 0; i < num_equation; ++i)
    {
       flux(i) = 0.5 * (flux1(i) + flux2(i)) / normag
                 - 0.5 * maxE * (state2(i) - state1(i));

@@ -100,12 +100,12 @@ protected:
 
    /// Special function to compute shape function values on troubled cell via neighbour cell
    void assembleShiftedElementMatrix(
-       const FiniteElement &trial_fe, 
-       const FiniteElement &troubled_fe,
-       const FiniteElement &test_fe,
-       ElementTransformation &Trans, 
-       ElementTransformation &TransTroubled,
-       DenseMatrix &elmat
+      const FiniteElement &trial_fe, 
+      const FiniteElement &troubled_fe,
+      const FiniteElement &test_fe,
+      ElementTransformation &Trans, 
+      ElementTransformation &TransTroubled,
+      DenseMatrix &elmat
    ); 
 
 public:
@@ -124,27 +124,33 @@ public:
 
    /// Read element average: special function due to different mechanisms for internal and shared values
    void readElementAverageByNumber(
-       const int iCell, 
-       Vector& el_uMean
+      const int iCell, 
+      Vector& el_uMean
    );
+   void readElementAverageComponentByNumber(
+      const int iCell, 
+      const int iEq, 
+      double value
+   );
+
 
 
    /// Read element extrap average: special function due to different mechanisms for internal and shared values
    void readElementExtrapAverageByNumber(
-       const int iCell, 
-       Vector& el_uMean
+      const int iCell, 
+      Vector& el_uMean
    );
 
    /// Compute average of extrapolated function values from neighbours on troubled cell
    void computeStencilExtrapAveragesVector(
-       const Stencil* stencil
+      const Stencil* stencil
    );
 
    /// Compute one component of average of extrapolated function values from neighbours on troubled cell
    void computeStencilExtrapAverages(
-       const ParGridFunction& x,
-       const Stencil* stencil,
-       ParGridFunction& avgs
+      const ParGridFunction& x,
+      const Stencil* stencil,
+      ParGridFunction& avgs
    );  
 
 

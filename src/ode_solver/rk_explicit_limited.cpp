@@ -23,7 +23,7 @@ void ExplicitRKLimitedSolver::Init(TimeDependentOperator &_f)
    {
       y(i) = 0.0;
    }
-   for (int i = 0; i < s; i++)
+   for (int i = 0; i < s; ++i)
    {
       k[i].SetSize(n, mem_type);
    }
@@ -32,7 +32,7 @@ void ExplicitRKLimitedSolver::Init(TimeDependentOperator &_f)
 
 void ExplicitRKLimitedSolver::Step(Vector &x, double &t, double &dt)
 {
-   for (int i = 0; i < s; i++)
+   for (int i = 0; i < s; ++i)
    {
       k[i].SetSize(x.Size(), mem_type);
    }
@@ -46,7 +46,7 @@ void ExplicitRKLimitedSolver::Step(Vector &x, double &t, double &dt)
    f->SetTime(t);
    f->Mult(x, k[0]);
    
-   for (int l = 0, i = 1; i < s; i++)
+   for (int l = 0, i = 1; i < s; ++i)
    {
       add(x, a[l++]*dt, k[0], y);
       
@@ -62,7 +62,7 @@ void ExplicitRKLimitedSolver::Step(Vector &x, double &t, double &dt)
       f->Mult(y, k[i]);
    }
 
-   for (int i = 0; i < s; i++)
+   for (int i = 0; i < s; ++i)
    {
       x.Add(b[i]*dt, k[i]);
    }

@@ -14,7 +14,6 @@ void DomainIntegrator::AssembleElementMatrix2(const FiniteElement &trial_fe,
 
    // Trial space = vector L2 space (mesh dim)
    // Test space  = scalar L2 space
-   // std::cout << "in assebmle matrix 2" << std::endl;
 
    const int dof_trial = trial_fe.GetDof();
    const int dof_test = test_fe.GetDof();
@@ -31,7 +30,7 @@ void DomainIntegrator::AssembleElementMatrix2(const FiniteElement &trial_fe,
    const int intorder = 2 * maxorder;
    const IntegrationRule *ir = &IntRules.Get(trial_fe.GetGeomType(), intorder);
 
-   for (int i = 0; i < ir->GetNPoints(); i++)
+   for (int i = 0; i < ir->GetNPoints(); ++i)
    {
       const IntegrationPoint &ip = ir->IntPoint(i);
 
@@ -99,7 +98,7 @@ void DomainIntegrator::AssembleElementMatrix2(const FiniteElement &trial_fe,
 //   fnd = ir.GetNPoints();
 //   flux.SetSize( fnd * spaceDim );
 
-//   for (i = 0; i < fnd; i++)
+//   for (i = 0; i < fnd; ++i)
 //   {
 //       const IntegrationPoint &ip = ir.IntPoint(i);
 //       el.CalcDShape(ip, dshape);
@@ -167,7 +166,7 @@ void DomainIntegrator::AssembleElementMatrix2(const FiniteElement &trial_fe,
 //   double energy = 0.0;
 //   if (d_energy) { *d_energy = 0.0; }
 
-//   for (int i = 0; i < ir->GetNPoints(); i++)
+//   for (int i = 0; i < ir->GetNPoints(); ++i)
 //   {
 //       const IntegrationPoint &ip = ir->IntPoint(i);
 //       fluxelem.CalcShape(ip, shape);

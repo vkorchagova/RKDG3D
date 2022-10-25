@@ -100,12 +100,12 @@ void BoundaryIntegratorCharOutlet::AssembleFaceVector(const FiniteElement &el1,
    //   IntegrationRule nds1 = el1.GetNodes();
    //   IntegrationRule nds2 = el2.GetNodes();
 
-   //   for (int i = 0; i < nds1.GetNPoints(); i++)
+   //   for (int i = 0; i < nds1.GetNPoints(); ++i)
    //   {
    //      const IntegrationPoint &ip = nds1.IntPoint(i);
    //      std::cout"node cell1 = " << ip.x << " " << ip.y << std::endl;
    //   }
-   //   for (int i = 0; i < nds2.GetNPoints(); i++)
+   //   for (int i = 0; i < nds2.GetNPoints(); ++i)
    //   {
    //      const IntegrationPoint &ip = nds2.IntPoint(i);
    //      std::cout"node cell2 = " << ip.x << " " << ip.y << std::endl;
@@ -116,7 +116,7 @@ void BoundaryIntegratorCharOutlet::AssembleFaceVector(const FiniteElement &el1,
    // std::cout"npoints = " << ir->GetNPoints() << std::endl;
 
 
-   for (int i = 0; i < ir->GetNPoints(); i++)
+   for (int i = 0; i < ir->GetNPoints(); ++i)
    {
     const IntegrationPoint &ip = ir->IntPoint(i);
     // std::cout"ipoint = " << ip.index << " " << ip.x << " " << ip.y << " " << ip.z << std::endl;
@@ -127,7 +127,7 @@ void BoundaryIntegratorCharOutlet::AssembleFaceVector(const FiniteElement &el1,
     CalcOrtho(Tr.Face->Jacobian(), nor);
    
     double normag = 0;
-    for (int i = 0; i < nor.Size(); i++)
+    for (int i = 0; i < nor.Size(); ++i)
     {
        normag += nor(i) * nor(i);
     }

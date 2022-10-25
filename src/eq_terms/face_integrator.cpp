@@ -65,12 +65,12 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
    //   IntegrationRule nds1 = el1.GetNodes();
    //   IntegrationRule nds2 = el2.GetNodes();
 
-   //   for (int i = 0; i < nds1.GetNPoints(); i++)
+   //   for (int i = 0; i < nds1.GetNPoints(); ++i)
    //   {
    //       const IntegrationPoint &ip = nds1.IntPoint(i);
    //       std::cout << "node cell1 = " << ip.x << " " << ip.y << std::endl;
    //   }
-   //   for (int i = 0; i < nds2.GetNPoints(); i++)
+   //   for (int i = 0; i < nds2.GetNPoints(); ++i)
    //   {
    //       const IntegrationPoint &ip = nds2.IntPoint(i);
    //       std::cout << "node cell2 = " << ip.x << " " << ip.y << std::endl;
@@ -82,7 +82,7 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
 
 
 
-   for (int i = 0; i < ir->GetNPoints(); i++)
+   for (int i = 0; i < ir->GetNPoints(); ++i)
    {
       const IntegrationPoint &ip = ir->IntPoint(i);
       // std::cout << "ipoint = " << ip.index << " " << ip.x << " " << ip.y << " " << ip.z << std::endl;
@@ -129,14 +129,9 @@ void FaceIntegrator::AssembleFaceVector(const FiniteElement &el1,
       // Get the normal vector and the flux on the face
       CalcOrtho(Tr.Face->Jacobian(), nor);
     
-      double normag = 0;
-      for (int i = 0; i < nor.Size(); i++)
-      {
-         normag += nor(i) * nor(i);
-      } 
-      normag = sqrt(normag);
+      double normag = nor.Norml2();
 
-      nor *= 1.0/nor.Norml2();
+      nor *= 1.0/normag;
 
       // for (int iii = 0; iii < nor.Size(); ++iii)
       //   if (nor[iii] != nor[iii])
