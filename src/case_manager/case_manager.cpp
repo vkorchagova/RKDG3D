@@ -1115,19 +1115,19 @@ int CaseManager::setStartTimeCycle()
 
 void CaseManager::cleanPreviousRestartFrames(int& ti)
 {
-   // // get current str name
-   // restart_name_stream << std::setw(6) << std::setfill('0') << ti;
-   // //std::cout << "restart_" + restart_name_stream.str() << std::endl;
+   // get current str name
+   restart_name_stream << std::setw(6) << std::setfill('0') << ti;
+   //std::cout << "restart_" + restart_name_stream.str() << std::endl;
 
-   // restart_queue.push("restart_" + restart_name_stream.str());
-   // if (restart_queue.size() > nSavedFrames)
-   // {
-   //    restart_deleted_cycle_name = restart_queue.top();
-   //    system(("rm -rf " + restart_deleted_cycle_name).c_str());
-   //    system(("rm -rf " + restart_deleted_cycle_name + ".mfem_root").c_str());
-   //    restart_queue.pop();
-   // }
-   // restart_name_stream.str(std::string());
+   restart_queue.push("restart_" + restart_name_stream.str());
+   if (restart_queue.size() > nSavedFrames)
+   {
+      restart_deleted_cycle_name = restart_queue.top();
+      system(("rm -rf " + restart_deleted_cycle_name).c_str());
+      system(("rm -rf " + restart_deleted_cycle_name + ".mfem_root").c_str());
+      restart_queue.pop();
+   }
+   restart_name_stream.str(std::string());
 }
 
 void CaseManager::getVisSteps(int& vis_steps)

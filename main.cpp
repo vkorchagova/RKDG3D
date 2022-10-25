@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
    if (cfl > 0)
    {
       double my_hmin = pmesh->GetElementSize(0, 1);
-      for (int i = 1; i < pmesh->GetNE(); i++)
+      for (int i = 1; i < pmesh->GetNE(); ++i)
       {
          my_hmin = std::min(pmesh->GetElementSize(i, 1), my_hmin);
       }
@@ -282,7 +282,7 @@ int main(int argc, char *argv[])
 
    manager.loadInitialConditions();
 
-   for (int ref_it = 1; ; ref_it++)
+   for (int ref_it = 1; ; ++ref_it)
    {
       manager.loadInitialSolution(vfes, offsets, u_block, sol);
 
@@ -577,7 +577,7 @@ int main(int argc, char *argv[])
       // std::cout << "=== before ref iters === \n" << std::endl;
 
 
-      for (int ref_it = 1; ; ref_it++)
+      for (int ref_it = 1; ; ++ref_it)
       {
          ode_solver->Step(sol, t, dt_real);
 
@@ -820,7 +820,7 @@ int main(int argc, char *argv[])
          if (myRank == 0) 
          {
             manager.cleanPreviousRestartFrames(ti);
-            // if (myRank == 0) {std::cout << "cleanPreviousRestartFrames OK\n";}
+            if (myRank == 0) {std::cout << "cleanPreviousRestartFrames OK\n";}
          }
          
       }
