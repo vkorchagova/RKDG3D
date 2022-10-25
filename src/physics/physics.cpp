@@ -57,7 +57,7 @@ double ComputePressure(const Vector &state, int dim)
    const double den_energy = state(1 + dim);
 
    double den_vel2 = 0;
-   for (int d = 0; d < dim; d++) 
+   for (int d = 0; d < dim; ++d) 
    { 
       den_vel2 += den_vel(d) * den_vel(d); 
    }
@@ -74,7 +74,7 @@ double ComputeTemperature(const Vector &state, int dim)
    const double den_energy = state(1 + dim);
 
    double den_vel2 = 0;
-   for (int d = 0; d < dim; d++) 
+   for (int d = 0; d < dim; ++d) 
    { 
       den_vel2 += den_vel(d) * den_vel(d); 
    }
@@ -106,28 +106,21 @@ double ComputeSoundSpeed(double rho, double p)
 // Compute the vector flux F(u)
 void ComputeFlux(const Vector &state, int dim, DenseMatrix &flux)
 {
-   const double den = state(0);
-   const Vector den_vel(state.GetData() + 1, dim);
-   const double den_energy = state(1 + dim);
+   const double rho = state(0);
+   const Vector rhoU(state.GetData() + 1, dim);
+   const double rhoE = state(1 + dim);
+   const double p = ComputePressure(state, dim);
+   const double H = (rhoE + p) / rho;
 
-   MFEM_ASSERT(StateIsPhysical(state, dim), "");
-
-   const double pres = ComputePressure(state, dim);
-
-   for (int d = 0; d < dim; d++)
+   for (int i = 0; i < dim; ++i)
    {
-      flux(0, d) = den_vel(d);
-      for (int i = 0; i < dim; i++)
+      flux(0,i) = rhoU(i);
+      for (int j = 0; j < dim; ++j)
       {
-         flux(1+i, d) = den_vel(i) * den_vel(d) / den;
+         flux(j+1,i) = rhoU(j)*rhoU(i)/rho;
       }
-      flux(1+d, d) += pres;
-   }
-
-   const double H = (den_energy + pres) / den;
-   for (int d = 0; d < dim; d++)
-   {
-      flux(1+dim, d) = den_vel(d) * H;
+      flux(i+1,i) += p;
+      flux(dim+1,i) = rhoU(i) * H;
    }
 }
 
@@ -146,13 +139,13 @@ void ComputeFluxDotN(const Vector &state, const Vector &nor,
    const double pres = ComputePressure(state, dim);
 
    double den_velN = 0;
-   for (int d = 0; d < dim; d++) 
+   for (int d = 0; d < dim; ++d) 
    { 
       den_velN += den_vel(d) * nor(d); 
    }
 
    fluxN(0) = den_velN;
-   for (int d = 0; d < dim; d++)
+   for (int d = 0; d < dim; ++d)
    {
       fluxN(1+d) = den_velN * den_vel(d) / den + pres * nor(d);
    }
@@ -169,7 +162,7 @@ void ComputeFluxF(const Vector &state, const Vector &primState, const int dim,
 
    flux(0) = state(1); //rho u
    flux(1) = state(1) * primState(1) + pres; // rho u^2 + p
-   for (int d = 1; d < dim; d++)
+   for (int d = 1; d < dim; ++d)
    {
       flux(d+1) = state(1) * primState(d+1); // rho u v, rho u w
    }
@@ -186,7 +179,7 @@ double ComputeM(const Vector &state, const int dim)
    const Vector den_vel(state.GetData() + 1, dim);
 
    double den_vel2 = 0;
-   for (int d = 0; d < dim; d++) 
+   for (int d = 0; d < dim; ++d) 
    { 
       den_vel2 += den_vel(d) * den_vel(d); 
    }
@@ -206,7 +199,7 @@ double ComputeMaxCharSpeed(const Vector &state, const int dim)
    const Vector den_vel(state.GetData() + 1, dim);
 
    double den_vel2 = 0;
-   for (int d = 0; d < dim; d++) 
+   for (int d = 0; d < dim; ++d) 
    { 
       den_vel2 += den_vel(d) * den_vel(d); 
    }
@@ -243,7 +236,6 @@ void ComputeEinfeldtCharSpeeds(const Vector &state1, const Vector &state2, const
    double c_av = sqrt((sqrtRhoLeft * sqr(cLeft) + sqrtRhoRight * sqr(cRight)) / sumSqrtRho + \
       eta2 * sqr(uRight - uLeft));
 
-   // Vector res(dim+2);
    lambdaF[0] = u_av - c_av;
    lambdaF[dim+1] = u_av + c_av;
 
