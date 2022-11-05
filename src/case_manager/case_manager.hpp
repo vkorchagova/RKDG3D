@@ -285,6 +285,9 @@ public:
 
    /// Check level of details
    double getParaviewLevelOfDetails() {return paraviewLevelOfDetails;};
+
+   /// Clean previous computations
+   void cleanParaviewFolder();
 };
 
 // template functions

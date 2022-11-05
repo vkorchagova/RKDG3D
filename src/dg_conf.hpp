@@ -81,6 +81,9 @@ const double DEFAULT_SHU_CK = 0.03;
 
 /// --- Postprocessing options --- ///
 
+/// Name of the folder for output results
+const std::string DEFAULT_OUTPUT_FOLDER_NAME = "PV";
+
 /// Turn on total energy computation and output
 const bool DEFAULT_COMPUTE_TOTAL_ENERGY = false;
 
@@ -94,5 +97,6 @@ const int DEFAULT_NUMBER_OF_OUTPUT_STEPS = 1;
 /// Level of details in ParaView
 /// (1 - use only cell center values, 2 - use node values ...)
 const int DEFAULT_LEVEL_OF_PARAVIEW_DETAILS = 2;
+
 
 #endif // DG_SOLVER_CONF_H
