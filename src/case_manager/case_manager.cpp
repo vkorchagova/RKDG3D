@@ -819,10 +819,32 @@ void CaseManager::addBoundaryIntegrators(ParNonlinearForm& A, ParMesh& mesh, Rie
    for (int i = 0; i < mesh.bdr_attributes.Max(); ++i)
       bdr_markers[i].SetSize(mesh.bdr_attributes.Max());
 
-   if (myRank == 0) mesh.bdr_attributes.Print(std::cout << "Boundary attributes in mesh:\n");   
+   if (myRank == 0) mesh.bdr_attributes.Print(std::cout << "Boundary attributes in mesh:\n");  
+
+   // check matching of boundary names in settings and geometry
+
+   bool boundaryNamesAreMatched = true; 
+
+   if ( ((*settings)["boundaryField"].num_children() != mesh.bdr_attributes.Size()) )
+   {
+      boundaryNamesAreMatched = false; 
+   }
+   else
+   {
+      for ( std::map<std::string,int>::iterator it = map_bdr_names_tag.begin(); it != map_bdr_names_tag.end(); it++)
+      {
+         ryml::csubstr boundaryName = c4::to_csubstr(it->first);
+         if (!(*settings)["boundaryField"].has_child(boundaryName))
+         {
+            boundaryNamesAreMatched = false;
+            break;
+         }
+      }         
+      
+   }
 
    
-   if ( ((*settings)["boundaryField"].num_children() != mesh.bdr_attributes.Size()) )
+   if(!boundaryNamesAreMatched)
    {
       if (myRank == 0)
       {
