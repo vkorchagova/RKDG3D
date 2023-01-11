@@ -585,21 +585,23 @@ void CaseManager::minimizeAttributes(ParMesh*& mesh)
 
 void CaseManager::loadAdaptiveMeshSettings(ThresholdRefiner& refiner,ThresholdDerefiner& derefiner)
 {
-   // c4::from_chars(settings["mesh"]["totalErrorFraction"].val(), &total_error_fraction);
-   // c4::from_chars(settings["mesh"]["maxElemError"].val(), &max_elem_error);
-   // c4::from_chars(settings["mesh"]["hysteresis"].val(), &hysteresis);
-   // c4::from_chars(settings["mesh"]["preferConformingRefinement"].val(), &prefer_conforming_refinement);
-   // c4::from_chars(settings["mesh"]["nonConformingLimit"].val(), &nc_limit);
+   total_error_fraction = read<double>(settings,rymlKeys({"mesh","totalErrorFraction"}));
+   max_elem_error = read<double>(settings,rymlKeys({"mesh","maxElemError"}));
+   hysteresis = read<double>(settings,rymlKeys({"mesh","hysteresis"}));
+   prefer_conforming_refinement = read<bool>(settings,rymlKeys({"mesh","preferConformingRefinement"}));
+   nc_limit = read<int>(settings,rymlKeys({"mesh","nonConformingLimit"}));
 
-   // refiner.SetTotalErrorFraction(total_error_fraction); // use purely local threshold
+   refiner.SetTotalErrorFraction(total_error_fraction); // use purely local threshold
 
-   // refiner.SetLocalErrorGoal(max_elem_error);
-   // if (prefer_conforming_refinement)
-   //   refiner.PreferConformingRefinement();
-   // refiner.SetNCLimit(nc_limit);
+   refiner.SetLocalErrorGoal(max_elem_error);
+   if (prefer_conforming_refinement)
+   {
+     refiner.PreferConformingRefinement();
+   }
+   refiner.SetNCLimit(nc_limit);
 
-   // derefiner.SetThreshold(hysteresis * max_elem_error);
-   // derefiner.SetNCLimit(nc_limit);
+   derefiner.SetThreshold(hysteresis * max_elem_error);
+   derefiner.SetNCLimit(nc_limit);
 }
 
 void CaseManager::checkNumEqn(int dim)
