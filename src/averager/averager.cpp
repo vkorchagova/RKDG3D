@@ -133,7 +133,7 @@ void Averager::readElementAverageByNumber(const int iCell, Vector& el_uMean)
          el_uMean[iEq] = (avgs->FaceNbrData())[iEq  + (iCell - mesh->GetNE()) * num_equation];
 }
 
-void Averager::readElementAverageComponentByNumber(const int iCell, const int iEq, double value)
+void Averager::readElementAverageComponentByNumber(const int iCell, const int iEq, double& value)
 {
    if (iCell < mesh->GetNE())
       value = (*avgs)[iEq * mesh->GetNE() + iCell];

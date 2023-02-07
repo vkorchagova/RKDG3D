@@ -130,7 +130,7 @@ public:
    void readElementAverageComponentByNumber(
       const int iCell, 
       const int iEq, 
-      double value
+      double& value
    );
 
 
