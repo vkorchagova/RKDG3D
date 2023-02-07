@@ -12,8 +12,8 @@ double RiemannSolverRusanov::Eval(const Vector &state1, const Vector &state2,
    GetPrimitiveFromConservative(state1, primState1);
    GetPrimitiveFromConservative(state2, primState2);
 
-   if (!StateIsPhysicalSay(state1, primState1, dim)) { std::cout << "Found in state 1 on proc #" << myRank; return -1;};
-   if (!StateIsPhysicalSay(state2, primState2, dim)) { std::cout << "Found in state 2 on proc #" << myRank; return -1;};
+   if (!StateIsPhysicalSay(state1, primState1, dim)) { std::cout << "Found in state 1 on proc #" << myRank << std::endl; return -1;};
+   if (!StateIsPhysicalSay(state2, primState2, dim)) { std::cout << "Found in state 2 on proc #" << myRank << std::endl; return -1;};
    
    const double maxE1 = ComputeMaxCharSpeed(state1, dim);
    const double maxE2 = ComputeMaxCharSpeed(state2, dim);

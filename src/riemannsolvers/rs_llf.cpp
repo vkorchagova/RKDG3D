@@ -26,11 +26,13 @@ double RiemannSolverLLF::Eval(const Vector &state1, const Vector &state2,
    GetPrimitiveFromConservative(state1, primState1);
    GetPrimitiveFromConservative(state2, primState2);
 
-   if (!StateIsPhysicalSay(state1, primState1, dim)) { std::cout << "Found in state 1 on proc #" << myRank; return -1;};
-   if (!StateIsPhysicalSay(state2, primState2, dim)) { std::cout << "Found in state 2 on proc #" << myRank; return -1;};
+   if (!StateIsPhysicalSay(state1, primState1, dim)) { std::cout << "Found in state 1 on proc #" << myRank << std::endl; return -1;};
+   if (!StateIsPhysicalSay(state2, primState2, dim)) { std::cout << "Found in state 2 on proc #" << myRank << std::endl; return -1;};
 
    ComputeFluxF(state1, primState1, dim, flux1);
    ComputeFluxF(state2, primState2, dim, flux2);
+
+   ComputeToroCharSpeeds(state1, state2, primState1, primState2, lambdaF, dim);
 
    const double maxE = std::max(fabs(lambdaF[0]), fabs(lambdaF[dim+1]));
 
