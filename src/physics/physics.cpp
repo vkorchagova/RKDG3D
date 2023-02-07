@@ -2,6 +2,7 @@
 #include "physics.hpp"
 #include <cmath>
 
+
 // Check that the state is physical
 bool StateIsPhysical(const Vector &state, const int dim)
 {
@@ -42,7 +43,7 @@ bool StateIsPhysicalSay(const Vector &state, const Vector &primState, const int 
 
    if (primState(1 + dim) <= 0 || !std::isfinite(primState(1 + dim)))
    {
-      state.Print(std::cout << "Rank #" << myRank << ": " << "Negative pressure in prim state ");
+      state.Print(std::cout << "Rank #" << myRank << ": " << "Negative pressure " << primState(1 + dim) << " in state ");
       return false;
    }
    return true;
