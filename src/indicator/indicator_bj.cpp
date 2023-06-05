@@ -27,8 +27,6 @@ void IndicatorBJ::updateYmin(
 {
    IntegrationPoint eip1;
    Vector funval1(num_equation);
-   // Vector diff(num_equation);
-   // Vector y(num_equation);
 
    double diff;
    double y;
@@ -52,16 +50,15 @@ void IndicatorBJ::updateYmin(
 
       // Interpolate elfun at the point
       elfun1_mat.MultTranspose(el_shape, funval1);
-
       // Compute difference between average value and value in the gaussion boundary point
-      averager.readElementAverageComponentByNumber(iCell, iSolRoot, el_uMean);
-      diff = funval1[iSolRoot] - el_uMean;
+      averager.readElementAverageComponentByNumber(iCell, 0, el_uMean);
+      diff = funval1[0] - el_uMean;
       
-      if (diff > DEFAULT_BJ_DIFF_MAX_PERCENT * std::max(1.0, fabs(el_uMean)))
+      if (diff > 1e-3) //DEFAULT_BJ_DIFF_MAX_PERCENT * std::max(1.0, fabs(el_uMean)))
       {
          y = (MI - el_uMean ) / diff;
       }
-      else if (diff< - DEFAULT_BJ_DIFF_MAX_PERCENT * std::max(1.0, fabs(el_uMean )))
+      else if (diff < - 1e-3) //DEFAULT_BJ_DIFF_MAX_PERCENT * std::max(1.0, fabs(el_uMean )))
       {
          y = (mI - el_uMean ) / diff;
       }
@@ -71,7 +68,6 @@ void IndicatorBJ::updateYmin(
       }
 
       computeCorrectionFunction(y,yMin);
-      
    } // for iPoint
 }
 
@@ -106,10 +102,7 @@ double IndicatorBJ::checkDiscontinuity(
       face_el_trans = mesh->GetFaceElementTransformations(iFace);
       IntegrationPointTransformation curTrans = face_el_trans->Elem1No == iCell ? face_el_trans->Loc1 : face_el_trans->Loc2;
 
-      int intorder = 2;//(std::min(face_el_trans->Elem1->OrderW(), face_el_trans->Elem2->OrderW()) +
-                      //2*std::max(fes->GetFE(face_el_trans->Elem1No)->GetOrder(), fes->GetFE(face_el_trans->Elem2No)->GetOrder()));
-
-      const IntegrationRule *ir = &IntRules.Get(face_el_trans->FaceGeom, intorder);
+      const IntegrationRule *ir = &IntRules.Get(face_el_trans->FaceGeom, DEFAULT_GAUSS_INTORDER);
 
       updateYmin(*ir, &curTrans, elfun1_mat, iCell);
 
@@ -122,9 +115,7 @@ double IndicatorBJ::checkDiscontinuity(
       face_el_trans = mesh->GetSharedFaceTransformations(iFace);
       IntegrationPointTransformation curTrans = face_el_trans->Loc1;
 
-      int intorder = face_el_trans->Elem1->OrderW() + 2*fes->GetFE(face_el_trans->Elem1No)->GetOrder();
-
-      const IntegrationRule *ir = &IntRules.Get(face_el_trans->FaceGeom, intorder);
+      const IntegrationRule *ir = &IntRules.Get(face_el_trans->FaceGeom, DEFAULT_GAUSS_INTORDER);
 
       updateYmin(*ir, &curTrans, elfun1_mat, iCell);
    } // for iFace

@@ -3,6 +3,7 @@
 
 #include "mfem.hpp"
 #include "rs_basic.hpp"
+#include "dg_conf.hpp"
 
 
 using namespace mfem;

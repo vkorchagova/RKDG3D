@@ -16,6 +16,7 @@ LimiterMultiplier::LimiterMultiplier
 ) : Limiter(_ind, _avgr, _fes, _offsets,_linearize,_haveLastHope, _fdGroupAttribute, _d) 
 {
    el_shape.SetSize(num_equation);
+   el_shape = 0.0;
 };
 
 void LimiterMultiplier::limit(const int iCell, const double ind_value, const double nDofs, DenseMatrix& elfun1_mat) 
@@ -43,7 +44,7 @@ void LimiterMultiplier::limit(const int iCell, const double ind_value, const dou
          }
       }
    }
-   
+
    // // Last hope limiter
    if (haveLastHope)
    {
@@ -63,9 +64,10 @@ void LimiterMultiplier::limit(const int iCell, const double ind_value, const dou
          // Interpolate elfun at the point
          elfun1_mat.MultTranspose(el_shape, funval1Vert);
 
-         if (!StateIsPhysical(funval1Vert,dim))
+         if ((false == StateIsPhysical(funval1Vert,dim)))
          {
             averager.readElementAverageByNumber(iCell, el_uMean);
+            std::cout << "lasthope in cell #" << iCell << std::endl;
 
             for (int iEq = 0; iEq < num_equation; ++iEq)
             {

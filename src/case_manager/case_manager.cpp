@@ -585,12 +585,23 @@ void CaseManager::minimizeAttributes(ParMesh*& mesh)
 
 void CaseManager::loadAdaptiveMeshSettings(ThresholdRefiner& refiner,ThresholdDerefiner& derefiner)
 {
-   total_error_fraction = read<double>(settings,rymlKeys({"mesh","totalErrorFraction"}));
-   max_elem_error = read<double>(settings,rymlKeys({"mesh","maxElemError"}));
-   hysteresis = read<double>(settings,rymlKeys({"mesh","hysteresis"}));
-   prefer_conforming_refinement = read<bool>(settings,rymlKeys({"mesh","preferConformingRefinement"}));
-   nc_limit = read<int>(settings,rymlKeys({"mesh","nonConformingLimit"}));
+   total_error_fraction         = read<double>(settings,rymlKeys({"mesh","totalErrorFraction"}));
+   if (myRank == 0) std::cout << " - Total error fraction: " << total_error_fraction << std::endl;
 
+   max_elem_error               = read<double>(settings,rymlKeys({"mesh","maxElemError"}));
+   if (myRank == 0) std::cout << " - Max element error: " << max_elem_error << std::endl;
+
+   hysteresis                   = read<double>(settings,rymlKeys({"mesh","hysteresis"}));
+   if (myRank == 0) std::cout << " - Hysteresis: " << hysteresis << std::endl;
+
+   prefer_conforming_refinement = read<bool>(settings,rymlKeys({"mesh","preferConformingRefinement"}));
+   if (myRank == 0) std::cout << " - Prefer conforming: " << prefer_conforming_refinement << std::endl;
+
+   nc_limit                     = read<int>(settings,rymlKeys({"mesh","nonConformingLimit"}));
+   if (myRank == 0) std::cout << " - NC limit: " << nc_limit << std::endl;
+
+
+   
    refiner.SetTotalErrorFraction(total_error_fraction); // use purely local threshold
 
    refiner.SetLocalErrorGoal(max_elem_error);
@@ -712,7 +723,7 @@ void CaseManager::loadLimiter(Averager& avgr, Indicator*& ind, Limiter*& l, cons
    ryml::csubstr limiterType = read<ryml::csubstr>(settings,rymlKeys({"spatial","limiter","type"}));
    if (myRank == 0) std::cout << limiterType << std::endl;
 
-   linearize = readOrDefault<bool>(settings,rymlKeys({"spatial","limiter","linearize"}), DEFAULT_LINEARIZE_SOLUTION);
+   linearize    = readOrDefault<bool>(settings,rymlKeys({"spatial","limiter","linearize"}), DEFAULT_LINEARIZE_SOLUTION);
    haveLastHope = readOrDefault<bool>(settings,rymlKeys({"spatial","limiter","haveLastHope"}), DEFAULT_REMOVE_SLOPES_AFTER_LIMITING);
    if (myRank == 0) std::cout << "Additional linearization: " << linearize << std::endl;
    if (myRank == 0) std::cout << "Last hope limiter (cut slopes in cell in case of nonphysical values in vertices after limiting): " << haveLastHope << std::endl;

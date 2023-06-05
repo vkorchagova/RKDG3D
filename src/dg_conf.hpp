@@ -43,6 +43,14 @@ static const int DEFAULT_NUMBER_OF_EQUATIONS = 4;
 /// Turn on restart from some previous time step
 static const bool DEFAULT_CHECK_FOR_RESTART = false;
 
+/// Default order of Gauss integration (avoid general formulae to simplify code)
+/// General formulae: check in examples
+static const int DEFAULT_GAUSS_INTORDER = 2;
+
+/// Define type of char speed averaging 
+#define CHAR_SPEED_AVG_TYPE_EINFELDT = 0
+#define CHAR_SPEED_AVG_TYPE_TORO = 1
+
 /// Cut nonlinear terms when limit solution
 static const bool DEFAULT_LINEARIZE_SOLUTION = false;
 
@@ -62,7 +70,7 @@ static const double DEFAULT_LARGE_NUMBER = 1e+9;
 static const int DEFAULT_MAX_STENCIL_SIZE = 8;
 
 /// Threshold value for indicator: if less we should correct slopes
-static const double DEFAULT_INDICATOR_CORRECTION_THRESHOLD_VALUE = 0.99999;
+static const double DEFAULT_INDICATOR_CORRECTION_THRESHOLD_VALUE = 1.0;
 
 /// Percentage of max solution value to check diff for large values (like energy)
 static const double DEFAULT_BJ_DIFF_MAX_PERCENT = 1e-3;

@@ -66,9 +66,9 @@ int main(int argc, char *argv[])
    MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
    MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
-   /// --------------------------------
-   /// 1. Prepare for case file parsing
-   /// --------------------------------
+   /// ---------------------------------
+   /// 1. Prepare for case file parsing.
+   /// ---------------------------------
 
    // 1.1. Set default values of parameters needed in main.cpp 
 
@@ -90,6 +90,7 @@ int main(int argc, char *argv[])
 
    CaseManager manager(caseSettingsFileName, restart_dc);
    manager.loadRestartSettings();
+   manager.cleanParaviewFolder();
    manager.loadPhysics();
    
    /// ------------------------------------------
@@ -150,7 +151,7 @@ int main(int argc, char *argv[])
    BlockVector u_block_old(sol_old, offsets);
 
    /// -------------------------
-   /// 5. Set up equation terms
+   /// 5. Set up equation terms.
    /// -------------------------
 
    // 5.1. Set up the bilinear form for integration inside cell.
@@ -178,9 +179,9 @@ int main(int argc, char *argv[])
    
    FE_Evolution euler(vfes, A, &(Aflux.SpMat()));
 
-   /// ----------------------------------------------
-   /// 7. Define limiter and troubled cells indicator
-   /// ----------------------------------------------
+   /// -----------------------------------------------
+   /// 7. Define limiter and troubled cells indicator.
+   /// -----------------------------------------------
 
    // 7.1. Define additional block vector for indicator values 
    //      to have a possibility of visualization
@@ -224,9 +225,9 @@ int main(int argc, char *argv[])
 
    if (myRank == 0) std::cout << "hmin = " << hmin << std::endl;
    
-   /// ------------------------------------------------------------------------------
-   /// 10. Create data collection for solution output
-   /// ------------------------------------------------------------------------------
+   /// -----------------------------------------------
+   /// 10. Create data collection for solution output.
+   /// -----------------------------------------------
 
    manager.loadPostprocessSettings();
    manager.getVisSteps(vis_steps);
@@ -247,9 +248,9 @@ int main(int argc, char *argv[])
    ParGridFunction TMean(&fes);
    ParGridFunction rhoMean(&fes);
 
-   /// -------------------------------------------------------------
-   /// 11. Initialize spaces and objects for dynamic mesh refinement
-   /// -------------------------------------------------------------
+   /// --------------------------------------------------------------
+   /// 11. Initialize spaces and objects for dynamic mesh refinement.
+   /// --------------------------------------------------------------
 
    DG_FECollection flux_fec(order, dim);
    RT_FECollection smooth_flux_fec(std::max(order-1,0), dim);
@@ -267,9 +268,9 @@ int main(int argc, char *argv[])
       manager.loadAdaptiveMeshSettings(*refiner,*derefiner);
    }
 
-   /// ----------------------------------------------------------------
-   /// 12. Limit initial conditions and refine mesh accordingly to them
-   /// ----------------------------------------------------------------
+   /// -----------------------------------------------------------------
+   /// 12. Limit initial conditions and refine mesh accordingly to them.
+   /// -----------------------------------------------------------------
 
    if (manager.is_adaptive())
    {
@@ -289,31 +290,26 @@ int main(int argc, char *argv[])
       // if (myRank == 0) std::cout << "Check for non-finite coefficients just after loadInitialSolution..." << std::endl;
       // for (int i = 0; i < fesNDofs; ++i)
       // {
-      //   // if (!std::isfinite(rhok[i]))
-      //   //   std::cout << "Rank #" << myRank << ": non-finite state for density, i = " << i << std::endl;
-      //   // if (!std::isfinite(mom[i]))
-      //   //   std::cout << "Rank #" << myRank << ": non-finite state for mom_x, i = " << i << std::endl;
-      //   // if (!std::isfinite(mom[i+fesNDofs]))
-      //   //   std::cout << "Rank #" << myRank << ": non-finite state for mom_y, i = " << i << std::endl;
-      //   // if (dim == 3 && !std::isfinite(mom[i+2*fesNDofs]))
-      //   //   std::cout << "Rank #" << myRank << ": non-finite state for mom_z, i = " << i << std::endl;
-      //   // if (!std::isfinite(energy[i]))
-      //   //   std::cout << "Rank #" << myRank << ": non-finite state for energy, i = " << i << std::endl;
-      //   // if (fabs(energy[i]) < 1e-6 || energy[i] < 0.0)
-      //   //   std::cout << "Rank #" << myRank << ": non-physical state for energy, i = " << i << std::endl;
+      //   if (!std::isfinite(rhok[i]))
+      //     std::cout << "Rank #" << myRank << ": non-finite state for density, i = " << i << std::endl;
+      //   if (!std::isfinite(mom[i]))
+      //     std::cout << "Rank #" << myRank << ": non-finite state for mom_x, i = " << i << std::endl;
+      //   if (!std::isfinite(mom[i+fesNDofs]))
+      //     std::cout << "Rank #" << myRank << ": non-finite state for mom_y, i = " << i << std::endl;
+      //   if (dim == 3 && !std::isfinite(mom[i+2*fesNDofs]))
+      //     std::cout << "Rank #" << myRank << ": non-finite state for mom_z, i = " << i << std::endl;
+      //   if (!std::isfinite(energy[i]))
+      //     std::cout << "Rank #" << myRank << ": non-finite state for energy, i = " << i << std::endl;
+      //   if (fabs(energy[i]) < 1e-6 || energy[i] < 0.0)
+      //     std::cout << "Rank #" << myRank << ": non-physical state for energy, i = " << i << std::endl;
 
       //   if (!std::isfinite(rhok[i]))
       //       std::cout << "Rank #" << myRank << ": non-finite state for sol, i = " << i << std::endl;
       // }
 
-      if (myRank == 0) std::cout << "Check for Riemann solvers just after loadInitialSolution..." << std::endl;
-      Vector zz(sol.Size()); 
-      A.Mult(sol, zz);
-      if (myRank == 0) std::cout << "OK" << std::endl;
-
       
 
-      // l->update(sol);
+      l->update(sol);
 
       // if (myRank == 0) std::cout << "Check for Riemann solvers just after l->update(sol);..." << std::endl;
       // A.Mult(sol, zz);
@@ -430,7 +426,7 @@ int main(int argc, char *argv[])
    } // end adaptive mesh
 
    /// --------------------------------------
-   /// 13. Compute primitive variables field
+   /// 13. Compute primitive variables field.
    /// --------------------------------------
 
    Vector localState(num_equation);
@@ -464,21 +460,21 @@ int main(int argc, char *argv[])
    }
 
    /// -------------------------------------------
-   // 13. Initialize data collection for ParaView
+   // 13. Initialize data collection for ParaView.
    /// -------------------------------------------
 
    ParaViewDataCollection *pd = NULL;
    if (paraview)
    {
-      pd = new ParaViewDataCollection("PV", pmesh);
+      pd = new ParaViewDataCollection(DEFAULT_OUTPUT_FOLDER_NAME, pmesh);
       pd->RegisterField("mom", &mom);
       pd->RegisterField("rho", &rhok);
       pd->RegisterField("energy", &energy);
 
-      // if (manager.write_indicators())
-      // {
-      //   pd->RegisterField("indicator", ind->getValues());
-      // }
+      if (manager.write_indicators())
+      {
+        pd->RegisterField("indicator", ind->getValues());
+      }
 
       pd->RegisterField("U", &U);
       pd->RegisterField("p", &p);
@@ -489,21 +485,19 @@ int main(int argc, char *argv[])
       pd->RegisterField("TMean", &TMean);
       pd->RegisterField("rhoMean", &rhoMean);
 
-      //pd->SetLevelsOfDetail(manager.getParaviewLevelOfDetails());
-      pd->SetLevelsOfDetail(2);
-      pd->SetCycle(0);
-      pd->SetTime(0.0);
+      pd->SetLevelsOfDetail(manager.getParaviewLevelOfDetails());
+      pd->SetCycle(manager.setStartTimeCycle());
+      pd->SetTime(manager.setStartTime());
+
+      pd->UseRestartMode(true);
       pd->Save();
 
       if (myRank == 0) std::cout << "Paraview OK" << std::endl;
    }
 
-//   MPI_Barrier(pmesh->GetComm());
-//   exit(0);
-
-   /// ------------------------------------------------------------------
-   /// 14. Initialize restart queue for control of number of saved frames
-   /// ------------------------------------------------------------------
+   /// -------------------------------------------------------------------
+   /// 14. Initialize restart queue to control the number of saved frames.
+   /// -------------------------------------------------------------------
    manager.initializeRestartQueue();
 
    /// --------------------
@@ -538,16 +532,16 @@ int main(int argc, char *argv[])
          dt = cfl * hmin / max_char_speed;// / (2*order+1);
          if (myRank == 0) std::cout << "max_char_speed = " << max_char_speed << std::endl;
       }
+
+      restart_dc.SetCycle(0);
+      restart_dc.SetTime(0);
+      restart_dc.SetTimeStep(dt);
+      restart_dc.Save();
    }
    else
    {
       dt = restart_dc.GetTimeStep();
    }
-
-   restart_dc.SetCycle(0);
-   restart_dc.SetTime(0);
-   restart_dc.SetTimeStep(dt);
-   restart_dc.Save();
 
    /// ----------------------
    /// 16. Integrate in time.
@@ -576,9 +570,9 @@ int main(int argc, char *argv[])
 
       // std::cout << "=== before ref iters === \n" << std::endl;
 
-
       for (int ref_it = 1; ; ++ref_it)
       {
+         if (myRank == 0) std::cout << "Refinement iteration # " << ref_it << "..." << std::endl;
          ode_solver->Step(sol, t, dt_real);
 
          // vfes.GetElementVDofs(50, vdofs);
@@ -619,11 +613,11 @@ int main(int argc, char *argv[])
 
          if (manager.is_adaptive())
          {
-            if (myRank == 0) std::cout << "Refinement iteration # " << ref_it << "..." << std::endl;
+            
          
             refiner->Apply(*pmesh);
 
-            // std::cout << "... after ref (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")" << std::endl;
+            std::cout << "... after ref (elements num = "<< pmesh->GetNE() << ";" << vfes.GlobalTrueVSize() << ")" << std::endl;
             // sol.Print(std::cout);
 
             // 22. Update the space, interpolate the solution, rebalance the mesh.
@@ -655,11 +649,13 @@ int main(int argc, char *argv[])
                 rhoMean
             );
 
-            // std::cout << "... after rebalance " << vfes.GlobalTrueVSize() << std::endl;
+            std::cout << "... after rebalance " << vfes.GlobalTrueVSize() << std::endl;
             // sol.Print(std::cout);
 
             euler.UpdateAfluxPointer(&(Aflux.SpMat()));
             euler.UpdateInverseMassMatrix();
+
+            std::cout << "... after euler rebalance " << vfes.GlobalTrueVSize() << std::endl;
 
             // sol.Print(std::cout);
 
@@ -667,13 +663,13 @@ int main(int argc, char *argv[])
             {
                 // Aflux.Update(); // Free the assembled data
                 // A.Update();
-                // std::cout << "... stop refiner" << std::endl;
+                std::cout << "... stop refiner" << std::endl;
                 break;
             }
 
             // load to sol old solution again just to make the same time step
             sol = sol_old;
-            // std::cout << "... after sol = sol_old " << std::endl; 
+            std::cout << "... after sol = sol_old " << std::endl; 
          }
          else
          {
@@ -753,28 +749,28 @@ int main(int argc, char *argv[])
 
       t_real = tic_toc.RealTime() - t_real;
 
-      for (int i = 0; i < fes.GetNDofs(); ++i)
-      {
-         U[i] = mom[i]/rhok[i];
-         U[i+fes.GetNDofs()] = mom[i+fes.GetNDofs()]/rhok[i];
-         if (dim == 3) U[i+2*fes.GetNDofs()] = mom[i+2*fes.GetNDofs()]/rhok[i];
+      // for (int i = 0; i < fes.GetNDofs(); ++i)
+      // {
+      //    U[i] = mom[i]/rhok[i];
+      //    U[i+fes.GetNDofs()] = mom[i+fes.GetNDofs()]/rhok[i];
+      //    if (dim == 3) U[i+2*fes.GetNDofs()] = mom[i+2*fes.GetNDofs()]/rhok[i];
 
-         localState[0] = rhok[i];
-         localState[1] = mom[i];
-         localState[2] = mom[i+fes.GetNDofs()];
-         if (dim == 3) localState[3] = mom[i+2*fes.GetNDofs()];
-         localState[num_equation-1] = energy[i];
+      //    localState[0] = rhok[i];
+      //    localState[1] = mom[i];
+      //    localState[2] = mom[i+fes.GetNDofs()];
+      //    if (dim == 3) localState[3] = mom[i+2*fes.GetNDofs()];
+      //    localState[num_equation-1] = energy[i];
 
-         p[i] = ComputePressure(localState, dim);
-         T[i] = ComputeTemperature(localState, dim);
+      //    p[i] = ComputePressure(localState, dim);
+      //    T[i] = ComputeTemperature(localState, dim);
 
-         UMean[i] += U[i] * dt;
-         UMean[i+fesNDofs] += U[i+fesNDofs] * dt;
-         if (dim == 3) UMean[i+2*fesNDofs] += U[i+2*fesNDofs] * dt;
-         pMean[i] += p[i] * dt;
-         TMean[i] += T[i] * dt;
-         rhoMean[i] += rhok[i] * dt;
-      }
+      //    UMean[i] += U[i] * dt;
+      //    UMean[i+fesNDofs] += U[i+fesNDofs] * dt;
+      //    if (dim == 3) UMean[i+2*fesNDofs] += U[i+2*fesNDofs] * dt;
+      //    pMean[i] += p[i] * dt;
+      //    TMean[i] += T[i] * dt;
+      //    rhoMean[i] += rhok[i] * dt;
+      // }
 
       done = (t >= t_final - 1e-8*dt);
 
@@ -847,9 +843,9 @@ int main(int argc, char *argv[])
       std::cout << " done, " << tic_toc.RealTime() << "s." << std::endl; 
    }
 
-   /// -----------------------------------------
-   /// 17. Free the used memory and finalize MPI
-   /// -----------------------------------------
+   /// ------------------------------------------
+   /// 17. Free the used memory and finalize MPI.
+   /// ------------------------------------------
    delete pd;
    delete derefiner;
    delete refiner;

@@ -17,14 +17,13 @@ Limiter::Limiter(Indicator& _ind, Averager& _avgr, ParFiniteElementSpace* _fes, 
 
    stencil = new Stencil();
 
-   fdGroupCells.SetSize(mesh->GetNE());
-   fdGroupCells = 0;
+   fdGroupCells.SetSize(mesh->GetNE(), 0);
 
    if (_fdGroupAttribute > 0)
    {
       for (int iCell = 0; iCell < mesh->GetNE(); ++iCell)
       {
-         int curAttr = mesh->GetAttribute(iCell);mesh->GetAttribute(iCell);
+         int curAttr = mesh->GetAttribute(iCell);
 
          if (curAttr == _fdGroupAttribute)
          {
@@ -71,30 +70,32 @@ void Limiter::update(Vector &x)
       DenseMatrix elfun1_mat(el_x.GetData(), nDofs, num_equation);
 
       /// Suppress slopes in defined group
-      if (fdGroupCells[iCell])
-      {
-         averager.readElementAverageByNumber(iCell, el_uMean);
-         for (int iEq = 0; iEq < num_equation; ++iEq)
-         {
-            for (int iDof = 0; iDof < nDofs; ++iDof)
-            {
-               elfun1_mat(iDof, iEq) = el_uMean(iEq);
-            }
-         }
+      // if (fdGroupCells[iCell]) // UPDATE FOR AMR
+      // {
+      //    averager.readElementAverageByNumber(iCell, el_uMean);
+      //    for (int iEq = 0; iEq < num_equation; ++iEq)
+      //    {
+      //       for (int iDof = 0; iDof < nDofs; ++iDof)
+      //       {
+      //          elfun1_mat(iDof, iEq) = el_uMean(iEq);
+      //       }
+      //    }
 
-         indicator.setValue(iCell, 0.0);
-      }
-      else // if not defined group - general limiting algorithm
-      {
+      //    indicator.setValue(iCell, 0.0);
+      // }
+      // else // if not defined group - general limiting algorithm
+      // {
          // compute stencil
          getStencil(iCell);
+
+         double test = -1.0;
 
          // check solution in cell for some troubles
          double iVal = indicator.checkDiscontinuity(iCell, stencil, elfun1_mat);
 
          // limit solution
          limit(iCell, iVal, nDofs, elfun1_mat);
-      }
+      // }
  
       xNew.SetSubVector(el_vdofs, el_x);
 

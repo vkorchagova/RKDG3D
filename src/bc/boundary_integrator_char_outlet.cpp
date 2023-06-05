@@ -76,24 +76,7 @@ void BoundaryIntegratorCharOutlet::AssembleFaceVector(const FiniteElement &el1,
    //   elfun2_mat.Print(std::cout);
    // }
 
-   // Integration order calculation from DGTraceIntegrator
-   int intorder;
-   if (Tr.Elem2No >= 0)
-    intorder = (std::min(Tr.Elem1->OrderW(), Tr.Elem2->OrderW()) +
-               2*std::max(el1.GetOrder(), el2.GetOrder()));
-   else
-   {
-    intorder = Tr.Elem1->OrderW() + 2*el1.GetOrder();
-    // Tr.Elem2No = Tr.Elem1No;
-    // Tr.Loc2 = Tr.Loc1;
-   }
-   if (el1.Space() == FunctionSpace::Pk)
-   {
-    intorder++;
-   }
-   //std::cout"Tr.Elem1->OrderW() = " << Tr.Elem1->OrderW() << ", el1.GetOrder() = " << el1.GetOrder() << std::endl;
-
-   const IntegrationRule *ir = &IntRules.Get(Tr.FaceGeom, intorder);
+   const IntegrationRule *ir = &IntRules.Get(Tr.FaceGeom, DEFAULT_GAUSS_INTORDER);
 
    // if ((Tr.Elem1No == 0) && myRank == 3) 
    // {
@@ -201,7 +184,7 @@ void BoundaryIntegratorCharOutlet::AssembleFaceVector(const FiniteElement &el1,
 
     if (mcs < 0)
     {
-       std::cout << "Number of neighbours: " << Tr.Elem1No << ' ' << Tr.Elem2No << std::endl;
+       std::cout << "Neighbour cells in char boundary integrator: "  << Tr.Elem1No << ' ' << Tr.Elem2No << std::endl;
        exit(1);
     }
 
